@@ -6,7 +6,11 @@ import * as schema from "@/schemas";
 
 export const DRIZZLE = Symbol("DRIZZLE");
 
-export type DrizzleDB = ReturnType<typeof drizzle<typeof schema>>;
+// export type DrizzleDB = ReturnType<typeof drizzle<typeof schema>>;
+
+import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+
+export type DrizzleDB = NodePgDatabase<typeof schema>;
 
 @Global()
 @Module({

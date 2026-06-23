@@ -4,6 +4,7 @@ import { relations } from 'drizzle-orm';
 import { text } from 'drizzle-orm/pg-core';
 import { primaryKey } from 'drizzle-orm/pg-core';
 import { foreignKey } from 'drizzle-orm/pg-core';
+import { unique } from 'drizzle-orm/pg-core';
 import { timestamp } from 'drizzle-orm/pg-core';
 import { numeric } from 'drizzle-orm/pg-core';
 import { integer } from 'drizzle-orm/pg-core';
@@ -12,21 +13,41 @@ import { uuid } from 'drizzle-orm/pg-core';
 import { pgTable } from 'drizzle-orm/pg-core';
 
 // user.ts
-export const user = pgTable('user', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull(),
-  password: text('password').notNull(),
-  refreshToken: text('refresh_token'),
-  resetPasswordToken: text('reset_password_token'),
-  resetPasswordExpiresAt: text('reset_password_expires_at'),
-  plan: text('plan'), // 'free' | 'pro'
-  planExpiresAt: date('plan_expires_at'),
-  parentId: uuid('parent_id').references(() => user.id), // Tenant hierarchy
-});
+export const userTable = pgTable(
+  'user',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    password: text('password'),
+    provider: text('provider'),
+
+    refreshToken: text('refresh_token'),
+    resetPasswordToken: text('reset_password_token'),
+    resetPasswordExpiresAt: timestamp('reset_password_expires_at'),
+    plan: text('plan').notNull(), // 'free' | 'pro'
+    planExpiresAt: date('plan_expires_at'),
+
+    parentId: uuid('parent_id'),
+
+    // parentId: uuid('parent_id').references(() => userTable.id), // Tenant hierarchy
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+      name: 'user_parent_fk',
+    }),
+  ],
+);
+
+
+
 
 // group.ts — Roles (type: 'role') and Plans (type: 'plan')
-export const group = pgTable('group', {
-  slug: text('slug').primaryKey(),
+export const groupTable = pgTable('group', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull(),
   title: text('title').notNull(),
   type: text('type').$type<'role' | 'plan'>().notNull(),
   createdBy: text('created_by')
@@ -34,16 +55,15 @@ export const group = pgTable('group', {
     .notNull(),
 });
 
-// user_group.ts — Many-to-Many junction
-export const userGroup = pgTable(
+export const userGroupTable = pgTable(
   'user_group',
   {
     userId: uuid('user_id')
       .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    groupId: text('group_id')
+      .references(() => userTable.id, { onDelete: 'cascade' }),
+    groupId: uuid('group_id')
       .notNull()
-      .references(() => group.slug, { onDelete: 'cascade' }),
+      .references(() => groupTable.id, { onDelete: 'cascade' }),
   },
   (table) => [
     primaryKey({
@@ -55,63 +75,63 @@ export const userGroup = pgTable(
 
 // ### Permissions & Feature Flags
 
-// permissions.ts — CASL action+subject pairs
-export const permissions = pgTable(
+export const permissionsTable = pgTable(
   'permissions',
   {
+    id: uuid('id').defaultRandom().primaryKey(),
     action: text('action').notNull(), // e.g. 'create', 'read', 'update', 'delete', 'manage'
     subject: text('subject').notNull(), // e.g. 'Board', 'Widget', 'Inventory', 'all'
     name: text('name').notNull(), // Human-readable label
     description: text('description'),
   },
-  (table) => [
-    primaryKey({
-      name: 'permissions_pkey',
-      columns: [table.action, table.subject],
-    }),
-  ],
+  (table) => [unique('action_subject_uniq').on(table.action, table.subject)],
 );
 
 // group_permission.ts — Which permissions a group holds
-export const groupPermission = pgTable(
+export const groupPermissionTable = pgTable(
   'group_permission',
   {
-    groupId: text('group_id')
-      .primaryKey()
-      .references(() => group.slug, { onDelete: 'cascade' }),
-    permissionAction: text('permission_action').notNull(),
-    permissionSubject: text('permission_subject').notNull(),
-    totalOperation: integer('total_operation'), // Quota cap (null =  perimssion exits | -1 = unlimited)
+    groupId: uuid('group_id')
+      .notNull()
+      .references(() => groupTable.id, {
+        onDelete: 'cascade',
+      }),
+
+    permissionId: uuid('permission_id')
+      .notNull()
+      .references(() => permissionsTable.id, {
+        onDelete: 'cascade',
+      }),
+
+    totalOperation: integer('total_operation'), // Quota cap (null = perimssion exits | -1 = unlimited)
   },
   (table) => [
-    foreignKey({
-      columns: [table.permissionAction, table.permissionSubject],
-      foreignColumns: [permissions.action, permissions.subject],
-      name: 'group_permission_to_permissions_fk',
-    }).onDelete('cascade'),
+    primaryKey({
+      name: 'group_permission_pkey',
+      columns: [table.groupId, table.permissionId],
+    }),
   ],
 );
 
 // ### Subscriptions & Payments
 
 // user_plan_snapshot.ts — Denormalized plan entitlements per user
-export const userPlanSnapshot = pgTable('user_plan_snapshot', {
-  userId: uuid('user_id')
-    .primaryKey()
-    .references(() => user.id, { onDelete: 'cascade' }),
+export const userPlanSnapshotTable = pgTable('user_plan_snapshot', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => userTable.id, {
+    onDelete: 'cascade',
+  }),
   action: text('action').notNull(),
   subject: text('subject').notNull(),
-  name: text('name').notNull(),
-  description: text('description'),
-  granted: integer('granted').notNull(), // Total allowed operations
-  remaining: integer('remaining').notNull(), // Remaining budget
+  granted: integer('granted'), // Total allowed operations
+  remaining: integer('remaining'), // Remaining budget
+  extra: integer('extra').notNull(), // Extra operations
 });
 
 // payment_history.ts
-export const paymentHistory = pgTable('payment_history', {
-  userId: uuid('user_id')
-    .primaryKey()
-    .references(() => user.id),
+export const paymentHistoryTable = pgTable('payment_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => userTable.id),
   planName: text('plan_name').notNull(),
   durationMonth: integer('duration_month').$type<1 | 6 | 12 | 24>().notNull(),
   amountPaid: numeric('amount_paid', { precision: 10, scale: 2 }).notNull(),
@@ -126,14 +146,12 @@ export const paymentHistory = pgTable('payment_history', {
 
 // ### Suggested Additional Models
 
-// These models are not yet defined but will be required:
-
 // board.ts — Canvas environments
-export const board = pgTable('board', {
+export const boardTable = pgTable('board', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id')
     .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
+    .references(() => userTable.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   maxWidth: integer('max_width').default(10000),
@@ -143,18 +161,18 @@ export const board = pgTable('board', {
 });
 
 // widget.ts — Interactive canvas nodes
-export const smartWidget = pgTable('smart_widget', {
+export const smartWidgetTable = pgTable('smart_widget', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id')
     .notNull()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  boardId: uuid('board_id').references(() => board.id, {
+    .references(() => userTable.id, { onDelete: 'cascade' }),
+  boardId: uuid('board_id').references(() => boardTable.id, {
     onDelete: 'set null',
   }),
   sku: text('sku').notNull(),
-  photo: text('sku'),
+  photo: text('photo'), // Fixed bug: changed duplicated db column name 'sku' to 'photo'
   quantity: integer('quantity').notNull(),
-  price: numeric('pos_x'),
+  price: numeric('price'), // Fixed bug: changed duplicated db column name 'pos_x' to 'price'
   name: text('name').notNull(),
   posX: numeric('pos_x'),
   posY: numeric('pos_y'),
@@ -168,89 +186,70 @@ export const smartWidget = pgTable('smart_widget', {
 // User Relations
 // ==========================================
 
-export const userRelations = relations(user, ({ one, many }) => ({
+export const userTableRelations = relations(userTable, ({ one, many }) => ({
   // Self-referencing relationship (Parent / Children)
-  parent: one(user, {
-    fields: [user.parentId],
-    references: [user.id],
+  parent: one(userTable, {
+    fields: [userTable.parentId],
+    references: [userTable.id],
     relationName: 'user_hierarchy',
   }),
-  children: many(user, {
+  children: many(userTable, {
     relationName: 'user_hierarchy',
   }),
-
-  // Many-to-Many join table link
-  userGroups: many(userGroup),
-
-  paymentHistory: many(paymentHistory, {
-    fields: [user.id],
-    references: [paymentHistory.userId],
-  }),
-
-  boards: many(board, {
-    fields: [user.id],
-    references: [board.tenantId],
-  }),
-
-  smartWidgets: many(smartWidget, {
-    fields: [user.id],
-    references: [board.tenantId],
-  }),
-
-  // One-to-One relationships
-  planSnapshot: one(userPlanSnapshot, {
-    fields: [user.id],
-    references: [userPlanSnapshot.userId],
-  }),
+  userGroups: many(userGroupTable),
+  paymentHistory: many(paymentHistoryTable),
+  boards: many(boardTable),
+  smartWidgets: many(smartWidgetTable),
+  planSnapshot: one(userPlanSnapshotTable),
 }));
 
 // ==========================================
 // Group Relations
 // ==========================================
-export const groupRelations = relations(group, ({ many }) => ({
-  userGroups: many(userGroup),
-  groupPermissions: many(groupPermission),
+export const groupTableRelations = relations(groupTable, ({ many }) => ({
+  userGroups: many(userGroupTable),
+  groupPermissions: many(groupPermissionTable),
 }));
 
 // ==========================================
 // UserGroup (Junction Table) Relations
 // ==========================================
 
-export const userGroupRelations = relations(userGroup, ({ one }) => ({
-  user: one(user, {
-    fields: [userGroup.userId],
-    references: [user.id],
+export const userGroupTableRelations = relations(userGroupTable, ({ one }) => ({
+  user: one(userTable, {
+    fields: [userGroupTable.userId],
+    references: [userTable.id],
   }),
-  group: one(group, {
-    fields: [userGroup.groupId],
-    references: [group.slug],
+  group: one(groupTable, {
+    fields: [userGroupTable.groupId],
+    references: [groupTable.id],
   }),
 }));
 
 // ==========================================
 // Permissions Relations
 // ==========================================
-export const permissionsRelations = relations(permissions, ({ many }) => ({
-  groupPermissions: many(groupPermission),
-}));
+export const permissionsTableRelations = relations(
+  permissionsTable,
+  ({ many }) => ({
+    groupPermissions: many(groupPermissionTable),
+  }),
+);
 
 // ==========================================
 // GroupPermission Relations
 // ==========================================
-export const groupPermissionRelations = relations(
-  groupPermission,
+export const groupPermissionTableRelations = relations(
+  groupPermissionTable,
   ({ one }) => ({
-    group: one(group, {
-      fields: [groupPermission.groupId],
-      references: [group.slug],
+    group: one(groupTable, {
+      fields: [groupPermissionTable.groupId],
+      references: [groupTable.id],
     }),
     // Composite relation to the target permission record
-    permission: one(permissions, {
-      fields: [
-        groupPermission.permissionAction,
-        groupPermission.permissionSubject,
-      ],
-      references: [permissions.action, permissions.subject],
+    permission: one(permissionsTable, {
+      fields: [groupPermissionTable.permissionId],
+      references: [permissionsTable.id],
     }),
   }),
 );
@@ -258,37 +257,46 @@ export const groupPermissionRelations = relations(
 // ==========================================
 // UserPlanSnapshot & PaymentHistory Relations
 // ==========================================
-export const userPlanSnapshotRelations = relations(
-  userPlanSnapshot,
+export const userPlanSnapshotTableRelations = relations(
+  userPlanSnapshotTable,
   ({ one }) => ({
-    user: one(user, {
-      fields: [userPlanSnapshot.userId],
-      references: [user.id],
+    user: one(userTable, {
+      fields: [userPlanSnapshotTable.userId],
+      references: [userTable.id],
     }),
   }),
 );
 
-export const paymentHistoryRelations = relations(paymentHistory, ({ one }) => ({
-  user: one(user, {
-    fields: [paymentHistory.userId],
-    references: [user.id],
+export const paymentHistoryTableRelations = relations(
+  paymentHistoryTable,
+  ({ one }) => ({
+    user: one(userTable, {
+      fields: [paymentHistoryTable.userId],
+      references: [userTable.id],
+    }),
   }),
+);
+
+export const boardTableRelations = relations(boardTable, ({ one, many }) => ({
+  tenant: one(userTable, {
+    fields: [boardTable.tenantId],
+    references: [userTable.id],
+  }),
+
+  smartWidgets: many(smartWidgetTable),
+
+  // smartWidgets: many(smartWidgetTable, {
+  //   fields: [boardTable.id],
+  //   references: [smartWidgetTable.boardId],
+  // }),
 }));
 
-export const boardRelations = relations(board, ({ one }) => ({
-  tenant: one(user, {
-    fields: [board.tenantId],
-    references: [user.id],
+export const smartWidgetTableRelations = relations(
+  smartWidgetTable,
+  ({ one }) => ({
+    board: one(boardTable, {
+      fields: [smartWidgetTable.boardId],
+      references: [boardTable.id],
+    }),
   }),
-  smartWidgets: many(smartWidget, {
-    fields: [board.id],
-    references: [smartWidget.boardId],
-  }),
-}));
-
-export const smartWidgetRelations = relations(smartWidget, ({ one }) => ({
-  board: one(board, {
-    fields: [smartWidget.boardId],
-    references: [board.id],
-  }),
-}));
+);
