@@ -48,7 +48,7 @@ export function BoardCard({ board }: { board: Board }) {
   return (
     <>
       <div
-        onClick={() => router.push(`/boards/${board.slug}`)}
+        onClick={() => router.push(`/dashboard/boards/${board.slug}`)}
         className="group cursor-pointer overflow-hidden rounded-md border border-border bg-surface transition-all hover:-translate-y-0.5 hover:border-active hover:shadow-[var(--shadow-md),var(--shadow-glow-teal)]"
       >
         {/* Canvas preview */}
