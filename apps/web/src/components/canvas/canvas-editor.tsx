@@ -12,7 +12,6 @@ import {
   MousePointer2,
   Hand,
   Lock,
-  History,
   Upload,
   Clock,
   X,
@@ -23,7 +22,7 @@ import type { BoardCanvas, CanvasWidget, InventoryThumb, Peer } from "@/types/ca
 import { Button } from "@/components/ui/button";
 import { ShareModal } from "@/components/boards/share-modal";
 import { ImportInventoryModal } from "@/components/boards/import-inventory-modal";
-import { AddWidgetModal } from "./add-widget-modal";
+import { AddInventoryModal } from "@/components/inventory/add-inventory-modal";
 import { cn } from "@/lib/utils";
 
 const MIN_ZOOM = 25;
@@ -54,7 +53,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
   const [ghost, setGhost] = useState({ visible: false, x: 0, y: 0, img: "", name: "" });
   const [shareOpen, setShareOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [addWidgetOpen, setAddWidgetOpen] = useState(false);
+  const [addInventoryOpen, setAddInventoryOpen] = useState(false);
 
   // Refs mirror state so window/native listeners read fresh values.
   const zoomRef = useRef(zoom);
@@ -352,7 +351,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       {/* Topbar */}
       <div className="canvas-topbar">
         <div className="canvas-topbar-left">
-          <button className="canvas-back-btn" title="Back to boards" onClick={() => router.push("/boards")}>
+          <button className="canvas-back-btn" title="Back to boards" onClick={() => router.push("/dashboard/boards")}>
             <ChevronLeft />
           </button>
           <span className="canvas-board-title">{board.title}</span>
@@ -561,7 +560,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
             <Hand />
           </button>
           <div className="float-tool-sep" />
-          <button className="float-tool-btn" title="Add Widget" onClick={() => setAddWidgetOpen(true)}>
+          <button className="float-tool-btn" title="Add Inventory" onClick={() => setAddInventoryOpen(true)}>
             <Plus />
           </button>
           <button
@@ -570,14 +569,6 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
             onClick={() => toast.info("3 active locks on this board")}
           >
             <Lock />
-          </button>
-          <div className="float-tool-sep" />
-          <button
-            className="float-tool-btn"
-            title="Take snapshot"
-            onClick={() => toast.success("Snapshot created")}
-          >
-            <History />
           </button>
         </div>
 
@@ -669,7 +660,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
         boardSlug={board.slug}
       />
       <ImportInventoryModal open={importOpen} onOpenChange={setImportOpen} />
-      <AddWidgetModal open={addWidgetOpen} onOpenChange={setAddWidgetOpen} />
+      <AddInventoryModal open={addInventoryOpen} onOpenChange={setAddInventoryOpen} />
     </div>
   );
 }
