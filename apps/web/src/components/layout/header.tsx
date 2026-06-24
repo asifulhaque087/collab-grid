@@ -26,7 +26,7 @@ function TelemetryItem({
 
 export function Header() {
   return (
-    <header className="z-[100] col-span-2 flex items-center justify-between gap-4 border-b border-border bg-surface px-6">
+    <header className="z-[100] col-span-2 flex h-[var(--header-h)] shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-6">
       <div className="flex min-w-0 items-center gap-4">
         <div className="flex shrink-0 items-center gap-2.5">
           <div className="grid size-8 place-items-center rounded-sm bg-[linear-gradient(135deg,var(--color-active),var(--color-brand))]">
