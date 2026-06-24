@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { APP_ENTRY, NAV_LINKS } from "@/lib/home-content";
+import { NAV_LINKS } from "@/lib/home-content";
 import { LogoMark } from "./logo-mark";
 
 // Static sticky nav — blur and responsive link collapse are pure CSS, so this
@@ -21,12 +21,11 @@ export function SiteNav() {
           ))}
         </div>
         <div className="nav-right">
-          {/* No auth yet — both entries drop the visitor into the app. */}
           <Button asChild variant="ghost" size="sm" className="auth-signin">
-            <Link href={APP_ENTRY}>Sign in</Link>
+            <Link href="/sign-in">Sign in</Link>
           </Button>
           <Button asChild size="sm">
-            <Link href={APP_ENTRY}>Sign up</Link>
+            <Link href="/sign-up">Sign up</Link>
           </Button>
         </div>
       </div>
