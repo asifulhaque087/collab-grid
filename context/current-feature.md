@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: Plan Management
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Plan CRUD (create, read, update, delete) in NestJS using the existing GroupTable with `type = 'plan'`
+- Auto-generate slug from plan name on the backend
+- Admin can send plan name + permissions when creating/editing a plan
+- Frontend PlansView shows all plans in a table
+- Existing AddPlan modal used for both create and edit (button label changes)
+- Delete plan from table with an AlertDialog confirmation
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Backend: model after `apps/api/src/roles` — create a `plan` module with the same CRUD pattern
+- GroupTable is the shared table; differentiate by `type: 'plan'`
+- Slug auto-generated server-side (no client input)
+- Frontend modal already exists — wire it up rather than creating a new one
+- Edit reuses the same modal, just swaps the submit button label
 
 ## History
 
