@@ -1,25 +1,16 @@
-# Current Feature: Plan Management
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Plan CRUD (create, read, update, delete) in NestJS using the existing GroupTable with `type = 'plan'`
-- Auto-generate slug from plan name on the backend
-- Admin can send plan name + permissions when creating/editing a plan
-- Frontend PlansView shows all plans in a table
-- Existing AddPlan modal used for both create and edit (button label changes)
-- Delete plan from table with an AlertDialog confirmation
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- Backend: model after `apps/api/src/roles` — create a `plan` module with the same CRUD pattern
-- GroupTable is the shared table; differentiate by `type: 'plan'`
-- Slug auto-generated server-side (no client input)
-- Frontend modal already exists — wire it up rather than creating a new one
-- Edit reuses the same modal, just swaps the submit button label
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -28,3 +19,4 @@ In Progress
 - **Auth & Seed Foundation** — Added CASL permissions catalog (`permissions.ts`), drizzle.config.ts, migrate.ts (prod runner), and idempotent seed script. Seeds 20 permissions, system roles (super-admin, tenant), plans (free/pro with quotas), and 2 seed users. Plan quotas are compile-time guaranteed to be a subset of tenant permissions.
 - **Role Management** — NestJS role module (CRUD + permission listing), schema migration adding createdByUserId/createdAt to groupTable. Frontend: RolesView with shared modal state, AddRoleModal (create+edit), RolesTable with AlertDialog delete confirm, server actions.
 - **RBAC Quota Enforcement** — Added grantedByUserId to groupTable (migration 0002), QuotaGuard (decrements plan snapshot remaining on CREATE, overflows to extra), refactored PermissionsGuard with plan-expiry overflow logic, fixed resolveCreatedBy parent-chain walk, wired guards to role controller.
+- **Plan Management** — NestJS plan module (CRUD + permission listing) backed by GroupTable with type='plan', slug auto-generation, system-plan protection. Frontend: PlansView, PlansTable with AlertDialog delete confirm, AddPlanModal reused for create+edit, server actions.
