@@ -1,16 +1,32 @@
-# Current Feature
+# Current Feature — Auth Pages (login, register, forgot-password, reset-password)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Build four auth pages in `apps/web`, each wired to the existing `apps/api` auth endpoints:
+  - **sign-in** (`/sign-in`) → `POST /auth/login` (fields: `email`, `password`); includes a "Forgot password?" link and a "Sign in with Google" button.
+  - **sign-up** (`/sign-up`) → `POST /auth/register` (fields: `name`, `email`, `password`); includes a "Sign in with Google" button.
+  - **forgot-password** → `POST /auth/forgot-password` (field: `email`); shows the generic success message.
+  - **reset-password** → `POST /auth/reset-password` (fields: `token` from URL query, `password`); shows success then routes to login.
+- Google OAuth button works: links to `GET /auth/google` on the API, which redirects back to `CLIENT_URL` after consent.
+- Authenticated users are redirected away from these pages (cannot access login/register/forgot/reset once logged in).
+- Pages match the landing page (`http://localhost:3000/`) UI/UX, layout, and theme for visual consistency.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **API base**: endpoints set httpOnly `accessToken`/`refreshToken` cookies (server-side). `GET /auth/me` returns profile + roles/permissions/quotas and is the way to detect a logged-in user (used for the redirect-away guard).
+- **Validation (mirror DTOs with Zod)**: `name` 2–255 chars; `email` valid email; `password` 8–72 chars; reset `token` non-empty (from `?token=` query).
+- **Field shapes** confirmed from `apps/api/src/auth/dto/*`:
+  - register: `{ name, email, password }`
+  - login: `{ email, password }`
+  - forgot-password: `{ email }`
+  - reset-password: `{ token, password }`
+- **Responses**: login/register return `{ id, name, email, plan }`; forgot/reset return `{ message }`. Errors: 409 (email taken), 401 (bad credentials), 400 (invalid/expired reset token).
+- **Google**: `GET /auth/google` → consent → `GET /auth/google/callback` sets cookies and redirects to `CLIENT_URL`. The button should hit the API URL directly (full-page navigation, not fetch).
+- **Standards**: server components by default, `'use client'` only where needed; Server Actions for mutations; `tryit` instead of try/catch; `{ success, data, error }` return pattern; toast errors via sonner; RHF + Zod forms; ShadCN + Tailwind v4 tokens. Reuse the landing page's design tokens/components.
 
 ## History
 
