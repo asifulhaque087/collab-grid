@@ -25,6 +25,7 @@ export enum Subjects {
   Permission = 'Permission',
   PaymentHistory = 'PaymentHistory',
   UserPlanSnapshot = 'UserPlanSnapshot',
+  Subscription = 'Subscription',
 }
 
 // A single permission, identified by its (action, subject) pair.
@@ -173,6 +174,14 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
     subject: Subjects.UserPlanSnapshot,
     name: 'Read Plan Snapshot',
     description: 'View user plan quota and usage.',
+  },
+
+  // Subscription — a tenant subscribing/upgrading to a paid plan.
+  {
+    action: Action.Create,
+    subject: Subjects.Subscription,
+    name: 'Create Subscription',
+    description: 'Subscribe to or upgrade a subscription plan.',
   },
 ];
 
