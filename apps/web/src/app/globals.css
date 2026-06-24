@@ -1,2 +1,125 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS — ported from prototypes/dashboard.html
+   ═══════════════════════════════════════════ */
+@theme {
+  --color-brand: #1e3a8a;
+  --color-brand-light: #2548a8;
+  --color-active: #0d9488;
+  --color-active-dim: rgba(13, 148, 136, 0.15);
+  --color-soft-lock: #d97706;
+  --color-soft-lock-dim: rgba(217, 119, 6, 0.15);
+  --color-committed: #059669;
+  --color-committed-dim: rgba(5, 150, 105, 0.15);
+  --color-bg: #0f172a;
+  --color-bg-deep: #0a1020;
+  --color-surface: #1e293b;
+  --color-surface-hover: #263548;
+  --color-border: #334155;
+  --color-border-subtle: #1e293b;
+  --color-text: #e2e8f0;
+  --color-text-dim: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-danger: #ef4444;
+  --color-danger-dim: rgba(239, 68, 68, 0.12);
+
+  --font-ui: var(--font-inter), -apple-system, sans-serif;
+  --font-mono: var(--font-jetbrains), "Fira Code", monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow-teal: 0 0 20px rgba(13, 148, 136, 0.2);
+
+  --sidebar-w: 240px;
+  --header-h: 60px;
+
+  /* The prototype authors dimensions in absolute px but fonts in rem relative
+     to a 14px root. Pin the spacing unit to 4px so numeric spacing/size
+     utilities (size-6, gap-4, p-4…) are absolute px like the prototype,
+     instead of scaling down with the 14px root. */
+  --spacing: 4px;
+}
+
+/* ═══════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════ */
+html {
+  font-size: 14px;
+}
+body {
+  font-family: var(--font-ui);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+/* Smooth transitions shared across interactive bits (180ms ease) */
+@theme {
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Faint radial dot-grid for the main content background */
+.dot-grid-bg {
+  position: relative;
+}
+.dot-grid-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════
+   KEYFRAMES
+   ═══════════════════════════════════════════ */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes amber-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(217, 119, 6, 0.2); }
+  50% { box-shadow: 0 0 24px rgba(217, 119, 6, 0.45); }
+}
+
+/* Native select chevron color override */
+select {
+  color: inherit;
+}
+
+/* ═══════════════════════════════════════════
+   SCROLLBARS — ported from prototype
+   ═══════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}

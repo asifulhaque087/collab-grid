@@ -2,7 +2,7 @@
 
 import { useRef, useCallback } from "react";
 
-export function useThrottle<T extends (...args: any[]) => any>(callback: T, delay: number) {
+export function useThrottle<T extends (...args: never[]) => unknown>(callback: T, delay: number) {
   const lastRan = useRef<number>(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 

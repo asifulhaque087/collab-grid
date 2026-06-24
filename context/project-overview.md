@@ -69,9 +69,7 @@ Needs lag-free visual updates, localized canvas changes, and an instant, dependa
 
 | Purpose             | Package                                               |
 | ------------------- | ----------------------------------------------------- |
-| Icons               | [`lucide-react`](https://lucide.dev)                  |
 | WebSocket client    | [`socket.io-client`](https://socket.io)               |
-| Canvas utilities    | [`konva`](https://konvajs.org) or native Canvas 2D    |
 | State management    | [`zustand`](https://zustand-demo.pmnd.rs)             |
 | Toast notifications | [`sonner`](https://sonner.emilkowal.ski)              |
 | Date utilities      | [`date-fns`](https://date-fns.org)                    |
