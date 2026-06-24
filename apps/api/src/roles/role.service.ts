@@ -1,12 +1,11 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { eq, and, inArray, count } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { tryit } from '@collab-grid/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
@@ -14,8 +13,9 @@ import {
   groupPermissionTable,
   permissionsTable,
   userGroupTable,
+  userTable,
 } from '@/schemas';
-import { SUPER_ADMIN_ROLE_SLUG } from '@/auth/rbac.constants';
+import { SUPER_ADMIN_ROLE_SLUG, TENANT_ROLE_SLUG } from '@/auth/rbac.constants';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
@@ -31,24 +31,43 @@ function toSlug(name: string): string {
 export class RoleService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
-  private async resolveCreatedBy(
-    userId: string,
-  ): Promise<'admin' | 'tenant'> {
-    const [groups, err] = await tryit(
+  private async resolveCreatedBy(userId: string): Promise<'admin' | 'tenant'> {
+    const [rows, err] = await tryit(
       this.db
-        .select({ slug: groupTable.slug, createdBy: groupTable.createdBy })
-        .from(userGroupTable)
-        .innerJoin(groupTable, eq(userGroupTable.groupId, groupTable.id))
-        .where(eq(userGroupTable.userId, userId)),
+        .select({
+          parentId: userTable.parentId,
+          slug: groupTable.slug,
+          createdBy: groupTable.createdBy,
+        })
+        .from(userTable)
+        .leftJoin(userGroupTable, eq(userTable.id, userGroupTable.userId))
+        .leftJoin(groupTable, eq(userGroupTable.groupId, groupTable.id))
+        .where(eq(userTable.id, userId)),
     );
 
     if (err) throw new InternalServerErrorException('An unexpected error occurred');
 
-    const isSuperAdmin = (groups ?? []).some(
-      (g) => g.slug === SUPER_ADMIN_ROLE_SLUG && g.createdBy === 'constant',
-    );
+    const parentId = rows?.[0]?.parentId ?? null;
 
-    return isSuperAdmin ? 'admin' : 'tenant';
+    for (const row of rows ?? []) {
+      if (
+        (row.createdBy === 'constant' && row.slug === SUPER_ADMIN_ROLE_SLUG) ||
+        row.createdBy === 'admin'
+      ) {
+        return 'admin';
+      }
+      if (
+        (row.createdBy === 'constant' && row.slug === TENANT_ROLE_SLUG) ||
+        row.createdBy === 'tenant'
+      ) {
+        return 'tenant';
+      }
+    }
+
+    // No direct match — walk up to the parent and check their roles.
+    if (parentId) return this.resolveCreatedBy(parentId);
+
+    return 'tenant';
   }
 
   async listPermissions() {
@@ -118,8 +137,17 @@ export class RoleService {
   }
 
   async create(dto: CreateRoleDto, userId: string) {
-    const createdBy = await this.resolveCreatedBy(userId);
+    const [createdBy] = await Promise.all([this.resolveCreatedBy(userId)]);
     const slug = toSlug(dto.name);
+
+    const [userRow, userErr] = await tryit(
+      this.db
+        .select({ parentId: userTable.parentId })
+        .from(userTable)
+        .where(eq(userTable.id, userId)),
+    );
+    if (userErr) throw new InternalServerErrorException('An unexpected error occurred');
+    const grantedByUserId = userRow?.[0]?.parentId ?? null;
 
     const [role, txErr] = await tryit(
       this.db.transaction(async (tx) => {
@@ -131,6 +159,7 @@ export class RoleService {
             type: 'role',
             createdBy,
             createdByUserId: userId,
+            grantedByUserId,
           })
           .returning();
 
