@@ -53,6 +53,10 @@ export const groupTable = pgTable('group', {
   createdBy: text('created_by')
     .$type<'constant' | 'admin' | 'tenant'>()
     .notNull(),
+  createdByUserId: uuid('created_by_user_id').references(() => userTable.id, {
+    onDelete: 'cascade',
+  }),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 export const userGroupTable = pgTable(

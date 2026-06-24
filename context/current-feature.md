@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: Role Management
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Backend role module with full CRUD (create, read, update, delete)
+- Role creation accepts role name + permissions; slug is auto-generated; createdBy tracks admin/tenant; type is always "role"
+- Frontend roles table displays all roles
+- Delete role via table delete icon with confirmation dialog
+- Edit role via table edit icon reusing the existing add-role modal (button label changes to "Update")
+- Existing "Add Role" modal wired up to the new backend endpoint
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Spec file: `context/features/4-role-management.spec.md`
+- Slug auto-generation from role name (e.g. "Super Admin" → "super-admin")
+- `createdBy` field should reference the logged-in admin or tenant user
+- `type` field is always `"role"` (enum or constant)
+- Reuse the existing add-role modal for both create and edit flows
 
 ## History
 
