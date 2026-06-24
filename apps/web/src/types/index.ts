@@ -62,6 +62,26 @@ export interface Role {
   system: boolean;
 }
 
+export interface ApiPermission {
+  id: string;
+  name: string;
+  action: string;
+  subject: string;
+  description: string | null;
+}
+
+export interface ApiRole {
+  id: string;
+  slug: string;
+  title: string;
+  createdBy: "constant" | "admin" | "tenant";
+  createdByUserId: string | null;
+  createdAt: string | null;
+  isSystem: boolean;
+  memberCount: number;
+  permissions: ApiPermission[];
+}
+
 export interface Plan {
   id: string;
   name: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,53 +19,75 @@ import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { Switch } from "@/components/ui/switch";
 import { PermGrid, PermItem } from "@/components/dashboard/perm-item";
-
-const PERMISSIONS = [
-  { id: "board:create", name: "Create boards", scope: "create · Board", default: true },
-  { id: "board:read", name: "Read boards", scope: "read · Board", default: true },
-  { id: "board:delete", name: "Delete boards", scope: "delete · Board", default: false },
-  { id: "board:manage", name: "Publish boards", scope: "manage · Board", default: true },
-  { id: "inventory:create", name: "Create inventory", scope: "create · Inventory", default: true },
-  { id: "inventory:read", name: "Read inventory", scope: "read · Inventory", default: true },
-  { id: "inventory:update", name: "Update inventory", scope: "update · Inventory", default: false },
-  { id: "inventory:delete", name: "Delete inventory", scope: "delete · Inventory", default: false },
-  { id: "order:read", name: "Read orders", scope: "read · Order", default: false },
-  { id: "user:manage", name: "Manage users", scope: "manage · User", default: false },
-  { id: "role:manage", name: "Manage roles", scope: "manage · Role", default: false },
-  { id: "transaction:read", name: "Read transactions", scope: "read · Transaction", default: false },
-];
-
-const DEFAULT_PERMS = PERMISSIONS.filter((p) => p.default).map((p) => p.id);
+import { createRole, updateRole } from "@/actions/roles";
+import type { ApiPermission, ApiRole } from "@/types";
 
 const schema = z.object({
   name: z.string().min(1, "Role name is required"),
-  permissions: z.array(z.string()),
+  permissionIds: z.array(z.string()),
 });
 
 type FormValues = z.infer<typeof schema>;
 
+interface AddRoleModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  permissions: ApiPermission[];
+  editingRole?: ApiRole | null;
+}
+
 export function AddRoleModal({
   open,
   onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+  permissions,
+  editingRole,
+}: AddRoleModalProps) {
+  const isEditing = Boolean(editingRole);
+
   const {
     register,
     handleSubmit,
     control,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", permissions: DEFAULT_PERMS },
+    defaultValues: { name: "", permissionIds: [] },
   });
 
-  const onSubmit = () => {
-    onOpenChange(false);
-    reset();
-    toast.success("Role created");
+  useEffect(() => {
+    if (open) {
+      if (editingRole) {
+        reset({
+          name: editingRole.title,
+          permissionIds: editingRole.permissions.map((p) => p.id),
+        });
+      } else {
+        reset({ name: "", permissionIds: [] });
+      }
+    }
+  }, [open, editingRole, reset]);
+
+  const onSubmit = async (values: FormValues) => {
+    try {
+      if (isEditing && editingRole) {
+        await updateRole(editingRole.id, {
+          name: values.name,
+          permissionIds: values.permissionIds,
+        });
+        toast.success("Role updated");
+      } else {
+        await createRole({
+          name: values.name,
+          permissionIds: values.permissionIds,
+        });
+        toast.success("Role created");
+      }
+      onOpenChange(false);
+      reset();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
+    }
   };
 
   return (
@@ -72,9 +95,11 @@ export function AddRoleModal({
       <DialogContent className="max-w-[540px]">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>New role</DialogTitle>
+            <DialogTitle>{isEditing ? "Edit role" : "New role"}</DialogTitle>
             <DialogDescription>
-              Name the role and choose the permissions it grants.
+              {isEditing
+                ? "Update the role name and its permissions."
+                : "Name the role and choose the permissions it grants."}
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
@@ -84,18 +109,22 @@ export function AddRoleModal({
             <FormField label="Permissions">
               <Controller
                 control={control}
-                name="permissions"
+                name="permissionIds"
                 render={({ field }) => (
                   <PermGrid>
-                    {PERMISSIONS.map((perm) => (
-                      <PermItem key={perm.id} name={perm.name} scope={perm.scope}>
+                    {permissions.map((perm) => (
+                      <PermItem
+                        key={perm.id}
+                        name={perm.name}
+                        scope={`${perm.action} · ${perm.subject}`}
+                      >
                         <Switch
                           checked={field.value.includes(perm.id)}
                           onCheckedChange={(checked) =>
                             field.onChange(
                               checked
                                 ? [...field.value, perm.id]
-                                : field.value.filter((p) => p !== perm.id)
+                                : field.value.filter((id) => id !== perm.id)
                             )
                           }
                         />
@@ -107,10 +136,22 @@ export function AddRoleModal({
             </FormField>
           </DialogBody>
           <DialogFooter className="justify-end gap-2.5">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit">Create role</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? isEditing
+                  ? "Saving…"
+                  : "Creating…"
+                : isEditing
+                  ? "Update role"
+                  : "Create role"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
