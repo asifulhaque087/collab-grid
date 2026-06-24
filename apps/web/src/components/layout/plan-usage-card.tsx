@@ -13,7 +13,7 @@ export function PlanUsageCard() {
         <span className="font-medium text-active">2</span> / 5 boards used
       </div>
       <Link
-        href="/billing"
+        href="/dashboard/billing"
         className="mt-2.5 block w-full rounded-sm border border-active/30 py-[7px] text-center text-[0.75rem] font-semibold text-active transition-all hover:border-active hover:bg-active-dim"
       >
         Upgrade to Pro

@@ -28,25 +28,25 @@ export const navSections: NavSection[] = [
   {
     label: "Workspace",
     items: [
-      { label: "Boards", href: "/boards", icon: LayoutGrid, badge: "4" },
-      { label: "Inventory", href: "/inventory", icon: Boxes, badge: "128" },
+      { label: "Boards", href: "/dashboard/boards", icon: LayoutGrid, badge: "4" },
+      { label: "Inventory", href: "/dashboard/inventory", icon: Boxes, badge: "128" },
     ],
   },
   {
     label: "Administration",
     items: [
-      { label: "Users", href: "/users", icon: Users },
-      { label: "Roles", href: "/roles", icon: Shield },
-      { label: "Plans", href: "/plans", icon: CreditCard },
-      { label: "Orders", href: "/orders", icon: ShoppingBag, badge: "18" },
-      { label: "Transactions", href: "/transactions", icon: LineChart },
+      { label: "Users", href: "/dashboard/users", icon: Users },
+      { label: "Roles", href: "/dashboard/roles", icon: Shield },
+      { label: "Plans", href: "/dashboard/plans", icon: CreditCard },
+      { label: "Orders", href: "/dashboard/orders", icon: ShoppingBag, badge: "18" },
+      { label: "Transactions", href: "/dashboard/transactions", icon: LineChart },
     ],
   },
   {
     label: "System",
     items: [
-      { label: "Billing", href: "/billing", icon: CreditCard },
-      { label: "Settings", href: "/settings", icon: Settings },
+      { label: "Billing", href: "/dashboard/billing", icon: CreditCard },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings },
     ],
   },
 ];
