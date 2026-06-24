@@ -9,9 +9,10 @@
     "lint": "eslint \"src/**/*.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx drizzle/migrate.ts",
-    "db:seed": "tsx drizzle/seed.ts",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate",
+    "db:migrate:prod": "tsx --env-file .env drizzle/migrate.ts",
+    "db:seed": "tsx --env-file .env drizzle/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
@@ -66,6 +67,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   }

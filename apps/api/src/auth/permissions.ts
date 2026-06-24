@@ -5,29 +5,26 @@
 // doesn't exist in the database.
 
 // CASL actions. `Manage` is CASL's wildcard ("any action"); the rest are the
-// standard CRUD verbs. A capability that isn't naturally CRUD is mapped onto
-// the closest verb (e.g. "view reports" -> Read Report, "use AI" -> Manage Ai).
+// standard CRUD verbs.
 export enum Action {
-  Manage = "manage",
-  Create = "create",
-  Read = "read",
-  Update = "update",
-  Delete = "delete",
+  Manage = 'manage',
+  Create = 'create',
+  Read = 'read',
+  Update = 'update',
+  Delete = 'delete',
 }
 
 // CASL subjects — the resources permissions apply to. `All` is CASL's wildcard
-// subject (pairs with `Manage` for a super-grant; currently unused in the seed).
+// subject (pairs with `Manage` for a super-grant).
 export enum Subjects {
-  All = "all",
-  Prescription = "Prescription",
-  Patient = "Patient",
-  Ai = "Ai",
-  Report = "Report",
-  Plan = "Plan",
-  Subscription = "Subscription",
-  Payment = "Payment",
-  User = "User",
-  Role = "Role",
+  All = 'all',
+  Board = 'Board',
+  SmartWidget = 'SmartWidget',
+  User = 'User',
+  Group = 'Group',
+  Permission = 'Permission',
+  PaymentHistory = 'PaymentHistory',
+  UserPlanSnapshot = 'UserPlanSnapshot',
 }
 
 // A single permission, identified by its (action, subject) pair.
@@ -44,158 +41,138 @@ export interface PermissionDefinition extends PermissionTuple {
 // Rows for the `permissions` table. Adding a permission here + re-running the
 // seed is all that's needed to make it available to plans, roles, and the
 // guard. Whether a grant behaves as a boolean capability or a numeric quota is
-// decided per plan-permission `value` — not stored on the permission itself.
+// decided per plan-permission `totalOperation` — not stored on the permission itself.
 export const PERMISSION_CATALOG: PermissionDefinition[] = [
-  // Prescriptions. Create is a numeric quota on plans (free 15 / pro unlimited);
-  // the rest are boolean capabilities conferred by the doctor role.
-  {
-    action: Action.Create,
-    subject: Subjects.Prescription,
-    name: "Create prescriptions",
-    description: "Create and save prescriptions in the builder.",
-  },
-  {
-    action: Action.Read,
-    subject: Subjects.Prescription,
-    name: "Read prescriptions",
-    description: "View saved prescriptions and history.",
-  },
-  {
-    action: Action.Update,
-    subject: Subjects.Prescription,
-    name: "Update prescriptions",
-    description: "Edit saved prescriptions.",
-  },
-  {
-    action: Action.Delete,
-    subject: Subjects.Prescription,
-    name: "Delete prescriptions",
-    description: "Delete saved prescriptions.",
-  },
-  // Patients. Create is a numeric quota on plans (free 50 / pro unlimited).
-  {
-    action: Action.Create,
-    subject: Subjects.Patient,
-    name: "Register patients",
-    description: "Add new patients to the registry.",
-  },
-  {
-    action: Action.Read,
-    subject: Subjects.Patient,
-    name: "Read patients",
-    description: "View the patient registry and individual patients.",
-  },
-  {
-    action: Action.Update,
-    subject: Subjects.Patient,
-    name: "Update patients",
-    description: "Edit patient records.",
-  },
-  {
-    action: Action.Delete,
-    subject: Subjects.Patient,
-    name: "Delete patients",
-    description: "Delete patient records.",
-  },
+  // Super-admin wildcard — pairs with Manage:All for full system access.
   {
     action: Action.Manage,
-    subject: Subjects.Ai,
-    name: "Use AI features",
-    description: "Access AI-assisted suggestions and automation.",
+    subject: Subjects.All,
+    name: 'Manage Everything',
+    description: 'Full system access — conferred by the super-admin role only.',
   },
-  {
-    action: Action.Read,
-    subject: Subjects.Report,
-    name: "View reports & analytics",
-    description: "Open the reports dashboard and analytics.",
-  },
-  // Plan management (admin-only, conferred by the super-admin role).
+
+  // Board
   {
     action: Action.Create,
-    subject: Subjects.Plan,
-    name: "Create plans",
-    description: "Create billing plans and assign their permissions.",
+    subject: Subjects.Board,
+    name: 'Create Board',
+    description: 'Create new canvas boards.',
   },
   {
     action: Action.Read,
-    subject: Subjects.Plan,
-    name: "Read plans",
-    description: "View billing plans and their permissions.",
+    subject: Subjects.Board,
+    name: 'Read Board',
+    description: 'View boards and their contents.',
   },
   {
     action: Action.Update,
-    subject: Subjects.Plan,
-    name: "Update plans",
-    description: "Edit billing plans and their permissions.",
+    subject: Subjects.Board,
+    name: 'Update Board',
+    description: 'Edit board settings and metadata.',
   },
   {
     action: Action.Delete,
-    subject: Subjects.Plan,
-    name: "Delete plans",
-    description: "Delete billing plans.",
+    subject: Subjects.Board,
+    name: 'Delete Board',
+    description: 'Delete boards permanently.',
   },
-  // Subscribe to a plan (conferred by the doctor role).
+
+  // SmartWidget (inventory items placed on boards)
   {
     action: Action.Create,
-    subject: Subjects.Subscription,
-    name: "Subscribe to a plan",
-    description: "Purchase or upgrade a subscription plan.",
+    subject: Subjects.SmartWidget,
+    name: 'Create Smart Widget',
+    description: 'Add inventory widgets to boards.',
   },
   {
     action: Action.Read,
-    subject: Subjects.Payment,
-    name: "Read payments",
-    description: "View all payment records (admin billing report).",
+    subject: Subjects.SmartWidget,
+    name: 'Read Smart Widget',
+    description: 'View widgets on canvas boards.',
   },
-  // User management (admin-only, conferred by the super-admin role).
+  {
+    action: Action.Update,
+    subject: Subjects.SmartWidget,
+    name: 'Update Smart Widget',
+    description: 'Edit widget properties and canvas position.',
+  },
+  {
+    action: Action.Delete,
+    subject: Subjects.SmartWidget,
+    name: 'Delete Smart Widget',
+    description: 'Remove widgets from boards.',
+  },
+
+  // User (sub-users created by a tenant)
   {
     action: Action.Create,
     subject: Subjects.User,
-    name: "Create users",
-    description: "Create SaaS users and assign their role.",
+    name: 'Create User',
+    description: 'Create sub-users and team members.',
   },
   {
     action: Action.Read,
     subject: Subjects.User,
-    name: "Read users",
-    description: "View the user list and individual users.",
+    name: 'Read User',
+    description: 'View users and their profiles.',
   },
   {
     action: Action.Update,
     subject: Subjects.User,
-    name: "Update users",
-    description: "Edit user records and reassign their role.",
+    name: 'Update User',
+    description: 'Edit user records and role assignments.',
   },
   {
     action: Action.Delete,
     subject: Subjects.User,
-    name: "Delete users",
-    description: "Delete user accounts.",
+    name: 'Delete User',
+    description: 'Remove users from the workspace.',
   },
-  // Role management (admin-only, conferred by the super-admin role).
+
+  // Group (custom roles and plans)
   {
     action: Action.Create,
-    subject: Subjects.Role,
-    name: "Create roles",
-    description: "Create RBAC roles and assign their permissions.",
+    subject: Subjects.Group,
+    name: 'Create Group',
+    description: 'Create custom roles for team members.',
   },
   {
     action: Action.Read,
-    subject: Subjects.Role,
-    name: "Read roles",
-    description: "View RBAC roles and their permissions.",
+    subject: Subjects.Group,
+    name: 'Read Group',
+    description: 'View roles and subscription plans.',
   },
   {
     action: Action.Update,
-    subject: Subjects.Role,
-    name: "Update roles",
-    description: "Edit RBAC roles and their permissions.",
+    subject: Subjects.Group,
+    name: 'Update Group',
+    description: 'Edit roles and their permission sets.',
   },
   {
     action: Action.Delete,
-    subject: Subjects.Role,
-    name: "Delete roles",
-    description: "Delete RBAC roles.",
+    subject: Subjects.Group,
+    name: 'Delete Group',
+    description: 'Delete custom roles.',
+  },
+
+  // Read-only ancillary resources
+  {
+    action: Action.Read,
+    subject: Subjects.Permission,
+    name: 'Read Permission',
+    description: 'View the permission catalog.',
+  },
+  {
+    action: Action.Read,
+    subject: Subjects.PaymentHistory,
+    name: 'Read Payment History',
+    description: 'View payment transaction records.',
+  },
+  {
+    action: Action.Read,
+    subject: Subjects.UserPlanSnapshot,
+    name: 'Read Plan Snapshot',
+    description: 'View user plan quota and usage.',
   },
 ];
 
