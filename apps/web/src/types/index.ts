@@ -93,6 +93,18 @@ export interface Plan {
   highlighted: boolean;
 }
 
+export interface ApiPlan {
+  id: string;
+  slug: string;
+  title: string;
+  createdBy: "constant" | "admin" | "tenant";
+  createdByUserId: string | null;
+  createdAt: string | null;
+  isSystem: boolean;
+  subscriberCount: number;
+  permissions: ApiPermission[];
+}
+
 export type OrderStatus = "paid" | "pending" | "expired";
 
 export interface Order {
