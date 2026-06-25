@@ -22,6 +22,13 @@
       "when": 1782326502667,
       "tag": "0002_special_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782383976497,
+      "tag": "0003_flashy_lightspeed",
+      "breakpoints": true
     }
   ]
 }

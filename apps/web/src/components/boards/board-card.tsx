@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Lock, Users, Share2, Upload, Globe } from "lucide-react";
+import { Box, Globe, Lock, Pencil, Share2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
-import type { Board, BoardMiniWidget } from "@/types";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { deleteBoard } from "@/actions/boards";
+import type { ApiBoard } from "@/types";
 import { ShareModal } from "./share-modal";
 import { ImportInventoryModal } from "./import-inventory-modal";
-
-const widgetColor: Record<BoardMiniWidget["state"], { bg: string; border: string }> = {
-  active: { bg: "rgba(13,148,136,0.15)", border: "var(--color-active)" },
-  "soft-lock": { bg: "rgba(217,119,6,0.15)", border: "var(--color-soft-lock)" },
-  committed: { bg: "rgba(5,150,105,0.15)", border: "var(--color-committed)" },
-};
+import { CreateBoardModal } from "./create-board-modal";
 
 function CardActionButton({
   title,
@@ -35,15 +41,36 @@ function CardActionButton({
   );
 }
 
-export function BoardCard({ board }: { board: Board }) {
+export function BoardCard({ board }: { board: ApiBoard }) {
   const router = useRouter();
   const [shareOpen, setShareOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const subtitle =
+    board.access === "public"
+      ? "Public — anyone with the link"
+      : "Restricted — invite only";
 
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
   };
+
+  function confirmDelete() {
+    startTransition(async () => {
+      try {
+        await deleteBoard(board.id);
+        toast.success(`"${board.name}" deleted`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to delete board");
+      } finally {
+        setDeleteOpen(false);
+      }
+    });
+  }
 
   return (
     <>
@@ -61,59 +88,41 @@ export function BoardCard({ board }: { board: Board }) {
               backgroundSize: "20px 20px",
             }}
           />
-          {board.preview.map((w, i) => {
-            const c = widgetColor[w.state];
-            return (
-              <div
-                key={i}
-                className="absolute z-[1] rounded-[4px] border"
-                style={{
-                  width: w.width,
-                  height: w.height,
-                  top: w.top,
-                  left: w.left,
-                  background: c.bg,
-                  borderColor: c.border,
-                }}
-              />
-            );
-          })}
+          <div className="absolute right-3 top-3 z-[1] inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/80 px-2 py-0.5 text-[0.68rem] font-medium text-text-muted">
+            {board.access === "public" ? (
+              <Globe className="size-3" />
+            ) : (
+              <Lock className="size-3" />
+            )}
+            {board.access === "public" ? "Public" : "Restricted"}
+          </div>
         </div>
 
         {/* Body */}
         <div className="p-4">
           <div className="flex items-center gap-2 text-[0.95rem] font-semibold text-text">
             {board.name}
-            {board.live && (
-              <span className="size-2 animate-pulse-dot rounded-full bg-committed shadow-[0_0_6px_var(--color-committed)]" />
-            )}
           </div>
-          <div className="mt-0.5 text-[0.78rem] text-text-muted">{board.subtitle}</div>
+          <div className="mt-0.5 text-[0.78rem] text-text-muted">{subtitle}</div>
           <div className="mt-2 flex gap-3.5 text-[0.78rem] text-text-muted">
             <span className="flex items-center gap-1.5">
               <Box className="size-[13px]" /> {board.widgetCount} widgets
             </span>
-            <span className="flex items-center gap-1.5">
-              <Lock className="size-[13px]" /> {board.lockCount} locks
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Users className="size-[13px]" /> {board.onlineCount} online
+            <span className="font-mono">
+              {board.maxWidth}×{board.maxHeight}
             </span>
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-border px-4 py-3">
-          <div className="flex items-center">
-            {board.users.map((u, i) => (
-              <div
-                key={i}
-                className="grid size-6 place-items-center rounded-full border-2 border-surface text-[0.6rem] font-semibold text-white first:ml-0 [&:not(:first-child)]:-ml-1.5"
-                style={{ background: u.gradient }}
-              >
-                {u.initials}
-              </div>
-            ))}
+          <div className="flex gap-1">
+            <CardActionButton title="Edit" onClick={stop(() => setEditOpen(true))}>
+              <Pencil />
+            </CardActionButton>
+            <CardActionButton title="Delete" onClick={stop(() => setDeleteOpen(true))}>
+              <Trash2 />
+            </CardActionButton>
           </div>
           <div className="flex gap-1">
             <CardActionButton title="Share" onClick={stop(() => setShareOpen(true))}>
@@ -139,6 +148,26 @@ export function BoardCard({ board }: { board: Board }) {
         boardSlug={board.slug}
       />
       <ImportInventoryModal open={importOpen} onOpenChange={setImportOpen} />
+      <CreateBoardModal open={editOpen} onOpenChange={setEditOpen} board={board} />
+
+      <AlertDialog open={deleteOpen} onOpenChange={(o) => !o && setDeleteOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete board</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <strong className="text-text">&ldquo;{board.name}&rdquo;</strong>? This
+              will remove the board and all its widgets, and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={isPending}>
+              {isPending ? "Deleting…" : "Delete board"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
