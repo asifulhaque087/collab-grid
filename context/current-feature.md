@@ -1,25 +1,16 @@
-# Current Feature: Inventory Smart Widget Management
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Backend: create an `inventory` NestJS module with full CRUD over `smartWidgetTable` (tenant-scoped, guarded like boards/roles).
-- Backend: add CSV bulk-import endpoint (used by the board card's "Import Inventory" action).
-- Frontend: support creating inventory from 3 entry points — the board card Import Inventory button, the New Inventory modal on `/dashboard/inventory`, and the Add modal in the canvas editor.
-- Inventory created via board card or canvas editor must carry a `boardId`; inventory has no `posX/posY` by default.
-- Tenant-owned inventory attached to a board shows in the canvas editor's left/right sidebar so it can later be dragged onto the canvas.
-- Sync form fields with the DB table: strip the extra fields from the current Add Inventory modal and use only `smartWidgetTable` columns.
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- `smartWidgetTable` columns: `id`, `tenantId` (notNull), `boardId` (nullable, set-null on board delete), `sku` (notNull), `photo` (nullable), `quantity` (int notNull), `price` (numeric nullable), `name` (notNull), `posX`/`posY` (numeric nullable), `width` (int notNull), `height` (int notNull), `createdAt`, `updatedAt`.
-- Distinct-item NFR: each widget is a separate record; quantity sold as a whole stock per record.
-- Auth: `Subjects.SmartWidget` already exists in `permissions.ts` (full CRUD), is granted to the tenant role + free/pro `create:SmartWidget` quota in `PLAN_QUOTAS`, and the tenant snapshot already includes it. So NO reseed/migration needed — just guard the inventory module with AccessToken + Permissions + Quota on `Subjects.SmartWidget`, same as boards.
-- Default no `posX/posY` until dragged onto canvas. Import flow redirects to the board afterward (per project spec).
-- Frontend uses RHF + Zod, server actions returning `{ success, data, error }`, sonner toasts, ShadCN modals.
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
@@ -33,3 +24,4 @@ In Progress
 - **Subscription** — NestJS subscription module: POST /subscription adds plan quotas onto userPlanSnapshot (numeric row), extends/starts planExpiresAt, writes payment_history (demo txn id); GET /subscription/payments feeds the Transactions table; @nestjs/schedule cron downgrades expired tenants to free nightly and resets quotas. Added create:Subscription permission + reseed. Fixed pre-existing blocker: registered cookie-parser so AccessTokenGuard reads auth cookies.
 - **Frontend RBAC** — CASL layer in apps/web mirroring the API permission model. `ability.ts` builds an AppAbility from /auth/me tuples; Next 16 `proxy.ts` stamps x-current-path; server `PermissionGuard` redirects to new `/unauthorized` when a route's required permission (route-permissions.ts map) is unmet; client `PermissionProvider`/`usePermission` exposes permissions+ability and the sidebar hides inaccessible items. Added `requireAuth()`; wired both into the (shell) layout.
 - **Board Management** — NestJS boards module (tenant-scoped CRUD over boardTable, restricted/public access, unique-slug w/ collision suffix, AccessToken+Permissions+Quota guards on Board subject). Schema: `access` column + unique slug (migration 0003). Seed now grants the tenant a free-plan userPlanSnapshot (quota rows for create perms, null boolean-capability rows for the rest) so tenant grants resolve — also unblocks roles/plans. Frontend: /dashboard/boards fetches real boards; BoardCard with edit + delete (AlertDialog confirm); create-board-modal wired as create+edit; ApiBoard type + board server actions.
+- **Inventory Smart Widget** — NestJS inventory module: tenant-scoped CRUD over smartWidgetTable (AccessToken+Permissions+Quota on SmartWidget, no reseed — subject pre-existed) + CSV bulk-import endpoint (FileInterceptor, distinct record per row); added GET /boards/by-slug/:slug. Frontend: inventory server actions + ApiInventory type; 3 create entry points (inventory page modal, board card import, canvas add modal) wired real — board/canvas creations attach boardId, no posX/posY by default. AddInventoryModal trimmed to real table columns (Controller-based board select). Inventory page/table real data with edit/delete/attach; canvas resolves real board by slug + shows its inventory in sidebar.
