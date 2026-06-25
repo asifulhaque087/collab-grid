@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: Inventory Smart Widget Management
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Backend: create an `inventory` NestJS module with full CRUD over `smartWidgetTable` (tenant-scoped, guarded like boards/roles).
+- Backend: add CSV bulk-import endpoint (used by the board card's "Import Inventory" action).
+- Frontend: support creating inventory from 3 entry points — the board card Import Inventory button, the New Inventory modal on `/dashboard/inventory`, and the Add modal in the canvas editor.
+- Inventory created via board card or canvas editor must carry a `boardId`; inventory has no `posX/posY` by default.
+- Tenant-owned inventory attached to a board shows in the canvas editor's left/right sidebar so it can later be dragged onto the canvas.
+- Sync form fields with the DB table: strip the extra fields from the current Add Inventory modal and use only `smartWidgetTable` columns.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- `smartWidgetTable` columns: `id`, `tenantId` (notNull), `boardId` (nullable, set-null on board delete), `sku` (notNull), `photo` (nullable), `quantity` (int notNull), `price` (numeric nullable), `name` (notNull), `posX`/`posY` (numeric nullable), `width` (int notNull), `height` (int notNull), `createdAt`, `updatedAt`.
+- Distinct-item NFR: each widget is a separate record; quantity sold as a whole stock per record.
+- Auth: `Subjects.SmartWidget` already exists in `permissions.ts` (full CRUD), is granted to the tenant role + free/pro `create:SmartWidget` quota in `PLAN_QUOTAS`, and the tenant snapshot already includes it. So NO reseed/migration needed — just guard the inventory module with AccessToken + Permissions + Quota on `Subjects.SmartWidget`, same as boards.
+- Default no `posX/posY` until dragged onto canvas. Import flow redirects to the board afterward (per project spec).
+- Frontend uses RHF + Zod, server actions returning `{ success, data, error }`, sonner toasts, ShadCN modals.
 
 ## History
 
