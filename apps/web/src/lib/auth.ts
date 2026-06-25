@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const API_URL = process.env.API_URL ?? "http://localhost:3001";
 
@@ -46,4 +47,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   } catch {
     return null;
   }
+}
+
+// Resolves the signed-in user or bounces to sign-in. Used to gate the dashboard
+// layout — every page below it requires an authenticated session.
+export async function requireAuth(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/sign-in");
+  return user;
 }
