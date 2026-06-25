@@ -161,7 +161,11 @@ export const boardTable = pgTable('board', {
     .notNull()
     .references(() => userTable.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  slug: text('slug').notNull(),
+  slug: text('slug').notNull().unique(),
+  access: text('access')
+    .$type<'restricted' | 'public'>()
+    .notNull()
+    .default('restricted'),
   maxWidth: integer('max_width').default(10000),
   maxHeight: integer('max_height').default(10000),
   createdAt: timestamp('created_at').defaultNow().notNull(),

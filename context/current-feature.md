@@ -1,16 +1,23 @@
-# Current Feature
+# Current Feature: Board Management (CRUD)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Backend: create a `board` module in `apps/api` with full CRUD backed by `boardTable` (`apps/api/src/schemas/index.ts`).
+- Backend: support board access mode on create — restricted (invite) or public URL.
+- Backend: secure the controller with `@RequirePermission`, `PermissionsGuard`, and `QuotaGuard`.
+- Frontend: render the real board list on `/dashboard/boards` with dynamic data from the API.
+- Frontend: add edit + delete icons on each board card, with a delete confirmation dialog.
+- Frontend: create boards via the boards-page create modal, with required fields synced to the backend contract.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Development mode — DB table modifications to `boardTable` are allowed if needed.
+- Keep required fields synced between backend schema/DTO and frontend RHF+Zod form.
+- Follow existing module patterns (role/plan modules) for guards, server actions, and modal/table structure.
 
 ## History
 

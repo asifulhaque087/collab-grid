@@ -6,6 +6,7 @@ import { AuthModule } from '@/auth/auth.module';
 import { DrizzleModule } from '@/drizzle/drizzle.module';
 import { RoleModule } from '@/roles/role.module';
 import { PlanModule } from '@/plans/plan.module';
+import { BoardModule } from '@/boards/board.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { SubscriptionModule } from '@/subscription/subscription.module';
     AuthModule,
     RoleModule,
     PlanModule,
+    BoardModule,
     SubscriptionModule,
   ],
 })
