@@ -3,6 +3,7 @@ import type { BoardCanvas } from "@/types/canvas";
 // Mirrors the prototype's canvas seed data. Swap for a `fetch` to `@apps/api`
 // once the board/widget endpoints exist.
 const board: BoardCanvas = {
+  boardId: null,
   slug: "friday-flash-sale",
   title: "Friday Flash Sale",
   access: "public",
