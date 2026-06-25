@@ -4,14 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navSections } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { getRequiredPermissionForPath } from "@/lib/route-permissions";
+import { usePermission } from "@/components/providers/permission-provider";
 import { PlanUsageCard } from "./plan-usage-card";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { ability } = usePermission();
+
+  // Hide nav items the user can't access; sections with no visible items drop
+  // out entirely. Items whose route has no permission requirement always show.
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        const req = getRequiredPermissionForPath(item.href);
+        return !req || ability.can(req.action, req.subject);
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <aside className="flex flex-col overflow-y-auto border-r border-border bg-bg-deep py-4">
-      {navSections.map((section) => (
+      {visibleSections.map((section) => (
         <div key={section.label} className="mb-2 px-3">
           <div className="px-3 pb-1.5 pt-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-text-muted">
             {section.label}

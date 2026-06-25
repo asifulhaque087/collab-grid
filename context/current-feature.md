@@ -1,16 +1,27 @@
-# Current Feature
+# Current Feature: Frontend RBAC
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Implement a CASL-based RBAC layer in `apps/web` that mirrors the server's `permissions.ts` action/subject model.
+- `ability.ts` (in `src/lib`): exports `Action`/`Subjects` enums, `PermissionTuple` type, `AppAbility`, and `createAbilityFor(user)` that builds a CASL ability from the user's effective permission tuples.
+- `proxy.ts` (Next middleware): set `x-current-path` header on each request so the server guard can resolve the current route; matcher limited to `/dashboard/:path*`.
+- `PermissionGuard` (server component): read `x-current-path`, look up required permission via `getRequiredPermissionForPath(path)`, build ability from current user, redirect to `/unauthorized` when `ability.can(...)` fails.
+- Wrap `<PermissionGuard>` around dashboard `children` in the dashboard layout.
+- `PermissionProvider` (client provider, currently named `DashboardProvider`): supplies the user's `permissions` to client components via a `usePermission`/`useDashboard` hook.
+- Wrap the dashboard layout with `<PermissionProvider permissions={user.permissions ?? []}>` so client components can read permissions.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Subjects enum in the spec is a generic template (Prescription/Patient/etc.) — must be replaced with CollabGrid's real subjects from `apps/api/src/auth/permissions.ts` (e.g. Board, Inventory, User, Role, Plan, Subscription, Payment, Order, Transaction).
+- Need a `getRequiredPermissionForPath` helper + a route→permission map file (not provided in spec).
+- Need an `/unauthorized` page for redirect target.
+- Server guard currently calls get-current-user per page switch; spec notes this could later read the JWT directly with the server secret, but per-page `getCurrentUser` is acceptable (cached result).
+- `Can` component from `@casl/react` not included in steps; optional — may add for conditional UI rendering.
+- Provider example in spec has stale doctor/dashboard template references to clean up.
 
 ## History
 
