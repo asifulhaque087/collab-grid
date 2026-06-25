@@ -40,6 +40,8 @@ export interface PresenceAvatar {
 }
 
 export interface BoardCanvas {
+  /** Real board id when the board exists in the API; null for mock fallback. */
+  boardId: string | null;
   slug: string;
   title: string;
   access: "public" | "restricted";

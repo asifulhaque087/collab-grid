@@ -133,6 +133,24 @@ export class BoardService {
     if (err) throw new InternalServerErrorException('An unexpected error occurred');
   }
 
+  // Resolves a board by its shareable slug. The canvas editor loads a board by
+  // slug (the URL), so it needs the board id to scope inventory + new widgets.
+  async findBySlug(slug: string, userId: string) {
+    const tenantId = await this.resolveTenantId(userId);
+
+    const [board, err] = await tryit(
+      this.db.query.boardTable.findFirst({
+        where: and(eq(boardTable.slug, slug), eq(boardTable.tenantId, tenantId)),
+        with: { smartWidgets: { columns: { id: true } } },
+      }),
+    );
+
+    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (!board) throw new NotFoundException('Board not found');
+
+    return this.serialize(board);
+  }
+
   private async findById(id: string, userId: string) {
     const tenantId = await this.resolveTenantId(userId);
 

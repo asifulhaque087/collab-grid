@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, LayoutGrid, Check, CircleSlash } from "lucide-react";
 import { toast } from "sonner";
-import type { BoardOption } from "@/lib/mock/inventory";
+import { updateInventory } from "@/actions/inventory";
 import { cn } from "@/lib/utils";
+
+export interface BoardOption {
+  id: string;
+  name: string;
+}
 
 function Option({
   selected,
@@ -43,15 +48,18 @@ function Option({
 }
 
 export function BoardSelector({
+  itemId,
   boards,
   initialBoardId,
   initialBoardName,
 }: {
+  itemId: string;
   boards: BoardOption[];
   initialBoardId: string | null;
   initialBoardName: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [selected, setSelected] = useState<{ id: string | null; name: string }>({
     id: initialBoardId,
     name: initialBoardName ?? "Not attached",
@@ -60,16 +68,27 @@ export function BoardSelector({
   const attached = selected.id !== null;
 
   const pick = (id: string | null, name: string) => {
+    if (id === selected.id) return;
+    const previous = selected;
     setSelected({ id, name });
-    toast.success(id ? `Attached to ${name}` : "Detached from board");
+    startTransition(async () => {
+      try {
+        await updateInventory(itemId, { boardId: id });
+        toast.success(id ? `Attached to ${name}` : "Detached from board");
+      } catch (err) {
+        setSelected(previous);
+        toast.error(err instanceof Error ? err.message : "Failed to update board");
+      }
+    });
   };
 
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
       <DropdownMenu.Trigger asChild>
         <button
+          disabled={isPending}
           className={cn(
-            "inline-flex max-w-[200px] cursor-pointer items-center gap-2 whitespace-nowrap rounded-[20px] px-3 py-1.5 text-[0.8rem] font-semibold outline-none transition-all",
+            "inline-flex max-w-[200px] cursor-pointer items-center gap-2 whitespace-nowrap rounded-[20px] px-3 py-1.5 text-[0.8rem] font-semibold outline-none transition-all disabled:opacity-60",
             attached
               ? "border border-active/25 bg-active-dim text-active hover:border-active hover:bg-[rgba(13,148,136,0.22)]"
               : "border border-dashed border-border bg-transparent text-text-muted hover:border-text-muted hover:text-text-dim"

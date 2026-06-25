@@ -51,6 +51,23 @@ export interface InventoryItem {
   createdAt: string;
 }
 
+// Mirrors the InventoryService.serialize() shape from @apps/api.
+export interface ApiInventory {
+  id: string;
+  sku: string;
+  name: string;
+  quantity: number;
+  price: string | null;
+  photo: string | null;
+  posX: string | null;
+  posY: string | null;
+  width: number;
+  height: number;
+  boardId: string | null;
+  boardName: string | null;
+  createdAt: string | null;
+}
+
 export type UserStatus = "active" | "inactive";
 
 export interface User {
