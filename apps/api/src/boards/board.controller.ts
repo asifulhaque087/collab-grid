@@ -33,6 +33,12 @@ export class BoardController {
     return this.boardService.findAll(user.userId);
   }
 
+  @Get('by-slug/:slug')
+  @RequirePermission({ action: Action.Read, subject: Subjects.Board })
+  findBySlug(@Param('slug') slug: string, @GetUser() user: AuthUser) {
+    return this.boardService.findBySlug(slug, user.userId);
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission({ action: Action.Create, subject: Subjects.Board })

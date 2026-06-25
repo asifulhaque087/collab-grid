@@ -1,26 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { Upload, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/dashboard/search-bar";
-import { AddInventoryModal } from "./add-inventory-modal";
+import { ImportInventoryModal } from "@/components/boards/import-inventory-modal";
+import { AddInventoryModal, type BoardChoice } from "./add-inventory-modal";
 
-export function InventoryActions() {
-  const [open, setOpen] = useState(false);
+export function InventoryActions({ boards }: { boards: BoardChoice[] }) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
   return (
     <>
       <SearchBar placeholder="Search by SKU or item name…" />
-      <Button variant="secondary" onClick={() => toast.success("Exporting inventory as CSV…")}>
-        <Download />
-        Export
+      <Button variant="secondary" onClick={() => setImportOpen(true)}>
+        <Upload />
+        Import CSV
       </Button>
-      <Button onClick={() => setOpen(true)}>
+      <Button onClick={() => setAddOpen(true)}>
         <Plus />
         Add Item
       </Button>
-      <AddInventoryModal open={open} onOpenChange={setOpen} />
+      <AddInventoryModal open={addOpen} onOpenChange={setAddOpen} boards={boards} />
+      <ImportInventoryModal open={importOpen} onOpenChange={setImportOpen} />
     </>
   );
 }

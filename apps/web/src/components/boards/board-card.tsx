@@ -147,7 +147,12 @@ export function BoardCard({ board }: { board: ApiBoard }) {
         boardName={board.name}
         boardSlug={board.slug}
       />
-      <ImportInventoryModal open={importOpen} onOpenChange={setImportOpen} />
+      <ImportInventoryModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        boardId={board.id}
+        boardSlug={board.slug}
+      />
       <CreateBoardModal open={editOpen} onOpenChange={setEditOpen} board={board} />
 
       <AlertDialog open={deleteOpen} onOpenChange={(o) => !o && setDeleteOpen(false)}>

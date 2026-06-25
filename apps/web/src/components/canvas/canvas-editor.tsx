@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ShareModal } from "@/components/boards/share-modal";
 import { ImportInventoryModal } from "@/components/boards/import-inventory-modal";
 import { AddInventoryModal } from "@/components/inventory/add-inventory-modal";
+import { toInventoryThumb } from "@/lib/canvas-mappers";
 import { cn } from "@/lib/utils";
 
 const MIN_ZOOM = 25;
@@ -46,6 +47,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [widgets, setWidgets] = useState<CanvasWidget[]>(board.widgets);
+  const [inventory, setInventory] = useState<InventoryThumb[]>(board.inventory);
   const [peers, setPeers] = useState<Peer[]>(board.peers);
   const [tool, setTool] = useState<"select" | "pan">("select");
   const [invQuery, setInvQuery] = useState("");
@@ -342,7 +344,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
 
   const lockedItems = widgets.filter((w) => w.state === "mine");
   const lockedTotal = lockedItems.reduce((sum, w) => sum + priceToNumber(w.price), 0);
-  const filteredInventory = board.inventory.filter((i) =>
+  const filteredInventory = inventory.filter((i) =>
     i.name.toLowerCase().includes(invQuery.toLowerCase())
   );
 
@@ -480,7 +482,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
         <div className="canvas-inv-panel">
           <div className="inv-panel-header">
             <span className="inv-panel-title">Inventory</span>
-            <span className="inv-panel-count">{board.inventory.length} items</span>
+            <span className="inv-panel-count">{inventory.length} items</span>
           </div>
           <div className="inv-panel-search">
             <input
@@ -659,8 +661,17 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
         boardName={board.title}
         boardSlug={board.slug}
       />
-      <ImportInventoryModal open={importOpen} onOpenChange={setImportOpen} />
-      <AddInventoryModal open={addInventoryOpen} onOpenChange={setAddInventoryOpen} />
+      <ImportInventoryModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        boardId={board.boardId ?? undefined}
+      />
+      <AddInventoryModal
+        open={addInventoryOpen}
+        onOpenChange={setAddInventoryOpen}
+        boardId={board.boardId}
+        onSuccess={(item) => setInventory((prev) => [toInventoryThumb(item), ...prev])}
+      />
     </div>
   );
 }

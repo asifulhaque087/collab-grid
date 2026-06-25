@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import type { ApiBoard } from '@/types';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 
@@ -11,6 +12,28 @@ async function authHeaders(): Promise<HeadersInit> {
   return token
     ? { Cookie: `accessToken=${token}`, 'Content-Type': 'application/json' }
     : { 'Content-Type': 'application/json' };
+}
+
+export async function getBoards(): Promise<ApiBoard[]> {
+  const store = await cookies();
+  const token = store.get('accessToken')?.value;
+  const res = await fetch(`${API_URL}/boards`, {
+    headers: token ? { Cookie: `accessToken=${token}` } : {},
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getBoardBySlug(slug: string): Promise<ApiBoard | null> {
+  const store = await cookies();
+  const token = store.get('accessToken')?.value;
+  const res = await fetch(`${API_URL}/boards/by-slug/${slug}`, {
+    headers: token ? { Cookie: `accessToken=${token}` } : {},
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  return res.json();
 }
 
 export interface BoardInput {
