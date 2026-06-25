@@ -205,6 +205,11 @@ async function main() {
   console.log('  Seeding users...');
   const hashedPassword = hashSync('qwerty1234%', 10);
 
+  // Free-plan quota lookup, keyed by permission tuple.
+  const freeQuotaByKey = new Map(
+    PLAN_QUOTAS.map((q) => [permissionKey(q.action, q.subject), q.free]),
+  );
+
   for (const user of SEED_USERS) {
     const [row] = await db
       .insert(userTable)
@@ -220,6 +225,28 @@ async function main() {
     await db
       .insert(userGroupTable)
       .values({ userId: row.id, groupId: groupIds[user.groupSlug] });
+
+    // The PermissionsGuard resolves tenant grants from userPlanSnapshot, so a
+    // tenant needs a snapshot to do anything. Seed every tenant permission:
+    // quota'd perms get the free-plan cap; the rest are boolean capabilities
+    // (granted/remaining = null = unlimited). Admins get grants via their role.
+    if (user.groupSlug === TENANT_ROLE_SLUG) {
+      await db.insert(userPlanSnapshotTable).values(
+        TENANT_PERMISSIONS.map((perm) => {
+          const quota = freeQuotaByKey.get(
+            permissionKey(perm.action, perm.subject),
+          );
+          return {
+            userId: row.id,
+            action: perm.action,
+            subject: perm.subject,
+            granted: quota ?? null,
+            remaining: quota ?? null,
+            extra: 0,
+          };
+        }),
+      );
+    }
   }
 
   console.log('Seed complete!');

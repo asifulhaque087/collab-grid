@@ -30,6 +30,17 @@ export interface Board {
   preview: BoardMiniWidget[];
 }
 
+export interface ApiBoard {
+  id: string;
+  slug: string;
+  name: string;
+  access: BoardAccess;
+  maxWidth: number | null;
+  maxHeight: number | null;
+  createdAt: string | null;
+  widgetCount: number;
+}
+
 export interface InventoryItem {
   id: string;
   sku: string;
