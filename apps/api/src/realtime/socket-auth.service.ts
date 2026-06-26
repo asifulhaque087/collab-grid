@@ -48,6 +48,23 @@ export class SocketAuthService {
     }
   }
 
+  // True when the user owns the board (tenant scope). Used to let the owner open
+  // their own restricted (unpublished) board over the socket.
+  async ownsBoard(userId: string, boardId: string): Promise<boolean> {
+    const [user] = await this.db
+      .select({ parentId: userTable.parentId })
+      .from(userTable)
+      .where(eq(userTable.id, userId));
+    if (!user) return false;
+    const tenantScope = user.parentId ?? userId;
+
+    const [board] = await this.db
+      .select({ tenantId: boardTable.tenantId })
+      .from(boardTable)
+      .where(eq(boardTable.id, boardId));
+    return !!board && board.tenantId === tenantScope;
+  }
+
   // True when the user may move widgets on this board: they must own the board
   // (tenant scope) and hold the update:SmartWidget capability (directly via a
   // role, or via the tenant plan snapshot, or manage:all for super-admin).

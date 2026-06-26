@@ -14,7 +14,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { deleteBoard } from "@/actions/boards";
+import { deleteBoard, updateBoard } from "@/actions/boards";
 import type { ApiBoard } from "@/types";
 import { ShareModal } from "./share-modal";
 import { ImportInventoryModal } from "./import-inventory-modal";
@@ -58,6 +58,22 @@ export function BoardCard({ board }: { board: ApiBoard }) {
     e.stopPropagation();
     fn();
   };
+
+  function togglePublish() {
+    const next = board.access === "public" ? "restricted" : "public";
+    startTransition(async () => {
+      try {
+        await updateBoard(board.id, { access: next });
+        toast.success(
+          next === "public"
+            ? `"${board.name}" is now published — anyone with the link can join`
+            : `"${board.name}" unpublished`,
+        );
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to update board");
+      }
+    });
+  }
 
   function confirmDelete() {
     startTransition(async () => {
@@ -132,8 +148,8 @@ export function BoardCard({ board }: { board: ApiBoard }) {
               <Upload />
             </CardActionButton>
             <CardActionButton
-              title="Publish"
-              onClick={stop(() => toast.success(`${board.name} is now published`))}
+              title={board.access === "public" ? "Unpublish" : "Publish"}
+              onClick={stop(togglePublish)}
             >
               <Globe />
             </CardActionButton>
