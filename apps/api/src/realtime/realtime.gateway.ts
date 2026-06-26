@@ -112,11 +112,22 @@ export class RealtimeGateway
     const board = await this.realtime.getPublicBoard(payload.slug);
     if (!board) return { error: 'Board not found' };
 
+    // Authenticate once (JWT from handshake cookie) — drives both the access
+    // gate and move privilege. Anonymous end users resolve to null.
+    const authUserId = this.socketAuth.authenticate(client);
+
+    // Access gate: public boards are open to anyone; restricted (unpublished)
+    // boards may only be joined by their authenticated owner.
+    if (board.access !== 'public') {
+      const owner =
+        !!authUserId && (await this.socketAuth.ownsBoard(authUserId, board.id));
+      if (!owner) return { error: 'This board is not published.' };
+    }
+
     data.boardId = board.id;
 
-    // Resolve move privilege once at join (JWT verify + capability check) so the
-    // high-frequency move handlers stay cheap. End users resolve to false.
-    const authUserId = this.socketAuth.authenticate(client);
+    // Resolve move privilege once at join so the high-frequency move handlers
+    // stay cheap.
     data.canMove = authUserId
       ? await this.socketAuth.canManageWidgets(authUserId, board.id)
       : false;

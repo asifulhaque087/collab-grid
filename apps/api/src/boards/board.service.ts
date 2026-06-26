@@ -151,6 +151,25 @@ export class BoardService {
     return this.serialize(board);
   }
 
+  // Resolves a board for the public end-user route. No auth/tenant scope — only
+  // published (access: 'public') boards are returned; everything else 404s so a
+  // restricted board's slug can't be opened anonymously.
+  async findPublicBySlug(slug: string) {
+    const [board, err] = await tryit(
+      this.db.query.boardTable.findFirst({
+        where: eq(boardTable.slug, slug),
+        with: { smartWidgets: { columns: { id: true } } },
+      }),
+    );
+
+    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (!board || board.access !== 'public') {
+      throw new NotFoundException('Board not found or not published');
+    }
+
+    return this.serialize(board);
+  }
+
   private async findById(id: string, userId: string) {
     const tenantId = await this.resolveTenantId(userId);
 

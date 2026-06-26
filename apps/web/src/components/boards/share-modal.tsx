@@ -91,7 +91,9 @@ export function ShareModal({
   };
 
   const copyLink = async () => {
-    const url = `https://collabgrid.app/b/${boardSlug}`;
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://collabgrid.app";
+    const url = `${origin}/b/${boardSlug}`;
     try {
       await navigator.clipboard.writeText(url);
     } catch {

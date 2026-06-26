@@ -1,19 +1,26 @@
-# Current Feature
+# Current Feature: Public End-User Board Route
 
 ## Status
 
-Not Started
+Complete
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- **Public route `/b/[slug]`** (outside auth) that renders the realtime canvas for anonymous end users — the URL the share modal already advertises.
+- **Publish is real**: board card Publish sets `access: 'public'` via updateBoard; the public route only serves published boards (else a "not published yet" screen).
+- **Public board endpoint**: `GET /boards/public/:slug` (unauthenticated) returns the board only when `access === 'public'`.
+- **End-user mode** on CanvasEditor: hide inventory sidebar + Add/Import/Share tools, disable widget dragging; keep pan/zoom, cursors, soft-lock, locked-items sidebar, checkout.
+- **Socket join access gate**: public boards joinable by anyone; restricted boards only by the authenticated owner.
+- Share link uses the real origin (`window.location.origin/b/{slug}`).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Reuses the existing realtime/lock/checkout machinery as-is; this is mostly UI gating + a public board endpoint + making publish real.
+- End-user moves are already server-gated (anon socket has no auth cookie → canMove false); the endUser mode also disables the drag UI to avoid desync.
 
 ## History
 
+- **Public End-User Board Route** — public `/b/[slug]` route (outside auth) renders the realtime canvas in anonymous shopper mode; unguarded `GET /boards/public/:slug` serves only published boards (else "not available" screen). Socket `board:join` gated: public → anyone, restricted → authenticated owner only. CanvasEditor `endUser` mode hides inventory/Add/Import/Share + disables drag. Board card Publish now sets access via updateBoard; share link uses real origin. Verified 4/4 (HTTP + socket gating).
 - **Realtime Checkout & Payment** — order + order_item schema (migration 0004); public OrderModule: POST /orders idempotent on a client UUID (duplicate key → returns original order, no double charge), verifies the buyer holds live locks, server-computes total, then completePurchase removes sold widgets + clears locks + broadcasts widget:purchased; GET /orders/:id/invoice streams a pdfkit PDF. Frontend: standalone /checkout page (RHF+Zod, useSyncExternalStore cart) + order action; canvas checkout hands off cart and navigates. Verified 5/5 + DB + PDF.
 - **Realtime Hard Lock** — `widget:lock:hard:init` (checkout) promotes the user's soft locks to 5-min hard locks (same Redis key, extended TTL, tracked in per-board set) → `widget:lock:hard:fixed` (red, board-wide). On key expiry, resolveExpiredLock routes: paid flag → `widget:purchased` + delete widget row; else `widget:lock:hard:release`. Frontend: checkout emits hard:init, red CSS state, purchased removes widget. Verified 3/3 events + DB.
 - **Realtime Widget Move** — `widget:move` (debounced RabbitMQ persist) + `widget:move:end` (immediate); SocketAuthService gates moves to tenant/sub-user with update:SmartWidget (JWT from handshake cookie + board ownership), end users blocked. Redis position recovery; WidgetPersistenceConsumer writes posX/posY; broadcasts widget:moved/anchored to touched zones. Verified 4/4 socket + DB persist.

@@ -42,7 +42,14 @@ function priceToNumber(price: string) {
   return parseInt(price.replace(/[^0-9]/g, ""), 10) || 0;
 }
 
-export function CanvasEditor({ board }: { board: BoardCanvas }) {
+export function CanvasEditor({
+  board,
+  endUser = false,
+}: {
+  board: BoardCanvas;
+  /** Anonymous shopper view: hide tenant tools and disable widget moving. */
+  endUser?: boolean;
+}) {
   const router = useRouter();
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -311,6 +318,9 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
         const dy = e.clientY - wd.startY;
         if (!wd.moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
         wd.moved = true;
+        // End users can't reposition widgets — a drag is a no-op (they may still
+        // click to lock). Tenants/sub-users fall through to move + persist.
+        if (endUser) return;
         const nx = Math.max(0, Math.round((e.clientX - wd.offX - wd.panX) / wd.scale));
         const ny = Math.max(0, Math.round((e.clientY - wd.offY - wd.panY) / wd.scale));
         setWidgets((prev) => prev.map((w) => (w.id === wd.id ? { ...w, x: nx, y: ny } : w)));
@@ -349,7 +359,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [handleWidgetClick, realtimeEnabled, sendCursor, moveWidget, moveWidgetEnd]);
+  }, [handleWidgetClick, realtimeEnabled, sendCursor, moveWidget, moveWidgetEnd, endUser]);
 
   const onViewportPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
@@ -485,9 +495,11 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       {/* Topbar */}
       <div className="canvas-topbar">
         <div className="canvas-topbar-left">
-          <button className="canvas-back-btn" title="Back to boards" onClick={() => router.push("/dashboard/boards")}>
-            <ChevronLeft />
-          </button>
+          {!endUser && (
+            <button className="canvas-back-btn" title="Back to boards" onClick={() => router.push("/dashboard/boards")}>
+              <ChevronLeft />
+            </button>
+          )}
           <span className="canvas-board-title">{board.title}</span>
           <span className={cn("canvas-board-access", board.access)}>
             {board.access === "public" ? "Public" : "Restricted"}
@@ -528,11 +540,15 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
             ))}
           </div>
           <span className="presence-count">{board.presenceCount} online</span>
-          <span className="topbar-sep" />
-          <Button size="sm" onClick={() => setShareOpen(true)}>
-            <Share />
-            Share
-          </Button>
+          {!endUser && (
+            <>
+              <span className="topbar-sep" />
+              <Button size="sm" onClick={() => setShareOpen(true)}>
+                <Share />
+                Share
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -612,7 +628,8 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
           ))}
         </div>
 
-        {/* Inventory panel */}
+        {/* Inventory panel (tenant only — end users don't place inventory) */}
+        {!endUser && (
         <div className="canvas-inv-panel">
           <div className="inv-panel-header">
             <span className="inv-panel-title">Inventory</span>
@@ -662,6 +679,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
             </Button>
           </div>
         </div>
+        )}
 
         {/* Drag ghost */}
         <div
@@ -695,10 +713,14 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
           >
             <Hand />
           </button>
-          <div className="float-tool-sep" />
-          <button className="float-tool-btn" title="Add Inventory" onClick={() => setAddInventoryOpen(true)}>
-            <Plus />
-          </button>
+          {!endUser && (
+            <>
+              <div className="float-tool-sep" />
+              <button className="float-tool-btn" title="Add Inventory" onClick={() => setAddInventoryOpen(true)}>
+                <Plus />
+              </button>
+            </>
+          )}
           <button
             className="float-tool-btn"
             title="Lock info"

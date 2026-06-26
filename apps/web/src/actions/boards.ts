@@ -36,6 +36,16 @@ export async function getBoardBySlug(slug: string): Promise<ApiBoard | null> {
   return res.json();
 }
 
+// Public, unauthenticated board lookup for the end-user route (/b/[slug]).
+// Returns null unless the board exists and is published (access: 'public').
+export async function getPublicBoard(slug: string): Promise<ApiBoard | null> {
+  const res = await fetch(`${API_URL}/boards/public/${slug}`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
 export interface BoardInput {
   name: string;
   access: 'restricted' | 'public';
