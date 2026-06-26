@@ -194,6 +194,45 @@ export const smartWidgetTable = pgTable('smart_widget', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// order.ts — End-user purchases. The anonymous buyer has no account; the order
+// captures shipping + a payment record. `idempotencyKey` is a client-generated
+// UUID that prevents double-spend: a repeated submit with the same key is
+// rejected instead of charged twice (unique constraint).
+export const orderTable = pgTable('order', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  idempotencyKey: text('idempotency_key').notNull().unique(),
+  boardId: uuid('board_id').references(() => boardTable.id, {
+    onDelete: 'set null',
+  }),
+  // Anonymous canvas user id (sessionStorage) that held the locks.
+  buyerUserId: text('buyer_user_id'),
+  buyerName: text('buyer_name').notNull(),
+  email: text('email').notNull(),
+  address: text('address').notNull(),
+  city: text('city').notNull(),
+  postalCode: text('postal_code'),
+  country: text('country').notNull(),
+  amountTotal: numeric('amount_total', { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: text('payment_method').notNull().default('card'),
+  cardLast4: text('card_last4'),
+  status: text('status').$type<'paid'>().notNull().default('paid'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// order_item.ts — Line items. Widget data is snapshotted (not a FK) because the
+// purchased widget row is removed from the canvas on completion.
+export const orderItemTable = pgTable('order_item', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orderId: uuid('order_id')
+    .notNull()
+    .references(() => orderTable.id, { onDelete: 'cascade' }),
+  widgetId: uuid('widget_id'),
+  name: text('name').notNull(),
+  sku: text('sku').notNull(),
+  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+  quantity: integer('quantity').notNull().default(1),
+});
+
 // ==========================================
 // User Relations
 // ==========================================
@@ -312,3 +351,18 @@ export const smartWidgetTableRelations = relations(
     }),
   }),
 );
+
+export const orderTableRelations = relations(orderTable, ({ one, many }) => ({
+  board: one(boardTable, {
+    fields: [orderTable.boardId],
+    references: [boardTable.id],
+  }),
+  items: many(orderItemTable),
+}));
+
+export const orderItemTableRelations = relations(orderItemTable, ({ one }) => ({
+  order: one(orderTable, {
+    fields: [orderItemTable.orderId],
+    references: [orderTable.id],
+  }),
+}));

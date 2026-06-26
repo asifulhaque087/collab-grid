@@ -314,6 +314,18 @@ export class RealtimeGateway
     this.broadcastToWidgetZones(client, data.boardId, payload, 'widget:anchored');
   }
 
+  // Called by the order flow after a successful payment: remove each sold
+  // widget, clear its locks, and broadcast widget:purchased so it leaves every
+  // viewer's canvas (Amber → gone). Public so OrderService can invoke it.
+  async completePurchase(boardId: string, widgetIds: string[]) {
+    const room = this.zone.boardRoom(boardId);
+    for (const widgetId of widgetIds) {
+      await this.realtime.removeWidget(boardId, widgetId);
+      await this.realtime.clearLock(boardId, widgetId);
+      this.server.to(room).emit('widget:purchased', { widgetId });
+    }
+  }
+
   private broadcastToWidgetZones(
     client: Socket,
     boardId: string,

@@ -324,6 +324,26 @@ export class RealtimeService {
     return 'hard-released';
   }
 
+  // Whether a given user currently holds the lock on a widget (used by the
+  // order endpoint to confirm the buyer actually reserved the item and the
+  // 5-minute hard-lock window hasn't lapsed).
+  async userHoldsLock(
+    boardId: string,
+    widgetId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const lock = await this.getLock(boardId, widgetId);
+    return lock?.userId === userId;
+  }
+
+  // Drop all lock state for a widget (on successful purchase) so the expiry
+  // handler won't re-process it.
+  async clearLock(boardId: string, widgetId: string) {
+    await this.redis.del(this.lockKey(boardId, widgetId));
+    await this.redis.srem(this.hardSetKey(boardId), widgetId);
+    await this.redis.del(this.paidKey(boardId, widgetId));
+  }
+
   // Permanently remove a purchased widget from the board (it's sold).
   async removeWidget(boardId: string, widgetId: string) {
     await tryit(
