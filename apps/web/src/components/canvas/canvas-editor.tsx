@@ -19,11 +19,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { BoardCanvas, CanvasWidget, InventoryThumb, Peer } from "@/types/canvas";
+import type { Viewport } from "@/types/realtime";
 import { Button } from "@/components/ui/button";
 import { ShareModal } from "@/components/boards/share-modal";
 import { ImportInventoryModal } from "@/components/boards/import-inventory-modal";
 import { AddInventoryModal } from "@/components/inventory/add-inventory-modal";
-import { toInventoryThumb } from "@/lib/canvas-mappers";
+import { toInventoryThumb, serverWidgetToCanvas } from "@/lib/canvas-mappers";
+import { useCanvasSocket } from "@/hooks/use-canvas-socket";
 import { cn } from "@/lib/utils";
 
 const MIN_ZOOM = 25;
@@ -70,6 +72,80 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
   useEffect(() => {
     widgetsRef.current = widgets;
   }, [widgets]);
+
+  // ── Realtime socket ───────────────────────────────────
+  // Wired only when the board exists in the API (real board). The mock/demo
+  // fallback keeps its local-only interactions.
+  const realtimeEnabled = !!board.boardId;
+
+  // World-space rectangle currently visible in the viewport div, derived from
+  // pan/zoom. Sent on join and on every pan/zoom so the backend can subscribe
+  // this socket to the overlapping zones.
+  const computeViewport = useCallback((): Viewport => {
+    const vp = viewportRef.current;
+    const s = zoomRef.current / 100;
+    const p = panRef.current;
+    const w = vp?.clientWidth ?? 1280;
+    const h = vp?.clientHeight ?? 720;
+    return {
+      minX: Math.round(-p.x / s),
+      minY: Math.round(-p.y / s),
+      maxX: Math.round((w - p.x) / s),
+      maxY: Math.round((h - p.y) / s),
+    };
+  }, []);
+
+  const { connected, me, sendCursor, updateViewport, softLock } = useCanvasSocket({
+    slug: board.slug,
+    enabled: realtimeEnabled,
+    initialViewport: computeViewport,
+    onJoined: (result) => {
+      // myLocks recovers the user's own active locks after a refresh — force
+      // those to "mine" regardless of identity timing.
+      const myTtls = new Map(result.myLocks.map((l) => [l.widgetId, l.ttl]));
+      setWidgets(
+        result.widgets.map((w) => {
+          const cw = serverWidgetToCanvas(w, me?.userId ?? null);
+          const myTtl = myTtls.get(w.id);
+          return myTtl !== undefined
+            ? { ...cw, state: "mine" as const, locker: undefined, lockTime: Math.ceil(myTtl / 1000) }
+            : cw;
+        }),
+      );
+      setPeers([]);
+      if (result.myLocks.length) setSidebarOpen(true);
+    },
+    onCursor: (peer) => {
+      setPeers((prev) => {
+        const rest = prev.filter((p) => p.id !== peer.userId);
+        return [...rest, { id: peer.userId, name: peer.name, color: peer.color, x: peer.x, y: peer.y }];
+      });
+    },
+    onPeerLeft: (userId) => setPeers((prev) => prev.filter((p) => p.id !== userId)),
+    onLockFixed: ({ widgetId, userId, name, ttl }) => {
+      const mine = userId === me?.userId;
+      setWidgets((prev) =>
+        prev.map((w) =>
+          w.id === widgetId
+            ? { ...w, state: mine ? "mine" : "peer", locker: mine ? undefined : name, lockTime: Math.ceil(ttl / 1000) }
+            : w,
+        ),
+      );
+      if (mine) setSidebarOpen(true);
+    },
+    onLockReleased: ({ widgetId }) => {
+      setWidgets((prev) =>
+        prev.map((w) => (w.id === widgetId ? { ...w, state: "active", lockTime: undefined, locker: undefined } : w)),
+      );
+    },
+    onLockDenied: ({ reason }) => toast.error(reason),
+  });
+
+  // Push viewport changes to the backend (debounced inside the hook) so zone
+  // subscriptions follow the user as they pan/zoom.
+  useEffect(() => {
+    if (realtimeEnabled) updateViewport(computeViewport());
+  }, [pan, zoom, realtimeEnabled, updateViewport, computeViewport]);
 
   const panning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
@@ -145,11 +221,15 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
     (id: string) => {
       const w = widgetsRef.current.find((x) => x.id === id);
       if (!w) return;
-      if (w.state === "active") lockWidget(id);
-      else if (w.state === "peer") toast.info("This item is locked by another user");
+      if (w.state === "active") {
+        // When connected, the server owns the lock (atomic acquire + broadcast).
+        // The amber state arrives via the widget:lock:soft:fixed event.
+        if (connected) softLock(id);
+        else lockWidget(id);
+      } else if (w.state === "peer") toast.info("This item is locked by another user");
       else if (w.state === "mine") toast.info("Already in your locked items");
     },
-    [lockWidget]
+    [lockWidget, connected, softLock]
   );
 
   const releaseLock = (id: string) => {
@@ -178,10 +258,10 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       if (vp) {
         const rect = vp.getBoundingClientRect();
         const s = zoomRef.current / 100;
-        setCoords({
-          x: Math.round((e.clientX - rect.left - panRef.current.x) / s),
-          y: Math.round((e.clientY - rect.top - panRef.current.y) / s),
-        });
+        const wx = Math.round((e.clientX - rect.left - panRef.current.x) / s);
+        const wy = Math.round((e.clientY - rect.top - panRef.current.y) / s);
+        setCoords({ x: wx, y: wy });
+        if (realtimeEnabled) sendCursor(wx, wy);
       }
 
       const wd = widgetDrag.current;
@@ -221,7 +301,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [handleWidgetClick]);
+  }, [handleWidgetClick, realtimeEnabled, sendCursor]);
 
   const onViewportPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
@@ -277,8 +357,10 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
     return () => clearInterval(iv);
   }, []);
 
-  // ── Peer cursor jitter ────────────────────────────────
+  // ── Peer cursor jitter (mock/demo only) ───────────────
+  // Real boards render live peer cursors from the socket; skip the mock jitter.
   useEffect(() => {
+    if (realtimeEnabled) return;
     const iv = setInterval(() => {
       setPeers((prev) =>
         prev.map((p) => ({
@@ -289,7 +371,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       );
     }, 200);
     return () => clearInterval(iv);
-  }, []);
+  }, [realtimeEnabled]);
 
   // ── Inventory drag & drop ─────────────────────────────
   const onInvDragStart = (e: React.DragEvent, item: InventoryThumb) => {

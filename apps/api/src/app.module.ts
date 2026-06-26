@@ -9,6 +9,7 @@ import { PlanModule } from '@/plans/plan.module';
 import { BoardModule } from '@/boards/board.module';
 import { InventoryModule } from '@/inventory/inventory.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
+import { RealtimeModule } from '@/realtime/realtime.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SubscriptionModule } from '@/subscription/subscription.module';
     BoardModule,
     InventoryModule,
     SubscriptionModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}
