@@ -76,3 +76,12 @@ export interface WidgetMovePayload {
   width: number;
   height: number;
 }
+
+// First-time placement of a sidebar inventory item onto the canvas. Only the
+// target coordinates are sent — the backend reads the widget's stored
+// dimensions from the DB row to compute overlapping zones and the broadcast DTO.
+export interface WidgetPlacePayload {
+  widgetId: string;
+  x: number;
+  y: number;
+}
