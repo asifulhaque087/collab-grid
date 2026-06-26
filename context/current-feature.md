@@ -1,19 +1,34 @@
-# Current Feature
+# Current Feature: Spatial Collaborative Canvas
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- **Real-time WebSocket layer**: NestJS socket gateway. On join, register the connection in Redis (used to enumerate all connected users), compute the user's viewport, resolve overlapping zones/rooms, and return the widgets + connected users in those rooms for frontend render.
+- **Anonymous end-user tracking**: assign a temporary display name + unique id (Google-Docs style), persist the id in sessionStorage; on refresh, re-fetch the user's locks from Redis by that id (with remaining timers).
+- **Cursor updates**: `cursor:move:send` → compute the single zone the cursor is in → broadcast `cursor:move:receive` to that room → render other users' cursors live.
+- **Viewport updates**: `viewport:update` on pan → store in Redis (recovery on refresh) → recompute zones → dynamically unsubscribe old / subscribe new zones → emit `viewport:synchronized`. Use `calculateOverlappingZones` (ZONE_SIZE grid, 10×10 max, 0-9 bounds).
+- **Widget move (tenant/sub-user only, perm-gated)**: end users cannot move widgets. `widget:move` → write new pos to Redis → compute zones the widget touches via `calculateWidgetOverlappingZones` (x,y,width,height) → debounced publish to RabbitMQ → consumer persists new position → broadcast `widget:moved` to all touched rooms. Add a move permission to `apps/api/src/auth/permissions.ts` if none exists.
+- **Widget move end (optional)**: `widget:move:end` on mouse-up → immediate (non-debounced) RabbitMQ publish → broadcast `widget:moved`/`widget:anchored` to touched rooms.
+- **Soft lock (end-user only, race guard)**: `widget:lock:soft:init` → set unique Redis key TTL 1 min. OK = acquired → broadcast `widget:lock:soft:fixed` (amber; refresh re-fetches locks+timer). Not OK = `widget:lock:soft:denied` (alert "Someone else already locked this"). Detect impossible-fast re-locks (bot) → drop request / release locks. On 1-min expiry Redis publishes `widget:lock:soft:release` → widget returns to default color.
+- **Hard lock**: `widget:lock:hard:init` on checkout → extend all of the user's soft locks to 5 min → emit `widget:lock:hard:fixed` (red). On 5-min expiry, check each widget: if paid → emit `widget:purchased` (item disappears from canvas); if not paid → `widget:lock:hard:release` (default color).
+- **Payment / checkout**: checkout button → checkout page (create if missing) for shipping address + card → create order, downloadable PDF invoice; purchase must complete within the 5-min hard lock window.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Staged delivery.** Foundation branch ✅ merged (infra, gateway, zones, join/presence, anonymous tracking, cursor, viewport, soft lock). **Active branch = widget move:** `widget:move` + `widget:move:end`, tenant/perm gating, Redis position write, debounced RabbitMQ publish + consumer that persists `posX/posY`, broadcast `widget:moved`/`widget:anchored` to touched zones. **Still deferred:** hard lock, and the checkout/orders/PDF payment flow. Infra (redis+rabbitmq) runs via docker-compose (`docker compose up`).
+- Spec file: `context/features/12-spatial-collaborative-canvas.spec.md`.
+- Canvas grid: 10,000 × 10,000 split into a 10×10 zone matrix (zones `0_0`..`9_9`), keyed `${x}_${y}`; clamp to 0-9 bounds. `ZONE_SIZE` constant divides coordinates into zone indices.
+- Tech per stack: Redis (GEO / atomic locks / connection registry / position recovery), RabbitMQ (debounced + immediate position persistence, async checkout), socket.io. Two zone calculators: `calculateOverlappingZones(viewport)` for viewport/cursor, `calculateWidgetOverlappingZones(x,y,w,h)` for widgets.
+- Permission model: widget move/lock restricted — end users only soft-lock+checkout; tenant/sub-users (with perm) move widgets. End users are unauthenticated (no account).
+- Build any missing UI (e.g. checkout page) as part of this feature.
+- Non-functional ties (project-overview): viewport-filtered streaming, muted/active connection (heartbeat downgrade on backgrounded tab + fast-sync delta on refocus), mouse-teleportation bot detection, zero double-spend.
 
 ## History
 
+- **Realtime Canvas Foundation** — docker-compose (redis+rabbitmq) + env, NestJS `/canvas` socket.io gateway: board:join (presence+zones+widgets), cursor relay, viewport sync, atomic soft lock (SET NX PX) w/ bot guard + Redis keyspace-expiry auto-release. ZoneService (10×10 grid). Frontend useCanvasSocket hook + canvas-editor wiring. Verified 8/8 socket tests.
 - **Dashboard Design** — Built the full Next.js 16 dashboard from `prototypes/dashboard.html`: shared header+sidebar shell, 9 routed pages (Boards, Inventory, Users, Roles, Plans, Orders, Transactions, Billing, Settings) with rhf+zod modals, Tailwind v4 tokens + ShadCN, and the live `/boards/[slug]` canvas editor (pan/zoom, soft-lock, drag-drop, checkout). Mock loaders stand in for the API.
 - **Homepage Design** — Built the public landing page at `/` from `prototypes/homepage.html` (nav, hero bento, interactive board demo, lock-lifecycle tabs, architecture, plans, footer; server-first with 3 client islands). Moved all dashboard pages under `/dashboard` (shell group + full-screen canvas). Canvas: swapped Add Widget→Add Inventory modal, removed snapshot tool.
 - **Auth & Seed Foundation** — Added CASL permissions catalog (`permissions.ts`), drizzle.config.ts, migrate.ts (prod runner), and idempotent seed script. Seeds 20 permissions, system roles (super-admin, tenant), plans (free/pro with quotas), and 2 seed users. Plan quotas are compile-time guaranteed to be a subset of tenant permissions.
