@@ -1,22 +1,16 @@
-# Current Feature: Public End-User Board Route
+# Current Feature
 
 ## Status
 
-Complete
+Not Started
 
 ## Goals
 
-- **Public route `/b/[slug]`** (outside auth) that renders the realtime canvas for anonymous end users — the URL the share modal already advertises.
-- **Publish is real**: board card Publish sets `access: 'public'` via updateBoard; the public route only serves published boards (else a "not published yet" screen).
-- **Public board endpoint**: `GET /boards/public/:slug` (unauthenticated) returns the board only when `access === 'public'`.
-- **End-user mode** on CanvasEditor: hide inventory sidebar + Add/Import/Share tools, disable widget dragging; keep pan/zoom, cursors, soft-lock, locked-items sidebar, checkout.
-- **Socket join access gate**: public boards joinable by anyone; restricted boards only by the authenticated owner.
-- Share link uses the real origin (`window.location.origin/b/{slug}`).
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- Reuses the existing realtime/lock/checkout machinery as-is; this is mostly UI gating + a public board endpoint + making publish real.
-- End-user moves are already server-gated (anon socket has no auth cookie → canMove false); the endUser mode also disables the drag UI to avoid desync.
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
