@@ -49,6 +49,7 @@ export function serverWidgetToCanvas(
     x: w.x,
     y: w.y,
     width: w.width,
+    height: w.height,
     locker,
     lockTime,
   };
