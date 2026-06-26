@@ -18,7 +18,7 @@ In Progress
 
 ## Notes
 
-- **Staged delivery.** Foundation ✅ merged. Widget move ✅ merged. **Next branch = hard lock:** `widget:lock:hard:init` on checkout → extend the user's soft locks to 5 min → `widget:lock:hard:fixed` (red); on 5-min expiry, paid → `widget:purchased` (remove from canvas), unpaid → `widget:lock:hard:release`. **Then:** the checkout/orders/PDF payment flow. Infra (redis+rabbitmq) runs via docker-compose (`docker compose up`).
+- **Staged delivery.** Foundation ✅, widget move ✅, hard lock ✅ — all merged. **Next branch = payment/checkout:** checkout page (shipping + card), order creation, downloadable PDF invoice, set the Redis `paid` flag so the hard-lock expiry resolves to `widget:purchased`; purchase must land within the 5-min hard-lock window. Likely needs an `order` table/schema + zero-double-spend guard. Infra (redis+rabbitmq) runs via docker-compose (`docker compose up`).
 - Spec file: `context/features/12-spatial-collaborative-canvas.spec.md`.
 - Canvas grid: 10,000 × 10,000 split into a 10×10 zone matrix (zones `0_0`..`9_9`), keyed `${x}_${y}`; clamp to 0-9 bounds. `ZONE_SIZE` constant divides coordinates into zone indices.
 - Tech per stack: Redis (GEO / atomic locks / connection registry / position recovery), RabbitMQ (debounced + immediate position persistence, async checkout), socket.io. Two zone calculators: `calculateOverlappingZones(viewport)` for viewport/cursor, `calculateWidgetOverlappingZones(x,y,w,h)` for widgets.
@@ -28,6 +28,7 @@ In Progress
 
 ## History
 
+- **Realtime Hard Lock** — `widget:lock:hard:init` (checkout) promotes the user's soft locks to 5-min hard locks (same Redis key, extended TTL, tracked in per-board set) → `widget:lock:hard:fixed` (red, board-wide). On key expiry, resolveExpiredLock routes: paid flag → `widget:purchased` + delete widget row; else `widget:lock:hard:release`. Frontend: checkout emits hard:init, red CSS state, purchased removes widget. Verified 3/3 events + DB.
 - **Realtime Widget Move** — `widget:move` (debounced RabbitMQ persist) + `widget:move:end` (immediate); SocketAuthService gates moves to tenant/sub-user with update:SmartWidget (JWT from handshake cookie + board ownership), end users blocked. Redis position recovery; WidgetPersistenceConsumer writes posX/posY; broadcasts widget:moved/anchored to touched zones. Verified 4/4 socket + DB persist.
 - **Realtime Canvas Foundation** — docker-compose (redis+rabbitmq) + env, NestJS `/canvas` socket.io gateway: board:join (presence+zones+widgets), cursor relay, viewport sync, atomic soft lock (SET NX PX) w/ bot guard + Redis keyspace-expiry auto-release. ZoneService (10×10 grid). Frontend useCanvasSocket hook + canvas-editor wiring. Verified 8/8 socket tests.
 - **Dashboard Design** — Built the full Next.js 16 dashboard from `prototypes/dashboard.html`: shared header+sidebar shell, 9 routed pages (Boards, Inventory, Users, Roles, Plans, Orders, Transactions, Billing, Settings) with rhf+zod modals, Tailwind v4 tokens + ShadCN, and the live `/boards/[slug]` canvas editor (pan/zoom, soft-lock, drag-drop, checkout). Mock loaders stand in for the API.

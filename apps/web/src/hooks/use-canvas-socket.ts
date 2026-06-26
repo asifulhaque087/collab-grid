@@ -6,9 +6,12 @@ import type {
   BoardJoinResult,
   CanvasUser,
   CursorReceive,
+  HardFixed,
+  HardReleased,
   LockDenied,
   LockFixed,
   LockReleased,
+  Purchased,
   Viewport,
 } from "@/types/realtime";
 
@@ -43,6 +46,9 @@ interface Callbacks {
   onLockDenied?: (denied: LockDenied) => void;
   onWidgetMoved?: (move: WidgetMoved) => void;
   onWidgetAnchored?: (move: WidgetMoved) => void;
+  onHardFixed?: (lock: HardFixed) => void;
+  onHardReleased?: (lock: HardReleased) => void;
+  onPurchased?: (p: Purchased) => void;
 }
 
 interface Options extends Callbacks {
@@ -118,6 +124,9 @@ export function useCanvasSocket({
     socket.on("widget:lock:soft:denied", (d: LockDenied) => cbRef.current.onLockDenied?.(d));
     socket.on("widget:moved", (m: WidgetMoved) => cbRef.current.onWidgetMoved?.(m));
     socket.on("widget:anchored", (m: WidgetMoved) => cbRef.current.onWidgetAnchored?.(m));
+    socket.on("widget:lock:hard:fixed", (l: HardFixed) => cbRef.current.onHardFixed?.(l));
+    socket.on("widget:lock:hard:release", (l: HardReleased) => cbRef.current.onHardReleased?.(l));
+    socket.on("widget:purchased", (p: Purchased) => cbRef.current.onPurchased?.(p));
 
     return () => {
       socket.removeAllListeners();
@@ -151,6 +160,13 @@ export function useCanvasSocket({
     socket.emit("widget:lock:soft:init", { widgetId });
   }, []);
 
+  // Checkout — promote all of this user's soft locks to 5-minute hard locks.
+  const hardLock = useCallback(() => {
+    const socket = socketRef.current;
+    if (!socket?.connected) return;
+    socket.emit("widget:lock:hard:init", {});
+  }, []);
+
   // Throttled mid-drag move. Ignored server-side unless the socket is allowed
   // to move widgets (tenant/permitted sub-user).
   const moveWidget = useCallback(
@@ -174,5 +190,5 @@ export function useCanvasSocket({
     [],
   );
 
-  return { connected, me, sendCursor, updateViewport, softLock, moveWidget, moveWidgetEnd };
+  return { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd };
 }
