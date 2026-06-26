@@ -10,6 +10,7 @@ import { BoardModule } from '@/boards/board.module';
 import { InventoryModule } from '@/inventory/inventory.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
 import { RealtimeModule } from '@/realtime/realtime.module';
+import { OrderModule } from '@/orders/order.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { RealtimeModule } from '@/realtime/realtime.module';
     InventoryModule,
     SubscriptionModule,
     RealtimeModule,
+    OrderModule,
   ],
 })
 export class AppModule {}

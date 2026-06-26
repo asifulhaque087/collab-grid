@@ -29,6 +29,13 @@
       "when": 1782383976497,
       "tag": "0003_flashy_lightspeed",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782469050513,
+      "tag": "0004_magenta_harrier",
+      "breakpoints": true
     }
   ]
 }
