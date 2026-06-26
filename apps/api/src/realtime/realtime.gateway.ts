@@ -14,6 +14,8 @@ import Redis from 'ioredis';
 import { REDIS_SUBSCRIBER } from './redis.module';
 import { RealtimeService } from './realtime.service';
 import { ZoneService } from './zone.service';
+import { SocketAuthService } from './socket-auth.service';
+import { RabbitmqService } from './rabbitmq.service';
 import type {
   BoardJoinResult,
   CanvasUser,
@@ -21,12 +23,16 @@ import type {
   JoinPayload,
   SoftLockPayload,
   ViewportUpdatePayload,
+  WidgetMovePayload,
 } from './realtime.types';
 
 interface SocketData {
   user: CanvasUser;
   boardId?: string;
   zones: Set<string>;
+  // Set at join: whether this socket may reposition widgets (tenant/sub-user
+  // with update:SmartWidget). End users are anonymous → false.
+  canMove: boolean;
 }
 
 @WebSocketGateway({
@@ -42,6 +48,8 @@ export class RealtimeGateway
   constructor(
     private readonly realtime: RealtimeService,
     private readonly zone: ZoneService,
+    private readonly socketAuth: SocketAuthService,
+    private readonly rabbit: RabbitmqService,
     @Inject(REDIS_SUBSCRIBER) private readonly subscriber: Redis,
   ) {}
 
@@ -68,7 +76,7 @@ export class RealtimeGateway
   handleConnection(client: Socket) {
     const { userId, name } = client.handshake.auth ?? {};
     const user = this.realtime.buildUser(userId, name);
-    const data: SocketData = { user, zones: new Set() };
+    const data: SocketData = { user, zones: new Set(), canMove: false };
     client.data = data;
     client.emit('session', user);
   }
@@ -92,6 +100,13 @@ export class RealtimeGateway
     if (!board) return { error: 'Board not found' };
 
     data.boardId = board.id;
+
+    // Resolve move privilege once at join (JWT verify + capability check) so the
+    // high-frequency move handlers stay cheap. End users resolve to false.
+    const authUserId = this.socketAuth.authenticate(client);
+    data.canMove = authUserId
+      ? await this.socketAuth.canManageWidgets(authUserId, board.id)
+      : false;
 
     // Join the board-wide room (presence + lock events) and every zone the
     // viewport overlaps (cursors + future widget moves).
@@ -213,5 +228,72 @@ export class RealtimeGateway
         name: data.user.name,
         ttl: result.lock.ttl,
       });
+  }
+
+  // Live drag: store the position, debounce the durable persist, and stream the
+  // move to peers in every zone the widget now overlaps.
+  @SubscribeMessage('widget:move')
+  async onWidgetMove(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: WidgetMovePayload,
+  ) {
+    const data = client.data as SocketData;
+    if (!data.boardId || !data.canMove) return;
+
+    await this.realtime.saveWidgetPosition(
+      data.boardId,
+      payload.widgetId,
+      payload.x,
+      payload.y,
+    );
+    this.rabbit.publishDebounced({
+      boardId: data.boardId,
+      widgetId: payload.widgetId,
+      x: payload.x,
+      y: payload.y,
+    });
+    this.broadcastToWidgetZones(client, data.boardId, payload, 'widget:moved');
+  }
+
+  // Drag end: persist immediately (no debounce) and anchor the final position.
+  @SubscribeMessage('widget:move:end')
+  async onWidgetMoveEnd(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: WidgetMovePayload,
+  ) {
+    const data = client.data as SocketData;
+    if (!data.boardId || !data.canMove) return;
+
+    await this.realtime.saveWidgetPosition(
+      data.boardId,
+      payload.widgetId,
+      payload.x,
+      payload.y,
+    );
+    await this.rabbit.publish({
+      boardId: data.boardId,
+      widgetId: payload.widgetId,
+      x: payload.x,
+      y: payload.y,
+    });
+    this.broadcastToWidgetZones(client, data.boardId, payload, 'widget:anchored');
+  }
+
+  private broadcastToWidgetZones(
+    client: Socket,
+    boardId: string,
+    payload: WidgetMovePayload,
+    event: 'widget:moved' | 'widget:anchored',
+  ) {
+    const zones = this.zone.calculateWidgetOverlappingZones(
+      payload.x,
+      payload.y,
+      payload.width,
+      payload.height,
+    );
+    const body = { widgetId: payload.widgetId, x: payload.x, y: payload.y };
+    for (const z of zones) {
+      client.to(this.zone.room(boardId, z)).emit(event, body);
+    }
   }
 }
