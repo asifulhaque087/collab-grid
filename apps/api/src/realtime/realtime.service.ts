@@ -16,6 +16,7 @@ import type {
 
 // Soft lock = 60s, hard lock = 5min (extended on checkout).
 const SOFT_LOCK_MS = 60_000;
+export const HARD_LOCK_MS = 300_000;
 // Minimum gap between two lock attempts from one user. Anything faster than a
 // human possibly could is treated as a mouse-teleportation bot and dropped.
 const MIN_LOCK_INTERVAL_MS = 120;
@@ -266,6 +267,76 @@ export class RealtimeService {
       }
     } while (cursor !== '0');
     return locks;
+  }
+
+  // ── Hard lock (checkout) ────────────────────────────────
+  private hardSetKey(boardId: string) {
+    return `hardlocks:${boardId}`;
+  }
+  private paidKey(boardId: string, widgetId: string) {
+    return `paid:${boardId}:${widgetId}`;
+  }
+
+  // Promote all of a user's live soft locks to 5-minute hard locks (checkout).
+  // The same lock key is reused with an extended TTL; the widget is tracked in a
+  // per-board set so the expiry handler knows it was a hard lock. Returns the
+  // promoted widget ids.
+  async promoteToHardLocks(boardId: string, userId: string): Promise<string[]> {
+    const locks = await this.getUserLocks(boardId, userId);
+    const ids: string[] = [];
+    for (const lock of locks) {
+      const key = this.lockKey(boardId, lock.widgetId);
+      // Skip locks that vanished between the scan and now.
+      if (!(await this.redis.get(key))) continue;
+      await this.redis.set(
+        key,
+        JSON.stringify({ userId, kind: 'hard' as LockKind }),
+        'PX',
+        HARD_LOCK_MS,
+      );
+      await this.redis.sadd(this.hardSetKey(boardId), lock.widgetId);
+      ids.push(lock.widgetId);
+    }
+    return ids;
+  }
+
+  // Mark a hard-locked widget as paid (set by the payment flow before/within the
+  // 5-minute window). The expiry handler reads this to decide purchased vs release.
+  async markPaid(boardId: string, widgetId: string) {
+    await this.redis.set(this.paidKey(boardId, widgetId), '1', 'EX', 600);
+  }
+
+  // Called when a lock key expires. Distinguishes a plain soft-lock expiry from
+  // a hard-lock expiry, and for hard locks whether the item was paid.
+  async resolveExpiredLock(
+    boardId: string,
+    widgetId: string,
+  ): Promise<'soft' | 'hard-purchased' | 'hard-released'> {
+    const wasHard =
+      (await this.redis.srem(this.hardSetKey(boardId), widgetId)) > 0;
+    if (!wasHard) return 'soft';
+
+    const paid = await this.redis.get(this.paidKey(boardId, widgetId));
+    if (paid) {
+      await this.redis.del(this.paidKey(boardId, widgetId));
+      return 'hard-purchased';
+    }
+    return 'hard-released';
+  }
+
+  // Permanently remove a purchased widget from the board (it's sold).
+  async removeWidget(boardId: string, widgetId: string) {
+    await tryit(
+      this.db
+        .delete(smartWidgetTable)
+        .where(
+          and(
+            eq(smartWidgetTable.id, widgetId),
+            eq(smartWidgetTable.boardId, boardId),
+          ),
+        ),
+    );
+    await this.redis.del(this.widgetPosKey(boardId, widgetId));
   }
 
   // Parse a Redis keyspace-expiry key back into (boardId, widgetId). Returns
