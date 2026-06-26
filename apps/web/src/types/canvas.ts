@@ -11,6 +11,7 @@ export interface CanvasWidget {
   y: number;
   width: number;
   height?: number; // canvas footprint height (for move zone calc)
+  hard?: boolean; // hard-locked (checkout in progress) → red
   locker?: string; // for peer-locked widgets
   lockTime?: number; // remaining seconds for peer lock
 }

@@ -12,7 +12,7 @@ import {
 import type { Server, Socket } from 'socket.io';
 import Redis from 'ioredis';
 import { REDIS_SUBSCRIBER } from './redis.module';
-import { RealtimeService } from './realtime.service';
+import { HARD_LOCK_MS, RealtimeService } from './realtime.service';
 import { ZoneService } from './zone.service';
 import { SocketAuthService } from './socket-auth.service';
 import { RabbitmqService } from './rabbitmq.service';
@@ -60,15 +60,28 @@ export class RealtimeGateway
     this.subscriber.on('pmessage', (_pattern, _channel, expiredKey) => {
       const parsed = this.realtime.parseLockKey(expiredKey);
       if (!parsed) return;
-      this.server
-        .to(this.zone.boardRoom(parsed.boardId))
-        .emit('widget:lock:soft:release', { widgetId: parsed.widgetId });
+      void this.handleLockExpiry(parsed.boardId, parsed.widgetId);
     });
     // Don't block bootstrap on Redis being reachable — ioredis retries and the
     // subscription activates once connected.
     this.subscriber
       .psubscribe('__keyevent@*__:expired')
       .catch(() => undefined);
+  }
+
+  // A lock key expired. Soft locks just release; hard locks either complete the
+  // purchase (item leaves the canvas) or release back to the default state.
+  private async handleLockExpiry(boardId: string, widgetId: string) {
+    const outcome = await this.realtime.resolveExpiredLock(boardId, widgetId);
+    const room = this.zone.boardRoom(boardId);
+    if (outcome === 'soft') {
+      this.server.to(room).emit('widget:lock:soft:release', { widgetId });
+    } else if (outcome === 'hard-released') {
+      this.server.to(room).emit('widget:lock:hard:release', { widgetId });
+    } else {
+      await this.realtime.removeWidget(boardId, widgetId);
+      this.server.to(room).emit('widget:purchased', { widgetId });
+    }
   }
 
   // A client may pass a stored userId/name (sessionStorage) so a refresh keeps
@@ -227,6 +240,28 @@ export class RealtimeGateway
         userId: data.user.userId,
         name: data.user.name,
         ttl: result.lock.ttl,
+      });
+  }
+
+  // Checkout: promote all of the requesting user's soft locks to 5-minute hard
+  // locks and turn them red for everyone on the board.
+  @SubscribeMessage('widget:lock:hard:init')
+  async onHardLock(@ConnectedSocket() client: Socket) {
+    const data = client.data as SocketData;
+    if (!data.boardId) return;
+
+    const widgetIds = await this.realtime.promoteToHardLocks(
+      data.boardId,
+      data.user.userId,
+    );
+    if (widgetIds.length === 0) return;
+
+    this.server
+      .to(this.zone.boardRoom(data.boardId))
+      .emit('widget:lock:hard:fixed', {
+        widgetIds,
+        userId: data.user.userId,
+        ttl: HARD_LOCK_MS,
       });
   }
 

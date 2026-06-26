@@ -67,3 +67,17 @@ export interface LockDenied {
   widgetId: string;
   reason: string;
 }
+
+export interface HardFixed {
+  widgetIds: string[];
+  userId: string;
+  ttl: number;
+}
+
+export interface HardReleased {
+  widgetId: string;
+}
+
+export interface Purchased {
+  widgetId: string;
+}
