@@ -24,6 +24,7 @@ import type {
   SoftLockPayload,
   ViewportUpdatePayload,
   WidgetMovePayload,
+  WidgetPlacePayload,
 } from './realtime.types';
 
 interface SocketData {
@@ -323,6 +324,37 @@ export class RealtimeGateway
       y: payload.y,
     });
     this.broadcastToWidgetZones(client, data.boardId, payload, 'widget:anchored');
+  }
+
+  // First placement: a tenant dragged a sidebar inventory item onto the canvas.
+  // Stamp its coordinates onto the DB row and broadcast the full widget to peers
+  // in every zone its bounding box overlaps so it appears on their canvas (they
+  // don't have it yet — getBoardWidgets only returns placed widgets).
+  @SubscribeMessage('widget:place')
+  async onWidgetPlace(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: WidgetPlacePayload,
+  ) {
+    const data = client.data as SocketData;
+    if (!data.boardId || !data.canMove) return;
+
+    const widget = await this.realtime.placeWidget(
+      data.boardId,
+      payload.widgetId,
+      payload.x,
+      payload.y,
+    );
+    if (!widget) return;
+
+    const zones = this.zone.calculateWidgetOverlappingZones(
+      widget.x,
+      widget.y,
+      widget.width,
+      widget.height,
+    );
+    for (const z of zones) {
+      client.to(this.zone.room(data.boardId, z)).emit('widget:placed', widget);
+    }
   }
 
   // Called by the order flow after a successful payment: remove each sold

@@ -115,6 +115,53 @@ export class RealtimeService {
     return widgets;
   }
 
+  // Place a sidebar inventory item onto the canvas: stamp its first canvas
+  // coordinates onto the DB row (transitioning it from sidebar → board) and
+  // return the full widget DTO so the gateway can broadcast it to peers who
+  // don't have it yet. Board-scoped so a stray id can't touch another board.
+  async placeWidget(
+    boardId: string,
+    widgetId: string,
+    x: number,
+    y: number,
+  ): Promise<CanvasWidgetDto | null> {
+    const [rows, err] = await tryit(
+      this.db
+        .update(smartWidgetTable)
+        .set({ posX: String(x), posY: String(y), updatedAt: new Date() })
+        .where(
+          and(
+            eq(smartWidgetTable.id, widgetId),
+            eq(smartWidgetTable.boardId, boardId),
+          ),
+        )
+        .returning(),
+    );
+    if (err || !rows || rows.length === 0) return null;
+
+    // Keep the Redis live position in sync so a refresh recovers it before any
+    // subsequent move's async persist lands.
+    await this.saveWidgetPosition(boardId, widgetId, x, y);
+
+    const w = rows[0];
+    const lock = await this.getLock(boardId, w.id);
+    return {
+      id: w.id,
+      name: w.name,
+      sku: w.sku,
+      photo: w.photo,
+      price: w.price ? Number(w.price) : 0,
+      quantity: w.quantity,
+      x,
+      y,
+      width: w.width,
+      height: w.height,
+      lock: lock
+        ? { userId: lock.userId, kind: lock.kind, ttl: lock.ttl }
+        : undefined,
+    };
+  }
+
   // ── Presence ────────────────────────────────────────────
   private presenceKey(boardId: string) {
     return `presence:${boardId}`;
