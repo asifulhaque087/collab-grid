@@ -92,6 +92,9 @@ export class RealtimeService {
     const widgets: CanvasWidgetDto[] = [];
     for (const w of rows) {
       const lock = await this.getLock(boardId, w.id);
+      // Prefer an in-flight Redis position (a move not yet persisted to DB) so a
+      // refresh recovers the latest coordinates.
+      const live = await this.getWidgetPosition(boardId, w.id);
       widgets.push({
         id: w.id,
         name: w.name,
@@ -99,8 +102,8 @@ export class RealtimeService {
         photo: w.photo,
         price: w.price ? Number(w.price) : 0,
         quantity: w.quantity,
-        x: Number(w.posX),
-        y: Number(w.posY),
+        x: live?.x ?? Number(w.posX),
+        y: live?.y ?? Number(w.posY),
         width: w.width,
         height: w.height,
         lock: lock
@@ -136,6 +139,35 @@ export class RealtimeService {
         const p = JSON.parse(raw) as CanvasUser;
         return { userId: p.userId, name: p.name, color: p.color };
       });
+  }
+
+  // ── Widget position recovery ────────────────────────────
+  // Latest coordinates from an in-progress/just-finished move, kept in Redis
+  // so a refresh recovers them before the async DB persist lands.
+  private widgetPosKey(boardId: string, widgetId: string) {
+    return `widgetpos:${boardId}:${widgetId}`;
+  }
+
+  async saveWidgetPosition(
+    boardId: string,
+    widgetId: string,
+    x: number,
+    y: number,
+  ) {
+    await this.redis.set(
+      this.widgetPosKey(boardId, widgetId),
+      JSON.stringify({ x, y }),
+      'EX',
+      3600,
+    );
+  }
+
+  async getWidgetPosition(
+    boardId: string,
+    widgetId: string,
+  ): Promise<{ x: number; y: number } | null> {
+    const raw = await this.redis.get(this.widgetPosKey(boardId, widgetId));
+    return raw ? (JSON.parse(raw) as { x: number; y: number }) : null;
   }
 
   // ── Viewport recovery ───────────────────────────────────
