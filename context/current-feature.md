@@ -1,30 +1,16 @@
-# Current Feature: Spatial Collaborative Canvas
+# Current Feature
 
 ## Status
 
-Complete
+Not Started
 
 ## Goals
 
-- **Real-time WebSocket layer**: NestJS socket gateway. On join, register the connection in Redis (used to enumerate all connected users), compute the user's viewport, resolve overlapping zones/rooms, and return the widgets + connected users in those rooms for frontend render.
-- **Anonymous end-user tracking**: assign a temporary display name + unique id (Google-Docs style), persist the id in sessionStorage; on refresh, re-fetch the user's locks from Redis by that id (with remaining timers).
-- **Cursor updates**: `cursor:move:send` → compute the single zone the cursor is in → broadcast `cursor:move:receive` to that room → render other users' cursors live.
-- **Viewport updates**: `viewport:update` on pan → store in Redis (recovery on refresh) → recompute zones → dynamically unsubscribe old / subscribe new zones → emit `viewport:synchronized`. Use `calculateOverlappingZones` (ZONE_SIZE grid, 10×10 max, 0-9 bounds).
-- **Widget move (tenant/sub-user only, perm-gated)**: end users cannot move widgets. `widget:move` → write new pos to Redis → compute zones the widget touches via `calculateWidgetOverlappingZones` (x,y,width,height) → debounced publish to RabbitMQ → consumer persists new position → broadcast `widget:moved` to all touched rooms. Add a move permission to `apps/api/src/auth/permissions.ts` if none exists.
-- **Widget move end (optional)**: `widget:move:end` on mouse-up → immediate (non-debounced) RabbitMQ publish → broadcast `widget:moved`/`widget:anchored` to touched rooms.
-- **Soft lock (end-user only, race guard)**: `widget:lock:soft:init` → set unique Redis key TTL 1 min. OK = acquired → broadcast `widget:lock:soft:fixed` (amber; refresh re-fetches locks+timer). Not OK = `widget:lock:soft:denied` (alert "Someone else already locked this"). Detect impossible-fast re-locks (bot) → drop request / release locks. On 1-min expiry Redis publishes `widget:lock:soft:release` → widget returns to default color.
-- **Hard lock**: `widget:lock:hard:init` on checkout → extend all of the user's soft locks to 5 min → emit `widget:lock:hard:fixed` (red). On 5-min expiry, check each widget: if paid → emit `widget:purchased` (item disappears from canvas); if not paid → `widget:lock:hard:release` (default color).
-- **Payment / checkout**: checkout button → checkout page (create if missing) for shipping address + card → create order, downloadable PDF invoice; purchase must complete within the 5-min hard lock window.
+<!-- Bullet points of what success looks like -->
 
 ## Notes
 
-- **Staged delivery.** Foundation ✅, widget move ✅, hard lock ✅ — all merged. **Next branch = payment/checkout:** checkout page (shipping + card), order creation, downloadable PDF invoice, set the Redis `paid` flag so the hard-lock expiry resolves to `widget:purchased`; purchase must land within the 5-min hard-lock window. Likely needs an `order` table/schema + zero-double-spend guard. Infra (redis+rabbitmq) runs via docker-compose (`docker compose up`).
-- Spec file: `context/features/12-spatial-collaborative-canvas.spec.md`.
-- Canvas grid: 10,000 × 10,000 split into a 10×10 zone matrix (zones `0_0`..`9_9`), keyed `${x}_${y}`; clamp to 0-9 bounds. `ZONE_SIZE` constant divides coordinates into zone indices.
-- Tech per stack: Redis (GEO / atomic locks / connection registry / position recovery), RabbitMQ (debounced + immediate position persistence, async checkout), socket.io. Two zone calculators: `calculateOverlappingZones(viewport)` for viewport/cursor, `calculateWidgetOverlappingZones(x,y,w,h)` for widgets.
-- Permission model: widget move/lock restricted — end users only soft-lock+checkout; tenant/sub-users (with perm) move widgets. End users are unauthenticated (no account).
-- Build any missing UI (e.g. checkout page) as part of this feature.
-- Non-functional ties (project-overview): viewport-filtered streaming, muted/active connection (heartbeat downgrade on backgrounded tab + fast-sync delta on refocus), mouse-teleportation bot detection, zero double-spend.
+<!-- Additional context, constraints, or details from spec -->
 
 ## History
 
