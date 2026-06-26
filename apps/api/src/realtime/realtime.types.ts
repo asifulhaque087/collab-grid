@@ -66,3 +66,13 @@ export interface ViewportUpdatePayload {
 export interface SoftLockPayload {
   widgetId: string;
 }
+
+// Widget reposition. width/height let the backend compute every zone the
+// widget's bounding box overlaps so the move broadcasts to the right rooms.
+export interface WidgetMovePayload {
+  widgetId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}

@@ -10,6 +10,7 @@ export interface CanvasWidget {
   x: number;
   y: number;
   width: number;
+  height?: number; // canvas footprint height (for move zone calc)
   locker?: string; // for peer-locked widgets
   lockTime?: number; // remaining seconds for peer lock
 }

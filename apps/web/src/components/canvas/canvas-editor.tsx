@@ -95,7 +95,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
     };
   }, []);
 
-  const { connected, me, sendCursor, updateViewport, softLock } = useCanvasSocket({
+  const { connected, me, sendCursor, updateViewport, softLock, moveWidget, moveWidgetEnd } = useCanvasSocket({
     slug: board.slug,
     enabled: realtimeEnabled,
     initialViewport: computeViewport,
@@ -139,6 +139,12 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       );
     },
     onLockDenied: ({ reason }) => toast.error(reason),
+    // A peer (tenant) repositioned a widget — reflect the new coordinates.
+    // The CSS transition on .c-widget animates the move smoothly.
+    onWidgetMoved: ({ widgetId, x, y }) =>
+      setWidgets((prev) => prev.map((w) => (w.id === widgetId ? { ...w, x, y } : w))),
+    onWidgetAnchored: ({ widgetId, x, y }) =>
+      setWidgets((prev) => prev.map((w) => (w.id === widgetId ? { ...w, x, y } : w))),
   });
 
   // Push viewport changes to the backend (debounced inside the hook) so zone
@@ -273,6 +279,10 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
         const nx = Math.max(0, Math.round((e.clientX - wd.offX - wd.panX) / wd.scale));
         const ny = Math.max(0, Math.round((e.clientY - wd.offY - wd.panY) / wd.scale));
         setWidgets((prev) => prev.map((w) => (w.id === wd.id ? { ...w, x: nx, y: ny } : w)));
+        if (realtimeEnabled) {
+          const dragged = widgetsRef.current.find((w) => w.id === wd.id);
+          moveWidget(wd.id, nx, ny, dragged?.width ?? 190, dragged?.height ?? 190);
+        }
         return;
       }
 
@@ -286,7 +296,10 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       if (wd) {
         if (wd.moved) {
           const w = widgetsRef.current.find((x) => x.id === wd.id);
-          if (w) toast.info(`Moved "${w.name}" to (${w.x}, ${w.y})`);
+          if (w) {
+            toast.info(`Moved "${w.name}" to (${w.x}, ${w.y})`);
+            if (realtimeEnabled) moveWidgetEnd(w.id, w.x, w.y, w.width, w.height ?? 190);
+          }
         } else {
           handleWidgetClick(wd.id);
         }
@@ -301,7 +314,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [handleWidgetClick, realtimeEnabled, sendCursor]);
+  }, [handleWidgetClick, realtimeEnabled, sendCursor, moveWidget, moveWidgetEnd]);
 
   const onViewportPointerDown = (e: React.PointerEvent) => {
     const target = e.target as HTMLElement;

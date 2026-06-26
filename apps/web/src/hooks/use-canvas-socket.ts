@@ -27,6 +27,12 @@ function readStoredIdentity(): { userId?: string; name?: string } {
   };
 }
 
+interface WidgetMoved {
+  widgetId: string;
+  x: number;
+  y: number;
+}
+
 interface Callbacks {
   onJoined?: (result: BoardJoinResult) => void;
   onCursor?: (peer: CursorReceive) => void;
@@ -35,6 +41,8 @@ interface Callbacks {
   onLockFixed?: (lock: LockFixed) => void;
   onLockReleased?: (lock: LockReleased) => void;
   onLockDenied?: (denied: LockDenied) => void;
+  onWidgetMoved?: (move: WidgetMoved) => void;
+  onWidgetAnchored?: (move: WidgetMoved) => void;
 }
 
 interface Options extends Callbacks {
@@ -67,6 +75,7 @@ export function useCanvasSocket({
   });
 
   const lastCursorSent = useRef(0);
+  const lastMoveSent = useRef(0);
   const viewportTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -75,6 +84,9 @@ export function useCanvasSocket({
     const { userId, name } = readStoredIdentity();
     const socket = io(`${WS_URL}/canvas`, {
       transports: ["websocket"],
+      // Send the httpOnly auth cookie so the gateway can authorize widget moves
+      // (tenant/sub-user). Anonymous end users simply have no cookie.
+      withCredentials: true,
       auth: { userId, name },
     });
     socketRef.current = socket;
@@ -104,6 +116,8 @@ export function useCanvasSocket({
     socket.on("widget:lock:soft:fixed", (l: LockFixed) => cbRef.current.onLockFixed?.(l));
     socket.on("widget:lock:soft:release", (l: LockReleased) => cbRef.current.onLockReleased?.(l));
     socket.on("widget:lock:soft:denied", (d: LockDenied) => cbRef.current.onLockDenied?.(d));
+    socket.on("widget:moved", (m: WidgetMoved) => cbRef.current.onWidgetMoved?.(m));
+    socket.on("widget:anchored", (m: WidgetMoved) => cbRef.current.onWidgetAnchored?.(m));
 
     return () => {
       socket.removeAllListeners();
@@ -137,5 +151,28 @@ export function useCanvasSocket({
     socket.emit("widget:lock:soft:init", { widgetId });
   }, []);
 
-  return { connected, me, sendCursor, updateViewport, softLock };
+  // Throttled mid-drag move. Ignored server-side unless the socket is allowed
+  // to move widgets (tenant/permitted sub-user).
+  const moveWidget = useCallback(
+    (widgetId: string, x: number, y: number, width: number, height: number) => {
+      const socket = socketRef.current;
+      if (!socket?.connected) return;
+      const now = Date.now();
+      if (now - lastMoveSent.current < CURSOR_THROTTLE_MS) return;
+      lastMoveSent.current = now;
+      socket.emit("widget:move", { widgetId, x, y, width, height });
+    },
+    [],
+  );
+
+  const moveWidgetEnd = useCallback(
+    (widgetId: string, x: number, y: number, width: number, height: number) => {
+      const socket = socketRef.current;
+      if (!socket?.connected) return;
+      socket.emit("widget:move:end", { widgetId, x, y, width, height });
+    },
+    [],
+  );
+
+  return { connected, me, sendCursor, updateViewport, softLock, moveWidget, moveWidgetEnd };
 }
