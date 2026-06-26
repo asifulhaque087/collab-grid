@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress
+Complete
 
 ## Goals
 
@@ -28,6 +28,7 @@ In Progress
 
 ## History
 
+- **Realtime Checkout & Payment** — order + order_item schema (migration 0004); public OrderModule: POST /orders idempotent on a client UUID (duplicate key → returns original order, no double charge), verifies the buyer holds live locks, server-computes total, then completePurchase removes sold widgets + clears locks + broadcasts widget:purchased; GET /orders/:id/invoice streams a pdfkit PDF. Frontend: standalone /checkout page (RHF+Zod, useSyncExternalStore cart) + order action; canvas checkout hands off cart and navigates. Verified 5/5 + DB + PDF.
 - **Realtime Hard Lock** — `widget:lock:hard:init` (checkout) promotes the user's soft locks to 5-min hard locks (same Redis key, extended TTL, tracked in per-board set) → `widget:lock:hard:fixed` (red, board-wide). On key expiry, resolveExpiredLock routes: paid flag → `widget:purchased` + delete widget row; else `widget:lock:hard:release`. Frontend: checkout emits hard:init, red CSS state, purchased removes widget. Verified 3/3 events + DB.
 - **Realtime Widget Move** — `widget:move` (debounced RabbitMQ persist) + `widget:move:end` (immediate); SocketAuthService gates moves to tenant/sub-user with update:SmartWidget (JWT from handshake cookie + board ownership), end users blocked. Redis position recovery; WidgetPersistenceConsumer writes posX/posY; broadcasts widget:moved/anchored to touched zones. Verified 4/4 socket + DB persist.
 - **Realtime Canvas Foundation** — docker-compose (redis+rabbitmq) + env, NestJS `/canvas` socket.io gateway: board:join (presence+zones+widgets), cursor relay, viewport sync, atomic soft lock (SET NX PX) w/ bot guard + Redis keyspace-expiry auto-release. ZoneService (10×10 grid). Frontend useCanvasSocket hook + canvas-editor wiring. Verified 8/8 socket tests.

@@ -81,3 +81,14 @@ export interface HardReleased {
 export interface Purchased {
   widgetId: string;
 }
+
+// Hand-off payload written to sessionStorage when the user clicks Checkout on
+// the canvas; the standalone checkout page reads it to build the order.
+export interface CheckoutCart {
+  boardId: string;
+  slug: string;
+  buyerUserId: string;
+  items: { id: string; name: string; price: number }[];
+}
+
+export const CHECKOUT_CART_KEY = "checkout:cart";

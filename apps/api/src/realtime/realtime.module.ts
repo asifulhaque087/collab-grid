@@ -20,6 +20,6 @@ import { WidgetPersistenceConsumer } from './widget-persistence.consumer';
     RabbitmqService,
     WidgetPersistenceConsumer,
   ],
-  exports: [RealtimeService, ZoneService],
+  exports: [RealtimeService, ZoneService, RealtimeGateway],
 })
 export class RealtimeModule {}

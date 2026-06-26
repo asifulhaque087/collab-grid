@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import type { BoardCanvas, CanvasWidget, InventoryThumb, Peer } from "@/types/canvas";
 import type { Viewport } from "@/types/realtime";
+import { CHECKOUT_CART_KEY, type CheckoutCart } from "@/types/realtime";
 import { Button } from "@/components/ui/button";
 import { ShareModal } from "@/components/boards/share-modal";
 import { ImportInventoryModal } from "@/components/boards/import-inventory-modal";
@@ -267,12 +268,17 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
     if (mine.length === 0) return;
 
     if (connected) {
-      // Promote to hard locks (red, 5 min) — the server broadcasts hard:fixed
-      // and the payment flow takes over from here.
+      // Promote to hard locks (red, 5 min), hand the cart to the checkout page,
+      // and navigate there to collect shipping + payment.
       hardLock();
-      toast.success(
-        `Reserved ${mine.length} item${mine.length > 1 ? "s" : ""} for 5 minutes — complete payment to purchase`
-      );
+      const cart: CheckoutCart = {
+        boardId: board.boardId!,
+        slug: board.slug,
+        buyerUserId: me?.userId ?? "",
+        items: mine.map((w) => ({ id: w.id, name: w.name, price: priceToNumber(w.price) })),
+      };
+      sessionStorage.setItem(CHECKOUT_CART_KEY, JSON.stringify(cart));
+      router.push("/checkout");
       return;
     }
 
