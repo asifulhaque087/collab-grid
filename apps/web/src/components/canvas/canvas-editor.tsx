@@ -103,7 +103,7 @@ export function CanvasEditor({
     };
   }, []);
 
-  const { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd } = useCanvasSocket({
+  const { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd, placeWidget } = useCanvasSocket({
     slug: board.slug,
     enabled: realtimeEnabled,
     initialViewport: computeViewport,
@@ -153,6 +153,18 @@ export function CanvasEditor({
       setWidgets((prev) => prev.map((w) => (w.id === widgetId ? { ...w, x, y } : w))),
     onWidgetAnchored: ({ widgetId, x, y }) =>
       setWidgets((prev) => prev.map((w) => (w.id === widgetId ? { ...w, x, y } : w))),
+    // A peer (tenant) dropped a sidebar item onto the canvas — add the widget so
+    // it appears here too, and drop it from our inventory sidebar.
+    onWidgetPlaced: (w) => {
+      setWidgets((prev) =>
+        prev.some((x) => x.id === w.id)
+          ? prev
+          : [...prev, serverWidgetToCanvas(w, me?.userId ?? null)],
+      );
+      setInventory((prev) =>
+        prev.map((i) => (i.id === w.id ? { ...i, placed: true } : i)),
+      );
+    },
     // Checkout started — these widgets go red (hard lock) for everyone, 5 min.
     onHardFixed: ({ widgetIds, ttl }) => {
       const ids = new Set(widgetIds);
@@ -191,7 +203,13 @@ export function CanvasEditor({
     panY: number;
     moved: boolean;
   } | null>(null);
-  const invDrag = useRef<{ name: string; price: string; img: string } | null>(null);
+  const invDrag = useRef<{
+    id: string;
+    name: string;
+    price: string;
+    img: string;
+    qty: number;
+  } | null>(null);
 
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom / 100})`;
 
@@ -435,7 +453,13 @@ export function CanvasEditor({
 
   // ── Inventory drag & drop ─────────────────────────────
   const onInvDragStart = (e: React.DragEvent, item: InventoryThumb) => {
-    invDrag.current = { name: item.name, price: item.price, img: item.img };
+    invDrag.current = {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      img: item.img,
+      qty: item.qty,
+    };
     const empty = document.createElement("canvas");
     empty.width = 1;
     empty.height = 1;
@@ -462,16 +486,52 @@ export function CanvasEditor({
     if (!data || !vp) return;
     const rect = vp.getBoundingClientRect();
     const s = zoom / 100;
-    const wx = Math.round((e.clientX - rect.left - pan.x - 220) / s);
-    const wy = Math.round((e.clientY - rect.top - pan.y) / s);
+    const wx = Math.max(0, Math.round((e.clientX - rect.left - pan.x - 220) / s));
+    const wy = Math.max(0, Math.round((e.clientY - rect.top - pan.y) / s));
     const bigImg = data.img.replace("200", "400").replace("200", "300");
+
+    setGhost((g) => ({ ...g, visible: false }));
+    invDrag.current = null;
+
+    // Real board: persist the placement + broadcast it so every viewer sees the
+    // widget appear. Keep its real inventory id so locks/moves/checkout resolve.
+    if (realtimeEnabled && connected) {
+      placeWidget(data.id, wx, wy);
+      setWidgets((prev) =>
+        prev.some((w) => w.id === data.id)
+          ? prev
+          : [
+              ...prev,
+              {
+                id: data.id,
+                name: data.name,
+                price: data.price,
+                qty: data.qty,
+                img: bigImg,
+                state: "active",
+                x: wx,
+                y: wy,
+                width: 190,
+                height: 190,
+              },
+            ],
+      );
+      // Drop it from the sidebar — it now lives on the canvas.
+      setInventory((prev) =>
+        prev.map((i) => (i.id === data.id ? { ...i, placed: true } : i)),
+      );
+      toast.success(`Placed "${data.name}" at (${wx}, ${wy})`);
+      return;
+    }
+
+    // Mock/demo fallback: local-only placement with a synthetic id.
     setWidgets((prev) => [
       ...prev,
       {
         id: `wd${Date.now()}`,
         name: data.name,
         price: data.price,
-        qty: 1,
+        qty: data.qty,
         img: bigImg,
         state: "active",
         x: wx,
@@ -480,14 +540,13 @@ export function CanvasEditor({
       },
     ]);
     toast.success(`Placed "${data.name}" at (${wx}, ${wy})`);
-    setGhost((g) => ({ ...g, visible: false }));
-    invDrag.current = null;
   };
 
   const lockedItems = widgets.filter((w) => w.state === "mine");
   const lockedTotal = lockedItems.reduce((sum, w) => sum + priceToNumber(w.price), 0);
-  const filteredInventory = inventory.filter((i) =>
-    i.name.toLowerCase().includes(invQuery.toLowerCase())
+  // Only unplaced items belong in the sidebar — placed ones live on the canvas.
+  const filteredInventory = inventory.filter(
+    (i) => !i.placed && i.name.toLowerCase().includes(invQuery.toLowerCase())
   );
 
   return (

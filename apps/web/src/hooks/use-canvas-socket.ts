@@ -12,6 +12,7 @@ import type {
   LockFixed,
   LockReleased,
   Purchased,
+  ServerWidget,
   Viewport,
 } from "@/types/realtime";
 
@@ -46,6 +47,7 @@ interface Callbacks {
   onLockDenied?: (denied: LockDenied) => void;
   onWidgetMoved?: (move: WidgetMoved) => void;
   onWidgetAnchored?: (move: WidgetMoved) => void;
+  onWidgetPlaced?: (widget: ServerWidget) => void;
   onHardFixed?: (lock: HardFixed) => void;
   onHardReleased?: (lock: HardReleased) => void;
   onPurchased?: (p: Purchased) => void;
@@ -124,6 +126,7 @@ export function useCanvasSocket({
     socket.on("widget:lock:soft:denied", (d: LockDenied) => cbRef.current.onLockDenied?.(d));
     socket.on("widget:moved", (m: WidgetMoved) => cbRef.current.onWidgetMoved?.(m));
     socket.on("widget:anchored", (m: WidgetMoved) => cbRef.current.onWidgetAnchored?.(m));
+    socket.on("widget:placed", (w: ServerWidget) => cbRef.current.onWidgetPlaced?.(w));
     socket.on("widget:lock:hard:fixed", (l: HardFixed) => cbRef.current.onHardFixed?.(l));
     socket.on("widget:lock:hard:release", (l: HardReleased) => cbRef.current.onHardReleased?.(l));
     socket.on("widget:purchased", (p: Purchased) => cbRef.current.onPurchased?.(p));
@@ -190,5 +193,14 @@ export function useCanvasSocket({
     [],
   );
 
-  return { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd };
+  // Drop a sidebar inventory item onto the canvas — persists its first
+  // coordinates and broadcasts the full widget to peers. Ignored server-side
+  // unless the socket may manage widgets (tenant/permitted sub-user).
+  const placeWidget = useCallback((widgetId: string, x: number, y: number) => {
+    const socket = socketRef.current;
+    if (!socket?.connected) return;
+    socket.emit("widget:place", { widgetId, x, y });
+  }, []);
+
+  return { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd, placeWidget };
 }
