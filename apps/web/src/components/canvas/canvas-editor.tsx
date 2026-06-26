@@ -95,7 +95,7 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
     };
   }, []);
 
-  const { connected, me, sendCursor, updateViewport, softLock, moveWidget, moveWidgetEnd } = useCanvasSocket({
+  const { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd } = useCanvasSocket({
     slug: board.slug,
     enabled: realtimeEnabled,
     initialViewport: computeViewport,
@@ -145,6 +145,23 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
       setWidgets((prev) => prev.map((w) => (w.id === widgetId ? { ...w, x, y } : w))),
     onWidgetAnchored: ({ widgetId, x, y }) =>
       setWidgets((prev) => prev.map((w) => (w.id === widgetId ? { ...w, x, y } : w))),
+    // Checkout started — these widgets go red (hard lock) for everyone, 5 min.
+    onHardFixed: ({ widgetIds, ttl }) => {
+      const ids = new Set(widgetIds);
+      setWidgets((prev) =>
+        prev.map((w) => (ids.has(w.id) ? { ...w, hard: true, lockTime: Math.ceil(ttl / 1000) } : w)),
+      );
+    },
+    // Hard lock expired unpaid — back to default.
+    onHardReleased: ({ widgetId }) =>
+      setWidgets((prev) =>
+        prev.map((w) =>
+          w.id === widgetId ? { ...w, hard: false, state: "active", lockTime: undefined, locker: undefined } : w,
+        ),
+      ),
+    // Paid — the item is sold and leaves the canvas for everyone.
+    onPurchased: ({ widgetId }) =>
+      setWidgets((prev) => prev.filter((w) => w.id !== widgetId)),
   });
 
   // Push viewport changes to the backend (debounced inside the hook) so zone
@@ -248,6 +265,18 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
   const checkout = () => {
     const mine = widgetsRef.current.filter((w) => w.state === "mine");
     if (mine.length === 0) return;
+
+    if (connected) {
+      // Promote to hard locks (red, 5 min) — the server broadcasts hard:fixed
+      // and the payment flow takes over from here.
+      hardLock();
+      toast.success(
+        `Reserved ${mine.length} item${mine.length > 1 ? "s" : ""} for 5 minutes — complete payment to purchase`
+      );
+      return;
+    }
+
+    // Mock/demo fallback: simulate the purchase locally.
     setWidgets((prev) => prev.map((w) => (w.state === "mine" ? { ...w, state: "sold" } : w)));
     setTimeout(() => {
       setWidgets((prev) => prev.filter((w) => w.state !== "sold"));
@@ -349,7 +378,9 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
         const next = prev.map((w) => {
           if ((w.state === "mine" || w.state === "peer") && (w.lockTime ?? 0) > 0) {
             const lt = (w.lockTime ?? 0) - 1;
-            if (w.state === "mine" && lt <= 0) {
+            // Hard-locked items stay put until the server resolves them
+            // (purchased or released); only soft "mine" locks auto-expire here.
+            if (w.state === "mine" && lt <= 0 && !w.hard) {
               expired.push(w.name);
               return { ...w, state: "active" as const, lockTime: undefined };
             }
@@ -515,9 +546,11 @@ export function CanvasEditor({ board }: { board: BoardCanvas }) {
             const stateClass =
               w.state === "sold"
                 ? "state-sold"
-                : w.state === "active"
-                  ? "state-active"
-                  : "state-locked";
+                : w.hard
+                  ? "state-hard"
+                  : w.state === "active"
+                    ? "state-active"
+                    : "state-locked";
             return (
               <div
                 key={w.id}
