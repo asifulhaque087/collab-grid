@@ -1,24 +1,12 @@
-# Current Feature: Reactive Minimap
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Replace the hardcoded minimap dots in [canvas-editor.tsx:835-848](apps/web/src/components/canvas/canvas-editor.tsx#L835-L848) with real widget positions, scaled from world space (`board.maxWidth` × `board.maxHeight`) into the 180×120 minimap box.
-- Each dot reflects the live `widgets` state — position (`x`/`y`), and color by `state` (active → teal, mine/peer/soft-lock → amber, sold → emerald). Dots update reactively as widgets are placed, moved, locked, and purchased.
-- Render the viewport rectangle reactively from the current `pan`/`zoom` (via `computeViewport`), so it tracks what the user is actually looking at as they pan/zoom.
-- Clicking anywhere in the minimap pans the main canvas so that point is centered in the viewport.
-
 ## Notes
-
-- Applies to both canvas routes — they share the `CanvasEditor` component: public `/b/[slug]` ([apps/web/src/app/b/[slug]/page.tsx](apps/web/src/app/b/[slug]/page.tsx)) and tenant `/dashboard/boards/[slug]` ([apps/web/src/app/dashboard/boards/[slug]/page.tsx](apps/web/src/app/dashboard/boards/[slug]/page.tsx)).
-- Existing helpers to reuse: `centerOnCanvas`/the pan-math pattern (`pan = viewportCenter − worldPoint·scale`), `computeViewport()` for the viewport rect, and `transform` for scale. Minimap scale = minimap box dims ÷ `board.maxWidth`/`maxHeight`.
-- World/minimap mapping must use the real board dimensions (`board.maxWidth`/`maxHeight`, default 10000), not the old hardcoded percentages.
-- CSS classes already exist: `.canvas-minimap` (180×120, 8px pad), `.minimap-inner`, `.minimap-dot`, `.minimap-viewport` ([globals.css:797-829](apps/web/src/app/globals.css#L797-L829)).
-- Keep dots cheap to render (many widgets possible); compute positions inline from state, no extra socket events needed — `widgets` and `pan`/`zoom` are already reactive.
-- Click-to-pan should map the click coordinates within `.minimap-inner` back to world coords, then reuse the centering pan math.
 
 ## History
 
@@ -51,3 +39,5 @@ In Progress
 - **Center Board on Initial Render** — Both canvas routes (public `/b/[slug]` + tenant `/dashboard/boards/[slug]`, shared `CanvasEditor`) now open with the canvas midpoint centered in the viewport instead of anchoring world origin top-left. `centerOnCanvas()` pans to `(maxWidth/2, maxHeight/2)·scale` on mount (`useLayoutEffect`, pre-paint, no flash) and on zoom reset. The `.canvas-world` div is sized to the board's dynamic `maxWidth`/`maxHeight` (from DB, via `BoardCanvas`; pages fall back to 10000, mock 6000×4000). Build 3/3.
 
 - **Dashboard Permissions & Navigation** — (1) Sidebar plan-usage box is now dynamic: `PlanUsageCard` reads live `quotas`+`plan` from an extended `PermissionProvider` (fed by `requireAuth()`/`/auth/me`), rendering a used/granted bar per tracked subject (Board/Group/SmartWidget), amber at 100%, "∞" for unlimited, Upgrade CTA only on free. Added shared `Quota` type. (2) `/dashboard/transactions` gated on the `manage:all` super-grant (`SUPER_ADMIN_REQUIREMENT`) so it shows only for super-admin; tenants keep Orders (read:PaymentHistory). (3) Topbar profile placeholder replaced with a Radix dropdown (name/email, Profile, Log out); new `logoutAction` revokes the session via `POST /auth/logout` and clears cookies, then redirects to `/sign-in`. Header threads the user through both shell + canvas pages. Build 3/3, CASL gating verified.
+
+- **Reactive Minimap** — Both canvas routes (shared `CanvasEditor`) now render a live minimap instead of hardcoded placeholders. Dots map each widget's `x`/`y` over board world dims (`maxWidth`/`maxHeight`) as percentages, colored by state via `minimapColor()` (active→teal, mine/peer→amber, hard→red, sold→emerald), updating reactively as widgets place/move/lock/sell. The `.minimap-viewport` rect is computed at render from live `pan`/`zoom` (clamped %), tracking what the user sees. `handleMinimapClick` maps the click fraction back to a world point and pans it to the viewport center (same math as `centerOnCanvas`); added `cursor:pointer` to `.minimap-inner`. Build 3/3.
