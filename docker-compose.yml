@@ -1,12 +1,95 @@
-# Local-dev infrastructure for the realtime collaborative canvas.
-# Run `docker compose up -d` from the repo root, then `pnpm dev`.
+# Local-dev environment for the realtime collaborative canvas.
+# Run `docker compose watch` from the repo root — this brings up the full stack
+# (web + api in hot-reload dev mode, backed by Redis + RabbitMQ) and live-syncs
+# source changes into the containers. Postgres is remote (Neon, per
+# apps/api/.env), so it is not provisioned here.
 #
+#   web      — Next.js dev server on http://localhost:3000 (hot reload).
+#   api      — NestJS dev server on http://localhost:3001 (nest --watch).
 #   Redis    — atomic soft/hard locks, zone presence, viewport recovery.
 #              Started with keyspace notifications enabled (Ex) so the gateway
 #              can react to soft-lock key expiry and auto-release widgets.
-#   RabbitMQ — async checkout queue + debounced widget-position persistence
-#              (wired in a later branch; provisioned here so infra is ready).
+#   RabbitMQ — async checkout queue + debounced widget-position persistence.
+#
+# Live reload uses Compose Watch (`develop.watch`): source files are synced into
+# the running container (node_modules stay container-owned, never shadowed by the
+# host); manifest/lockfile changes trigger an image rebuild.
 services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    container_name: collabgrid-web
+    command: pnpm --filter web dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_WS_URL=http://localhost:3001
+      - API_URL=http://api:3001
+    depends_on:
+      - api
+    restart: unless-stopped
+    develop:
+      watch:
+        # Sync app source — next dev picks up the change and hot-reloads.
+        - action: sync
+          path: ./apps/web
+          target: /app/apps/web
+          ignore:
+            - node_modules/
+            - .next/
+        # Dependency changes need a fresh install → rebuild the image.
+        - action: rebuild
+          path: ./apps/web/package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: collabgrid-api
+    command: sh -c "pnpm --filter @collab-grid/common build && pnpm --filter api dev"
+    ports:
+      - "3001:3001"
+    env_file:
+      - apps/api/.env
+    environment:
+      # Override localhost URLs from .env with in-network service hostnames.
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+    restart: unless-stopped
+    develop:
+      watch:
+        # Sync api source — nest --watch recompiles and restarts.
+        - action: sync
+          path: ./apps/api
+          target: /app/apps/api
+          ignore:
+            - node_modules/
+            - dist/
+        # common is built once at container start; rebuild its dist on change
+        # by restarting (re-runs the build+dev command) after syncing.
+        - action: sync+restart
+          path: ./packages/common
+          target: /app/packages/common
+          ignore:
+            - node_modules/
+            - dist/
+        # Dependency changes need a fresh install → rebuild the image.
+        - action: rebuild
+          path: ./apps/api/package.json
+        - action: rebuild
+          path: ./packages/common/package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+
   redis:
     image: redis:7-alpine
     container_name: collabgrid-redis
