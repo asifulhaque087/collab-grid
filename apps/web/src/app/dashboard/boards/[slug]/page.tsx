@@ -35,6 +35,8 @@ export default async function CanvasBoardPage({
       slug: apiBoard.slug,
       title: apiBoard.name,
       access: apiBoard.access,
+      maxWidth: apiBoard.maxWidth ?? 10000,
+      maxHeight: apiBoard.maxHeight ?? 10000,
       inventory: items.map(toInventoryThumb),
       widgets: [],
       peers: [],

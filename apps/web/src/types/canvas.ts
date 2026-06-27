@@ -47,6 +47,9 @@ export interface BoardCanvas {
   slug: string;
   title: string;
   access: "public" | "restricted";
+  /** Canvas world dimensions (px) from the board record — drives world size + centering. */
+  maxWidth: number;
+  maxHeight: number;
   widgets: CanvasWidget[];
   inventory: InventoryThumb[];
   peers: Peer[];

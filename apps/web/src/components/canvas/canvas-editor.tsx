@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
@@ -236,9 +236,30 @@ export function CanvasEditor({
     changeZoom(delta, rect.width / 2, rect.height / 2);
   };
 
+  // Pan that puts the canvas's middle point (maxWidth/2, maxHeight/2) at the
+  // center of the viewport. A world point (wx, wy) maps to screen
+  // (pan.x + wx·scale, pan.y + wy·scale), so to land it on the viewport center
+  // we solve pan = viewportCenter − worldCenter·scale.
+  const centerOnCanvas = useCallback((zoomLevel: number) => {
+    const vp = viewportRef.current;
+    const w = vp?.clientWidth ?? 1280;
+    const h = vp?.clientHeight ?? 720;
+    const scale = zoomLevel / 100;
+    setPan({
+      x: Math.round(w / 2 - (board.maxWidth / 2) * scale),
+      y: Math.round(h / 2 - (board.maxHeight / 2) * scale),
+    });
+  }, [board.maxWidth, board.maxHeight]);
+
+  // Default first paint: open with the canvas centered rather than anchored at
+  // the top-left. useLayoutEffect runs before paint so there's no (0,0) flash.
+  useLayoutEffect(() => {
+    centerOnCanvas(zoomRef.current);
+  }, [centerOnCanvas]);
+
   const resetZoom = () => {
     setZoom(100);
-    setPan({ x: 0, y: 0 });
+    centerOnCanvas(100);
   };
 
   // Native wheel listener so we can preventDefault (passive: false).
@@ -637,7 +658,10 @@ export function CanvasEditor({
         }}
         onDrop={onViewportDrop}
       >
-        <div className="canvas-world" style={{ transform }}>
+        <div
+          className="canvas-world"
+          style={{ width: board.maxWidth, height: board.maxHeight, transform }}
+        >
           {widgets.map((w) => {
             const stateClass =
               w.state === "sold"
