@@ -1,12 +1,25 @@
-# Current Feature
+# Current Feature: Docker Multi-Stage Setup
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Add multi-stage `Dockerfile`s for both `apps/web` (Next.js 16) and `apps/api` (NestJS) that build from the repo root so the pnpm/turborepo workspace and `@collab-grid/common` resolve correctly.
+- Each Dockerfile includes a `development` stage usable from the compose file to run the app in dev/watch mode, plus the stages needed for a lean, secure production image (deps → build → runtime).
+- Optimize final image size: alpine base, multi-stage to drop dev deps/build toolchain, pnpm fetch/`--frozen-lockfile`, layer-cache friendly ordering, non-root runtime user, and Next.js `output: 'standalone'` for the web runtime.
+- Update the root `docker-compose.yml` to wire web + api (development target) alongside the existing redis + rabbitmq for a one-command local dev workflow, with volume mounts/env as needed.
+- Add a `.dockerignore` to keep `node_modules`, build artifacts, and `.env` out of the build context.
+
 ## Notes
+
+- Monorepo: Turborepo + pnpm (`pnpm@9`), workspaces `apps/*` + `packages/*`. Build from root context, not per-app context, so workspace deps resolve.
+- `apps/web`: `next build` → enable `output: 'standalone'` in [next.config.js](apps/web/next.config.js) for minimal runtime; port 3000.
+- `apps/api`: `nest build` → `node dist/main`; depends on workspace pkg `@collab-grid/common` (must be built first); copies `**/*.ejs` assets; port 3001. Drizzle migrate runs separately (`pnpm --filter api db:migrate:prod`).
+- `packages/common` builds via `tsc` to `dist/` — needed by api at build/runtime.
+- Existing [docker-compose.yml](docker-compose.yml) already provisions redis (keyspace `Ex`) + rabbitmq; extend, don't replace.
+- Per spec: development stage drives compose; production stages separate. Follow image-size best practices (alpine, prune dev deps, non-root).
 
 ## History
 
