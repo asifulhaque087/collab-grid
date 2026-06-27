@@ -1,25 +1,12 @@
-# Current Feature: Docker Multi-Stage Setup
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Add multi-stage `Dockerfile`s for both `apps/web` (Next.js 16) and `apps/api` (NestJS) that build from the repo root so the pnpm/turborepo workspace and `@collab-grid/common` resolve correctly.
-- Each Dockerfile includes a `development` stage usable from the compose file to run the app in dev/watch mode, plus the stages needed for a lean, secure production image (deps → build → runtime).
-- Optimize final image size: alpine base, multi-stage to drop dev deps/build toolchain, pnpm fetch/`--frozen-lockfile`, layer-cache friendly ordering, non-root runtime user, and Next.js `output: 'standalone'` for the web runtime.
-- Update the root `docker-compose.yml` to wire web + api (development target) alongside the existing redis + rabbitmq for a one-command local dev workflow, with volume mounts/env as needed.
-- Add a `.dockerignore` to keep `node_modules`, build artifacts, and `.env` out of the build context.
-
 ## Notes
-
-- Monorepo: Turborepo + pnpm (`pnpm@9`), workspaces `apps/*` + `packages/*`. Build from root context, not per-app context, so workspace deps resolve.
-- `apps/web`: `next build` → enable `output: 'standalone'` in [next.config.js](apps/web/next.config.js) for minimal runtime; port 3000.
-- `apps/api`: `nest build` → `node dist/main`; depends on workspace pkg `@collab-grid/common` (must be built first); copies `**/*.ejs` assets; port 3001. Drizzle migrate runs separately (`pnpm --filter api db:migrate:prod`).
-- `packages/common` builds via `tsc` to `dist/` — needed by api at build/runtime.
-- Existing [docker-compose.yml](docker-compose.yml) already provisions redis (keyspace `Ex`) + rabbitmq; extend, don't replace.
-- Per spec: development stage drives compose; production stages separate. Follow image-size best practices (alpine, prune dev deps, non-root).
 
 ## History
 
@@ -56,3 +43,5 @@ In Progress
 - **Dashboard Permissions & Navigation** — (1) Sidebar plan-usage box is now dynamic: `PlanUsageCard` reads live `quotas`+`plan` from an extended `PermissionProvider` (fed by `requireAuth()`/`/auth/me`), rendering a used/granted bar per tracked subject (Board/Group/SmartWidget), amber at 100%, "∞" for unlimited, Upgrade CTA only on free. Added shared `Quota` type. (2) `/dashboard/transactions` gated on the `manage:all` super-grant (`SUPER_ADMIN_REQUIREMENT`) so it shows only for super-admin; tenants keep Orders (read:PaymentHistory). (3) Topbar profile placeholder replaced with a Radix dropdown (name/email, Profile, Log out); new `logoutAction` revokes the session via `POST /auth/logout` and clears cookies, then redirects to `/sign-in`. Header threads the user through both shell + canvas pages. Build 3/3, CASL gating verified.
 
 - **Reactive Minimap** — Both canvas routes (shared `CanvasEditor`) now render a live minimap instead of hardcoded placeholders. Dots map each widget's `x`/`y` over board world dims (`maxWidth`/`maxHeight`) as percentages, colored by state via `minimapColor()` (active→teal, mine/peer→amber, hard→red, sold→emerald), updating reactively as widgets place/move/lock/sell. The `.minimap-viewport` rect is computed at render from live `pan`/`zoom` (clamped %), tracking what the user sees. `handleMinimapClick` maps the click fraction back to a world point and pans it to the viewport center (same math as `centerOnCanvas`); added `cursor:pointer` to `.minimap-inner`. Build 3/3.
+
+- **Docker Multi-Stage Setup** — Multi-stage Dockerfiles for `apps/web` + `apps/api`, built from the repo root so the pnpm workspace + `@collab-grid/common` resolve. Stages: `deps`/`prod-deps` (scoped `--filter …`, `--frozen-lockfile`, pnpm store cache mounts), `development`, `build`, and lean non-root alpine `production`. Web ships Next.js standalone output (`output:'standalone'` + `outputFileTracingRoot` at monorepo root). API runtime copies only prod node_modules + built `common` + `apps/api/dist`; entry is `dist/src/main.js` (drizzle.config.ts widens tsc rootDir). `.dockerignore` slims context. docker-compose adds web + api dev services via Compose Watch (`sync` for app src, `sync+restart` for `packages/common` so its dist rebuilds, `rebuild` on manifests/lockfile) atop existing redis + rabbitmq; Postgres is remote (Neon). Verified: prod images build + boot (web 74MiB serves 200; api 244MiB boots, resolves common, all Nest modules init), both dev targets build, `docker compose config` valid.
