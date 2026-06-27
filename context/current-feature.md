@@ -1,21 +1,12 @@
-# Current Feature: Dashboard Permissions & Navigation
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Make the sidebar "plan usages" box dynamic — render the real permission/quota usage from the user's plan snapshot instead of static values.
-- Hide the Transactions menu for tenants; show it only for super-admin.
-- Add a logout option to a dropdown that opens when clicking the profile menu in the dashboard topbar.
-
 ## Notes
-
-- Source spec: `context/features/16-dashboard-permissions-and-navigation.spec.md`
-- Plan usage box currently static in the dashboard sidebar — needs to reflect dynamic permission quotas (Boards, Roles, Widgets, etc.).
-- Transactions is an Administration-level menu; gating likely belongs alongside existing sidebar permission/role logic (CASL / route-permissions).
-- Profile dropdown: clicking topbar profile → dropdown with logout action.
 
 ## History
 
@@ -46,3 +37,5 @@ In Progress
 - **Canvas Lock Lifecycle Fixes** — (1) Removing an item from the locked-items sidebar now emits `widget:lock:soft:release:init` → gateway `releaseLock` deletes the Redis key + broadcasts release, so it no longer survives a refresh. (2) Floating-toolbar Lock button (tenant + end user) toggles the sidebar with an amber count badge. (3) Checkout shipping form trimmed to email (optional)/phone/address — migration 0005 adds `order.phone`, drops NOT NULL on buyer_name/email/city/country; cart carries `expiresAt`+`img` and the checkout aside renders reserved items with a live 5-min countdown. (4) `completePurchase` now releases all the buyer's remaining locks. Also: `/dashboard/boards/[slug]` now `requireAuth()` (was outside the shell guard); confirmation "Back to board" routes end users to `/b/[slug]` via a cart `endUser` flag. Build 3/3.
 
 - **Center Board on Initial Render** — Both canvas routes (public `/b/[slug]` + tenant `/dashboard/boards/[slug]`, shared `CanvasEditor`) now open with the canvas midpoint centered in the viewport instead of anchoring world origin top-left. `centerOnCanvas()` pans to `(maxWidth/2, maxHeight/2)·scale` on mount (`useLayoutEffect`, pre-paint, no flash) and on zoom reset. The `.canvas-world` div is sized to the board's dynamic `maxWidth`/`maxHeight` (from DB, via `BoardCanvas`; pages fall back to 10000, mock 6000×4000). Build 3/3.
+
+- **Dashboard Permissions & Navigation** — (1) Sidebar plan-usage box is now dynamic: `PlanUsageCard` reads live `quotas`+`plan` from an extended `PermissionProvider` (fed by `requireAuth()`/`/auth/me`), rendering a used/granted bar per tracked subject (Board/Group/SmartWidget), amber at 100%, "∞" for unlimited, Upgrade CTA only on free. Added shared `Quota` type. (2) `/dashboard/transactions` gated on the `manage:all` super-grant (`SUPER_ADMIN_REQUIREMENT`) so it shows only for super-admin; tenants keep Orders (read:PaymentHistory). (3) Topbar profile placeholder replaced with a Radix dropdown (name/email, Profile, Log out); new `logoutAction` revokes the session via `POST /auth/logout` and clears cookies, then redirects to `/sign-in`. Header threads the user through both shell + canvas pages. Build 3/3, CASL gating verified.
