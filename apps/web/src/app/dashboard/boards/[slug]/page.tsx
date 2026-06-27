@@ -16,7 +16,7 @@ export default async function CanvasBoardPage({
 }) {
   // This is the tenant-facing editor — anonymous end users belong on the public
   // /b/[slug] route, so gate it behind auth (redirects to /sign-in otherwise).
-  await requireAuth();
+  const user = await requireAuth();
 
   const { slug } = await params;
 
@@ -45,7 +45,7 @@ export default async function CanvasBoardPage({
 
   return (
     <div className="flex h-screen flex-col">
-      <Header />
+      <Header user={user} />
       <div className="min-h-0 flex-1 overflow-hidden">
         <CanvasEditor board={board} />
       </div>

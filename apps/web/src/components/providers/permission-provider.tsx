@@ -1,11 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { createAbilityFor, type AppAbility, type PermissionTuple } from "@/lib/ability";
+import {
+  createAbilityFor,
+  type AppAbility,
+  type PermissionTuple,
+  type Quota,
+} from "@/lib/ability";
 
 interface PermissionContextValue {
   permissions: PermissionTuple[];
   ability: AppAbility;
+  quotas: Quota[];
+  plan: string;
 }
 
 const PermissionContext = React.createContext<PermissionContextValue | null>(null);
@@ -16,9 +23,13 @@ const PermissionContext = React.createContext<PermissionContextValue | null>(nul
 export function PermissionProvider({
   children,
   permissions = [],
+  quotas = [],
+  plan = "free",
 }: {
   children: React.ReactNode;
   permissions?: PermissionTuple[];
+  quotas?: Quota[];
+  plan?: string;
 }) {
   const ability = React.useMemo(
     () => createAbilityFor({ permissions }),
@@ -26,8 +37,8 @@ export function PermissionProvider({
   );
 
   const value = React.useMemo<PermissionContextValue>(
-    () => ({ permissions, ability }),
-    [permissions, ability],
+    () => ({ permissions, ability, quotas, plan }),
+    [permissions, ability, quotas, plan],
   );
 
   return (

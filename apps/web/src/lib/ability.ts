@@ -32,6 +32,18 @@ export interface PermissionTuple {
   subject: string;
 }
 
+// One row of the user's plan-quota snapshot, as returned by GET /auth/me.
+// `granted` is null for boolean-capability grants; numeric for tracked quotas
+// (e.g. create:Board). `granted === -1` denotes an unlimited quota.
+export interface Quota {
+  id: string;
+  action: string;
+  subject: string;
+  granted: number | null;
+  remaining: number | null;
+  extra: number;
+}
+
 export type AppAbility = MongoAbility<[Action, Subjects]>;
 
 // Build a CASL ability from the user's effective permission tuples.
