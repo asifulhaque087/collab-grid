@@ -21,8 +21,8 @@ export default async function CanvasBoardPage({
   const { slug } = await params;
 
   // Resolve the real board so the editor knows its id (for new widgets) and can
-  // show the board's actual inventory in the sidebar. Mock widgets/peers/presence
-  // still back the demo interactions until the realtime canvas lands.
+  // show the board's actual inventory in the sidebar. Real widgets/peers arrive
+  // over the socket on join, so seed them empty — no mock placeholders to flash.
   const apiBoard = await getBoardBySlug(slug);
   const mock = await getBoardCanvas(slug);
 
@@ -36,6 +36,8 @@ export default async function CanvasBoardPage({
       title: apiBoard.name,
       access: apiBoard.access,
       inventory: items.map(toInventoryThumb),
+      widgets: [],
+      peers: [],
     };
   }
 

@@ -268,6 +268,9 @@ export function CanvasEditor({
 
   const handleWidgetClick = useCallback(
     (id: string) => {
+      // Locking is a shopper action. Tenants/sub-users organize the board here,
+      // so a click in the private editor must not soft-lock the widget.
+      if (!endUser) return;
       const w = widgetsRef.current.find((x) => x.id === id);
       if (!w) return;
       if (w.state === "active") {
@@ -278,7 +281,7 @@ export function CanvasEditor({
       } else if (w.state === "peer") toast.info("This item is locked by another user");
       else if (w.state === "mine") toast.info("Already in your locked items");
     },
-    [lockWidget, connected, softLock]
+    [lockWidget, connected, softLock, endUser]
   );
 
   const releaseLock = (id: string) => {
@@ -768,8 +771,9 @@ export function CanvasEditor({
           <span>{ghost.name}</span>
         </div>
 
-        {/* Floating toolbar */}
-        <div className="canvas-float-toolbar">
+        {/* Floating toolbar. End users have no inventory panel, so the tray
+            hugs the left edge instead of clearing the 220px panel. */}
+        <div className={cn("canvas-float-toolbar", endUser && "no-panel")}>
           <button
             className={cn("float-tool-btn", tool === "select" && "active")}
             title="Select"
