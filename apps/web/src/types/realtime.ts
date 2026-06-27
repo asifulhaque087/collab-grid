@@ -88,7 +88,13 @@ export interface CheckoutCart {
   boardId: string;
   slug: string;
   buyerUserId: string;
-  items: { id: string; name: string; price: number }[];
+  // True when checkout was started from the public /b/[slug] shopper route, so
+  // the confirmation can send the buyer back there (not the tenant dashboard).
+  endUser: boolean;
+  // Epoch ms when the hard-lock reservation expires (checkout time + 5 min) so
+  // the checkout page can render a live countdown.
+  expiresAt: number;
+  items: { id: string; name: string; price: number; img: string }[];
 }
 
 export const CHECKOUT_CART_KEY = "checkout:cart";

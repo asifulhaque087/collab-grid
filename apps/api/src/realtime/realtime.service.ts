@@ -272,6 +272,19 @@ export class RealtimeService {
     }
   }
 
+  // Release every lock a user still holds on a board (soft or hard) and return
+  // the affected widget ids so the gateway can broadcast a release for each.
+  // Used after checkout to guarantee no stray reservation lingers in Redis.
+  async releaseAllUserLocks(boardId: string, userId: string): Promise<string[]> {
+    const locks = await this.getUserLocks(boardId, userId);
+    const released: string[] = [];
+    for (const lock of locks) {
+      await this.clearLock(boardId, lock.widgetId);
+      released.push(lock.widgetId);
+    }
+    return released;
+  }
+
   async getLock(
     boardId: string,
     widgetId: string,

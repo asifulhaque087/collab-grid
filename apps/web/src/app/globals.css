@@ -764,12 +764,28 @@ select {
   z-index: 30;
 }
 .float-tool-btn {
+  position: relative;
   width: 36px; height: 36px;
   display: grid;
   place-items: center;
   border-radius: var(--radius-sm);
   color: var(--color-text-muted);
   transition: all var(--transition);
+}
+.float-tool-badge {
+  position: absolute;
+  top: -4px; right: -4px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-soft-lock);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
 }
 .float-tool-btn:hover { background: var(--color-surface-hover); color: var(--color-text); }
 .float-tool-btn.active { background: var(--color-active-dim); color: var(--color-active); }

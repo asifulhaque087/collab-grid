@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ShoppingBag, Download, CheckCircle2, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Download, CheckCircle2, ArrowLeft, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,12 +16,10 @@ import { CHECKOUT_CART_KEY, type CheckoutCart } from "@/types/realtime";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 const schema = z.object({
-  buyerName: z.string().min(1, "Name is required"),
-  email: z.string().email("Enter a valid email"),
+  // Trimmed shipping form: email (optional), phone, address.
+  email: z.union([z.string().email("Enter a valid email"), z.literal("")]).optional(),
+  phone: z.string().min(1, "Phone is required"),
   address: z.string().min(1, "Address is required"),
-  city: z.string().min(1, "City is required"),
-  postalCode: z.string().optional(),
-  country: z.string().min(1, "Country is required"),
   cardNumber: z.string().regex(/^\d{13,19}$/, "Enter a valid card number"),
   cardExp: z.string().regex(/^\d{2}\/\d{2}$/, "MM/YY"),
   cardCvc: z.string().regex(/^\d{3,4}$/, "CVC"),
@@ -31,12 +29,19 @@ type FormValues = z.infer<typeof schema>;
 
 const EMPTY_SNAPSHOT = "";
 
+function formatLock(seconds: number) {
+  if (seconds <= 0) return "Expired";
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const [orderId, setOrderId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Slug captured on success so the screen can link back after the cart clears.
+  // Slug + origin captured on success so the screen can link back to the right
+  // board route (public shopper vs tenant dashboard) after the cart clears.
   const [doneSlug, setDoneSlug] = useState<string | null>(null);
+  const [doneEndUser, setDoneEndUser] = useState(false);
 
   // One idempotency key per checkout session — reused across retries/double
   // clicks so the server dedupes instead of double-charging.
@@ -61,6 +66,20 @@ export default function CheckoutPage() {
     [cart],
   );
 
+  // Live countdown to the hard-lock expiry so the shopper sees how long their
+  // reservation has left while filling in the form.
+  const [secondsLeft, setSecondsLeft] = useState(() =>
+    cart?.expiresAt ? Math.max(0, Math.round((cart.expiresAt - Date.now()) / 1000)) : 0,
+  );
+  useEffect(() => {
+    if (!cart?.expiresAt) return;
+    const tick = () =>
+      setSecondsLeft(Math.max(0, Math.round((cart.expiresAt - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [cart?.expiresAt]);
+
   const {
     register,
     handleSubmit,
@@ -75,12 +94,9 @@ export default function CheckoutPage() {
         boardId: cart.boardId,
         buyerUserId: cart.buyerUserId,
         widgetIds: cart.items.map((i) => i.id),
-        buyerName: values.buyerName,
-        email: values.email,
+        email: values.email || undefined,
+        phone: values.phone,
         address: values.address,
-        city: values.city,
-        postalCode: values.postalCode,
-        country: values.country,
         cardLast4: values.cardNumber.slice(-4),
       });
 
@@ -94,6 +110,7 @@ export default function CheckoutPage() {
         toast.success("Payment successful — your items are confirmed.");
       }
       setDoneSlug(cart.slug);
+      setDoneEndUser(cart.endUser);
       sessionStorage.removeItem(CHECKOUT_CART_KEY);
       setOrderId(result.data.orderId);
     });
@@ -118,9 +135,10 @@ export default function CheckoutPage() {
         </a>
         <button
           className="text-sm text-text-muted underline hover:text-text"
-          onClick={() =>
-            router.push(doneSlug ? `/dashboard/boards/${doneSlug}` : "/dashboard/boards")
-          }
+          onClick={() => {
+            if (!doneSlug) return router.push(doneEndUser ? "/" : "/dashboard/boards");
+            router.push(doneEndUser ? `/b/${doneSlug}` : `/dashboard/boards/${doneSlug}`);
+          }}
         >
           Back to board
         </button>
@@ -154,25 +172,14 @@ export default function CheckoutPage() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
           Shipping
         </h2>
-        <FormField label="Full name" htmlFor="buyerName" error={errors.buyerName?.message}>
-          <Input id="buyerName" {...register("buyerName")} />
-        </FormField>
-        <FormField label="Email" htmlFor="email" error={errors.email?.message}>
+        <FormField label="Email (optional)" htmlFor="email" error={errors.email?.message}>
           <Input id="email" type="email" {...register("email")} />
+        </FormField>
+        <FormField label="Phone" htmlFor="phone" error={errors.phone?.message}>
+          <Input id="phone" inputMode="tel" {...register("phone")} />
         </FormField>
         <FormField label="Address" htmlFor="address" error={errors.address?.message}>
           <Input id="address" {...register("address")} />
-        </FormField>
-        <FormRow>
-          <FormField label="City" htmlFor="city" error={errors.city?.message}>
-            <Input id="city" {...register("city")} />
-          </FormField>
-          <FormField label="Postal code" htmlFor="postalCode" error={errors.postalCode?.message}>
-            <Input id="postalCode" {...register("postalCode")} />
-          </FormField>
-        </FormRow>
-        <FormField label="Country" htmlFor="country" error={errors.country?.message}>
-          <Input id="country" {...register("country")} />
         </FormField>
 
         <h2 className="mb-3 mt-6 text-sm font-semibold uppercase tracking-wide text-text-muted">
@@ -197,13 +204,27 @@ export default function CheckoutPage() {
       </form>
 
       <aside className="h-fit rounded-md border border-border bg-surface p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Order summary
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+            Your reserved items
+          </h2>
+          <span
+            className={`flex items-center gap-1 font-mono text-sm font-bold ${
+              secondsLeft <= 30 ? "text-danger" : "text-soft-lock"
+            }`}
+          >
+            <Clock className="size-4" />
+            {formatLock(secondsLeft)}
+          </span>
+        </div>
         <div className="flex flex-col gap-3">
           {cart.items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between text-sm">
-              <span className="truncate pr-2">{item.name}</span>
+            <div key={item.id} className="flex items-center gap-3 text-sm">
+              <div className="size-11 shrink-0 overflow-hidden rounded-sm border border-border bg-bg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.img} alt={item.name} className="size-full object-cover" />
+              </div>
+              <span className="flex-1 truncate">{item.name}</span>
               <span className="font-mono">৳{item.price.toLocaleString()}</span>
             </div>
           ))}
@@ -213,7 +234,7 @@ export default function CheckoutPage() {
           <span className="font-mono">৳{total.toLocaleString()}</span>
         </div>
         <p className="mt-3 text-[0.72rem] text-soft-lock">
-          Complete payment within 5 minutes to keep your reservation.
+          Complete payment before the timer runs out to keep your reservation.
         </p>
       </aside>
     </div>
