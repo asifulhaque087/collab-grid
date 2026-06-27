@@ -1,12 +1,24 @@
-# Current Feature
+# Current Feature: Reactive Minimap
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Replace the hardcoded minimap dots in [canvas-editor.tsx:835-848](apps/web/src/components/canvas/canvas-editor.tsx#L835-L848) with real widget positions, scaled from world space (`board.maxWidth` × `board.maxHeight`) into the 180×120 minimap box.
+- Each dot reflects the live `widgets` state — position (`x`/`y`), and color by `state` (active → teal, mine/peer/soft-lock → amber, sold → emerald). Dots update reactively as widgets are placed, moved, locked, and purchased.
+- Render the viewport rectangle reactively from the current `pan`/`zoom` (via `computeViewport`), so it tracks what the user is actually looking at as they pan/zoom.
+- Clicking anywhere in the minimap pans the main canvas so that point is centered in the viewport.
+
 ## Notes
+
+- Applies to both canvas routes — they share the `CanvasEditor` component: public `/b/[slug]` ([apps/web/src/app/b/[slug]/page.tsx](apps/web/src/app/b/[slug]/page.tsx)) and tenant `/dashboard/boards/[slug]` ([apps/web/src/app/dashboard/boards/[slug]/page.tsx](apps/web/src/app/dashboard/boards/[slug]/page.tsx)).
+- Existing helpers to reuse: `centerOnCanvas`/the pan-math pattern (`pan = viewportCenter − worldPoint·scale`), `computeViewport()` for the viewport rect, and `transform` for scale. Minimap scale = minimap box dims ÷ `board.maxWidth`/`maxHeight`.
+- World/minimap mapping must use the real board dimensions (`board.maxWidth`/`maxHeight`, default 10000), not the old hardcoded percentages.
+- CSS classes already exist: `.canvas-minimap` (180×120, 8px pad), `.minimap-inner`, `.minimap-dot`, `.minimap-viewport` ([globals.css:797-829](apps/web/src/app/globals.css#L797-L829)).
+- Keep dots cheap to render (many widgets possible); compute positions inline from state, no extra socket events needed — `widgets` and `pan`/`zoom` are already reactive.
+- Click-to-pan should map the click coordinates within `.minimap-inner` back to world coords, then reuse the centering pan math.
 
 ## History
 

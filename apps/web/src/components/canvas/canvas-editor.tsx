@@ -38,6 +38,14 @@ function formatLock(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+// Minimap dot color, matching the canvas widget state styling.
+function minimapColor(w: CanvasWidget) {
+  if (w.state === "sold") return "var(--color-committed)";
+  if (w.hard) return "var(--color-danger)";
+  if (w.state === "active") return "var(--color-active)";
+  return "var(--color-soft-lock)"; // mine / peer (soft-locked)
+}
+
 function priceToNumber(price: string) {
   return parseInt(price.replace(/[^0-9]/g, ""), 10) || 0;
 }
@@ -213,6 +221,25 @@ export function CanvasEditor({
 
   const transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom / 100})`;
 
+  // Minimap viewport rectangle, derived from live pan/zoom (computed during
+  // render so it tracks the canvas). Expressed as clamped percentages of the
+  // board's world size for direct use as left/top/width/height on the box.
+  const minimapView = (() => {
+    const vp = viewportRef.current;
+    const scale = zoom / 100;
+    const vw = vp?.clientWidth ?? 1280;
+    const vh = vp?.clientHeight ?? 720;
+    const pct = (v: number) => Math.max(0, Math.min(100, v));
+    const left = pct((-pan.x / scale / board.maxWidth) * 100);
+    const top = pct((-pan.y / scale / board.maxHeight) * 100);
+    return {
+      left,
+      top,
+      width: Math.min(100 - left, (vw / scale / board.maxWidth) * 100),
+      height: Math.min(100 - top, (vh / scale / board.maxHeight) * 100),
+    };
+  })();
+
   // ── Zoom ──────────────────────────────────────────────
   const changeZoom = useCallback((delta: number, cx?: number, cy?: number) => {
     const oldZoom = zoomRef.current;
@@ -261,6 +288,25 @@ export function CanvasEditor({
     setZoom(100);
     centerOnCanvas(100);
   };
+
+  // Click the minimap to jump there: map the click fraction back to a world
+  // point, then pan so that point lands at the viewport center (same math as
+  // centerOnCanvas, but for an arbitrary world point).
+  const handleMinimapClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const fx = (e.clientX - rect.left) / rect.width;
+    const fy = (e.clientY - rect.top) / rect.height;
+    const worldX = fx * board.maxWidth;
+    const worldY = fy * board.maxHeight;
+    const vp = viewportRef.current;
+    const w = vp?.clientWidth ?? 1280;
+    const h = vp?.clientHeight ?? 720;
+    const scale = zoomRef.current / 100;
+    setPan({
+      x: Math.round(w / 2 - worldX * scale),
+      y: Math.round(h / 2 - worldY * scale),
+    });
+  }, [board.maxWidth, board.maxHeight]);
 
   // Native wheel listener so we can preventDefault (passive: false).
   useEffect(() => {
@@ -832,18 +878,36 @@ export function CanvasEditor({
           </button>
         </div>
 
-        {/* Minimap */}
+        {/* Minimap — reactive: dots track widget positions/states, the rect
+            tracks the viewport, and clicking jumps the canvas there. */}
         <div className="canvas-minimap">
-          <div className="minimap-inner">
-            <div className="minimap-dot" style={{ left: "8%", top: "10%", width: 10, height: 12, background: "var(--color-active)" }} />
-            <div className="minimap-dot" style={{ left: "22%", top: "8%", width: 10, height: 12, background: "var(--color-active)" }} />
-            <div className="minimap-dot" style={{ left: "38%", top: "12%", width: 10, height: 12, background: "var(--color-soft-lock)" }} />
-            <div className="minimap-dot" style={{ left: "10%", top: "42%", width: 10, height: 12, background: "var(--color-committed)" }} />
-            <div className="minimap-dot" style={{ left: "28%", top: "40%", width: 10, height: 12, background: "var(--color-active)" }} />
-            <div className="minimap-dot" style={{ left: "44%", top: "46%", width: 10, height: 12, background: "var(--color-soft-lock)" }} />
-            <div className="minimap-dot" style={{ left: "54%", top: "10%", width: 12, height: 8, background: "var(--color-active)" }} />
-            <div className="minimap-dot" style={{ left: "54%", top: "38%", width: 14, height: 10, background: "var(--color-active)" }} />
-            <div className="minimap-viewport" style={{ left: "2%", top: "4%", width: "42%", height: "50%" }} />
+          <div
+            className="minimap-inner"
+            onClick={handleMinimapClick}
+            title="Click to jump to an area"
+          >
+            {widgets.map((w) => (
+              <div
+                key={w.id}
+                className="minimap-dot"
+                style={{
+                  left: `${(w.x / board.maxWidth) * 100}%`,
+                  top: `${(w.y / board.maxHeight) * 100}%`,
+                  width: 5,
+                  height: 6,
+                  background: minimapColor(w),
+                }}
+              />
+            ))}
+            <div
+              className="minimap-viewport"
+              style={{
+                left: `${minimapView.left}%`,
+                top: `${minimapView.top}%`,
+                width: `${minimapView.width}%`,
+                height: `${minimapView.height}%`,
+              }}
+            />
           </div>
         </div>
 
