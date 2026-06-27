@@ -763,6 +763,8 @@ select {
   box-shadow: var(--shadow-lg);
   z-index: 30;
 }
+/* No inventory panel (end-user board) — hug the left edge. */
+.canvas-float-toolbar.no-panel { left: 16px; }
 .float-tool-btn {
   position: relative;
   width: 36px; height: 36px;
