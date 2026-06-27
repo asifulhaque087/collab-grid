@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Create account — CollabGrid",
 };
 
-export default function RegisterPage() {
-  return <RegisterForm googleAuthUrl={googleAuthUrl()} />;
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string }>;
+}) {
+  const { plan } = await searchParams;
+  return <RegisterForm googleAuthUrl={googleAuthUrl()} plan={plan} />;
 }

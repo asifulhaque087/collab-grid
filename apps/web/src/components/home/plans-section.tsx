@@ -1,7 +1,6 @@
 import Link from "next/link";
-import type { HomePlan } from "@/types/home";
 import { Button } from "@/components/ui/button";
-import { HOME_PLANS } from "@/lib/home-content";
+import { getPublicPlans, type PublicPlan } from "@/lib/public-plans";
 import { SectionHead } from "./section-head";
 
 function CheckIcon() {
@@ -12,16 +11,30 @@ function CheckIcon() {
   );
 }
 
-function PlanCard({ plan }: { plan: HomePlan }) {
+// Short marketing blurb per known plan; falls back to a generic line so new
+// plans created in the dashboard still render sensibly.
+const PLAN_BLURB: Record<string, string> = {
+  free: "For your first drop and a small crew.",
+  pro: "For tenants running live, high-volume drops.",
+};
+
+function PlanCard({ plan }: { plan: PublicPlan }) {
+  const isFree = plan.monthlyPrice === 0;
+  const price = isFree ? "$0" : `$${plan.monthlyPrice}`;
+  const priceUnit = isFree ? "/forever" : "/month";
+  const ctaLabel = isFree ? "Start free" : `Choose ${plan.title}`;
+
   return (
     <div className={`plan${plan.featured ? " featured" : ""}`}>
-      {plan.tag && <span className="tag">{plan.tag}</span>}
-      <h3>{plan.name}</h3>
+      {plan.featured && <span className="tag">POPULAR</span>}
+      <h3>{plan.title}</h3>
       <div className="price">
-        <b>{plan.price}</b>
-        <span>{plan.priceUnit}</span>
+        <b>{price}</b>
+        <span>{priceUnit}</span>
       </div>
-      <p className="blurb">{plan.blurb}</p>
+      <p className="blurb">
+        {PLAN_BLURB[plan.slug] ?? "Real-time boards, scaled for your team."}
+      </p>
       <ul>
         {plan.features.map((f, i) => (
           <li key={i}>
@@ -29,15 +42,21 @@ function PlanCard({ plan }: { plan: HomePlan }) {
             {f.value && <b>{f.value}</b>} {f.text}
           </li>
         ))}
+        <li>
+          <CheckIcon />
+          Real-time canvas &amp; checkout queue
+        </li>
       </ul>
       <Button asChild variant={plan.featured ? "primary" : "secondary"} className="w-full">
-        <Link href={plan.cta.href}>{plan.cta.label}</Link>
+        <Link href={`/sign-up?plan=${plan.slug}`}>{ctaLabel}</Link>
       </Button>
     </div>
   );
 }
 
-export function PlansSection() {
+export async function PlansSection() {
+  const plans = await getPublicPlans();
+
   return (
     <section className="plans" id="plans">
       <div className="wrap">
@@ -46,8 +65,8 @@ export function PlansSection() {
           title="Start free. Upgrade when the boards fill up."
         />
         <div className="plan-grid">
-          {HOME_PLANS.map((plan) => (
-            <PlanCard key={plan.name} plan={plan} />
+          {plans.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} />
           ))}
         </div>
       </div>

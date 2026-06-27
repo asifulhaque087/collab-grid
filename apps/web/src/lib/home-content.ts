@@ -6,14 +6,12 @@ import type {
   BentoStat,
   DemoPeer,
   DemoProduct,
-  HomePlan,
   LegendItem,
   LifecycleState,
 } from "@/types/home";
 
 /** Entry point into the app. No auth yet — repoint at a real sign-up flow later. */
 export const APP_ENTRY = "/dashboard";
-export const BILLING_HREF = "/dashboard/billing";
 
 export const NAV_LINKS = [
   { label: "Live board", href: "#board" },
@@ -118,38 +116,6 @@ export const ARCH_CARDS: ArchCard[] = [
     title: "Bot & teleport detection",
     body: "Movements faster than humanly possible across the grid coordinate system get flagged and throttled, so scripted buyers can't sweep limited drops.",
     tech: "coordinate-velocity heuristics",
-  },
-];
-
-export const HOME_PLANS: HomePlan[] = [
-  {
-    name: "Free",
-    price: "$0",
-    priceUnit: "/forever",
-    blurb: "For your first drop and a small crew.",
-    featured: false,
-    cta: { label: "Start free", href: APP_ENTRY },
-    features: [
-      { value: "2", text: "boards" },
-      { value: "3", text: "custom roles per tenant" },
-      { value: "25", text: "widgets per board" },
-      { text: "Real-time canvas & checkout queue" },
-    ],
-  },
-  {
-    name: "Pro",
-    price: "$9",
-    priceUnit: "/month",
-    blurb: "For tenants running live, high-volume drops.",
-    featured: true,
-    tag: "POPULAR",
-    cta: { label: "Upgrade to Pro", href: BILLING_HREF },
-    features: [
-      { value: "15", text: "boards" },
-      { value: "20", text: "custom roles per tenant" },
-      { value: "Unlimited", text: "widgets per board" },
-      { text: "bKash · Nagad · SSLCommerz · Manual" },
-    ],
   },
 ];
 
