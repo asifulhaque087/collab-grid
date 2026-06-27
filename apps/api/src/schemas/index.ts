@@ -206,12 +206,15 @@ export const orderTable = pgTable('order', {
   }),
   // Anonymous canvas user id (sessionStorage) that held the locks.
   buyerUserId: text('buyer_user_id'),
-  buyerName: text('buyer_name').notNull(),
-  email: text('email').notNull(),
+  // Shipping form is trimmed to phone + address (email optional); the rest stay
+  // nullable for backward compatibility with older orders.
+  buyerName: text('buyer_name'),
+  email: text('email'),
+  phone: text('phone'),
   address: text('address').notNull(),
-  city: text('city').notNull(),
+  city: text('city'),
   postalCode: text('postal_code'),
-  country: text('country').notNull(),
+  country: text('country'),
   amountTotal: numeric('amount_total', { precision: 10, scale: 2 }).notNull(),
   paymentMethod: text('payment_method').notNull().default('card'),
   cardLast4: text('card_last4'),

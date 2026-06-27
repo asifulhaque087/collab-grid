@@ -255,6 +255,28 @@ export class RealtimeGateway
       });
   }
 
+  // Manual release: the user removed an item from their locked-items sidebar.
+  // Drop the Redis lock (only if they hold it) and tell the board so the widget
+  // returns to its default state — and a refresh no longer recovers the lock.
+  @SubscribeMessage('widget:lock:soft:release:init')
+  async onSoftRelease(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: SoftLockPayload,
+  ) {
+    const data = client.data as SocketData;
+    if (!data.boardId) return;
+
+    await this.realtime.releaseLock(
+      data.boardId,
+      payload.widgetId,
+      data.user.userId,
+    );
+
+    this.server
+      .to(this.zone.boardRoom(data.boardId))
+      .emit('widget:lock:soft:release', { widgetId: payload.widgetId });
+  }
+
   // Checkout: promote all of the requesting user's soft locks to 5-minute hard
   // locks and turn them red for everyone on the board.
   @SubscribeMessage('widget:lock:hard:init')
@@ -360,12 +382,28 @@ export class RealtimeGateway
   // Called by the order flow after a successful payment: remove each sold
   // widget, clear its locks, and broadcast widget:purchased so it leaves every
   // viewer's canvas (Amber → gone). Public so OrderService can invoke it.
-  async completePurchase(boardId: string, widgetIds: string[]) {
+  // Finally release any other locks the buyer still held so checkout leaves no
+  // stray reservation behind in Redis.
+  async completePurchase(
+    boardId: string,
+    widgetIds: string[],
+    buyerUserId?: string,
+  ) {
     const room = this.zone.boardRoom(boardId);
     for (const widgetId of widgetIds) {
       await this.realtime.removeWidget(boardId, widgetId);
       await this.realtime.clearLock(boardId, widgetId);
       this.server.to(room).emit('widget:purchased', { widgetId });
+    }
+
+    if (buyerUserId) {
+      const released = await this.realtime.releaseAllUserLocks(
+        boardId,
+        buyerUserId,
+      );
+      for (const widgetId of released) {
+        this.server.to(room).emit('widget:lock:soft:release', { widgetId });
+      }
     }
   }
 

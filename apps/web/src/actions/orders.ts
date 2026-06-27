@@ -7,12 +7,9 @@ export interface OrderInput {
   boardId: string;
   buyerUserId: string;
   widgetIds: string[];
-  buyerName: string;
-  email: string;
+  email?: string;
+  phone: string;
   address: string;
-  city: string;
-  postalCode?: string;
-  country: string;
   cardLast4?: string;
 }
 
