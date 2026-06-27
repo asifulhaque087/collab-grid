@@ -2,15 +2,29 @@
 
 ## Status
 
-Not Started
+Done — pending commit
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Wire socket.io's Redis adapter so WebSocket broadcasts reach clients across multiple API
+  instances, making the realtime tier horizontally scalable. ✅
+
+## Verification
+
+- Redis up → adapter logs "broadcasts are cluster-wide"; Redis down → falls back to in-memory,
+  bootstrap completes fast (3s timeout).
+- Two instances (:3001 + :3002) on one Redis: a soft lock emitted on :3001 was delivered to a
+  client connected to :3002. Lint + build green.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Add a `RedisIoAdapter` extending `@nestjs/platform-socket.io`'s `IoAdapter`, attaching the Redis
+  adapter built from two dedicated ioredis pub/sub clients (the adapter puts one client in
+  subscriber mode, so it needs its own pair separate from the command/subscriber clients in
+  `redis.module.ts`).
+- Graceful degradation: if `REDIS_URL` is unset or Redis is unreachable, fall back to the default
+  in-memory adapter (single-node) rather than crashing bootstrap.
+- Wire it in `main.ts` via `app.useWebSocketAdapter(...)`.
 
 ## History
 
