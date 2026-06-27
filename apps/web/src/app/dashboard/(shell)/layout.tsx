@@ -12,7 +12,11 @@ export default async function DashboardLayout({
   const user = await requireAuth();
 
   return (
-    <PermissionProvider permissions={user.permissions}>
+    <PermissionProvider
+      permissions={user.permissions}
+      quotas={user.quotas}
+      plan={user.plan}
+    >
       <div
         className="grid h-screen"
         style={{
@@ -20,7 +24,7 @@ export default async function DashboardLayout({
           gridTemplateRows: "var(--header-h) 1fr",
         }}
       >
-        <Header />
+        <Header user={user} />
         <Sidebar />
         <main className="dot-grid-bg overflow-y-auto bg-bg px-8 py-7">
           <div className="relative z-[1]">
