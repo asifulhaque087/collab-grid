@@ -38,6 +38,8 @@ export default async function PublicBoardPage({
     slug: board.slug,
     title: board.name,
     access: board.access,
+    maxWidth: board.maxWidth ?? 10000,
+    maxHeight: board.maxHeight ?? 10000,
     widgets: [],
     inventory: [],
     peers: [],
