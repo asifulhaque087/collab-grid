@@ -2,31 +2,15 @@
 
 ## Status
 
-Done — pending commit
+Not Started
 
 ## Goals
 
-- Wire socket.io's Redis adapter so WebSocket broadcasts reach clients across multiple API
-  instances, making the realtime tier horizontally scalable. ✅
-
-## Verification
-
-- Redis up → adapter logs "broadcasts are cluster-wide"; Redis down → falls back to in-memory,
-  bootstrap completes fast (3s timeout).
-- Two instances (:3001 + :3002) on one Redis: a soft lock emitted on :3001 was delivered to a
-  client connected to :3002. Lint + build green.
-
 ## Notes
 
-- Add a `RedisIoAdapter` extending `@nestjs/platform-socket.io`'s `IoAdapter`, attaching the Redis
-  adapter built from two dedicated ioredis pub/sub clients (the adapter puts one client in
-  subscriber mode, so it needs its own pair separate from the command/subscriber clients in
-  `redis.module.ts`).
-- Graceful degradation: if `REDIS_URL` is unset or Redis is unreachable, fall back to the default
-  in-memory adapter (single-node) rather than crashing bootstrap.
-- Wire it in `main.ts` via `app.useWebSocketAdapter(...)`.
-
 ## History
+
+- **Socket.io Redis Adapter (multi-instance scaling)** — Added `RedisIoAdapter` (extends Nest `IoAdapter`) wired in `main.ts` via `app.useWebSocketAdapter`, backing socket.io with `@socket.io/redis-adapter` so room broadcasts propagate across API instances over Redis pub/sub. Initial connect raced against a 3s timeout → falls back to the in-memory adapter when Redis is down (bootstrap never hangs); infinite retryStrategy for runtime self-heal. Verified cross-instance: soft lock emitted on :3001 delivered to a client on :3002. Also added ARCHITECTURE.md + BACKEND_ARCHITECTURE.md.
 
 - **Widget Placement Persist & Broadcast** — dropping a sidebar inventory item onto the canvas now persists + broadcasts instead of mock-only local state. New `widget:place` socket event (gated by the same `canMove` check as moves; end users blocked) → `placeWidget` stamps first `posX`/`posY` onto the smart_widget row (board-scoped UPDATE…RETURNING + Redis sync), transitioning it sidebar → canvas, then fans out the **full widget DTO** as `widget:placed` to every zone its bounding box overlaps (`calculateWidgetOverlappingZones`). Frontend: drag carries the real inventory id, optimistic add, sidebar hides placed items, `onWidgetPlaced` renders peers' new widgets. Verified 9/9 (placement 7/7 + DB persist + zone routing 2/2).
 
