@@ -50,12 +50,15 @@ export class OrderController {
     doc.moveDown();
 
     doc.fontSize(12).text('Ship to', { underline: true });
-    doc.fontSize(10).text(order.buyerName);
-    doc.text(order.email);
+    doc.fontSize(10);
+    if (order.buyerName) doc.text(order.buyerName);
+    if (order.phone) doc.text(order.phone);
+    if (order.email) doc.text(order.email);
     doc.text(order.address);
-    doc.text(
-      [order.city, order.postalCode, order.country].filter(Boolean).join(', '),
-    );
+    const region = [order.city, order.postalCode, order.country]
+      .filter(Boolean)
+      .join(', ');
+    if (region) doc.text(region);
     doc.moveDown();
 
     doc.fontSize(12).text('Items', { underline: true });

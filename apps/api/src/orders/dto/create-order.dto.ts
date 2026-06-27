@@ -30,28 +30,34 @@ export class CreateOrderDto {
   @IsUUID('4', { each: true })
   widgetIds!: string[];
 
+  @IsOptional()
+  @IsString()
+  buyerName?: string;
+
+  // Email is optional in the trimmed shipping form.
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
   @IsString()
   @MinLength(1)
-  buyerName!: string;
-
-  @IsEmail()
-  email!: string;
+  phone!: string;
 
   @IsString()
   @MinLength(1)
   address!: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  city!: string;
+  city?: string;
 
   @IsOptional()
   @IsString()
   postalCode?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  country!: string;
+  country?: string;
 
   // Demo card — only the last 4 digits are stored.
   @IsOptional()

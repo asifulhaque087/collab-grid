@@ -163,6 +163,14 @@ export function useCanvasSocket({
     socket.emit("widget:lock:soft:init", { widgetId });
   }, []);
 
+  // Manual release from the locked-items sidebar — drops the Redis lock so a
+  // refresh no longer recovers it.
+  const releaseSoftLock = useCallback((widgetId: string) => {
+    const socket = socketRef.current;
+    if (!socket?.connected) return;
+    socket.emit("widget:lock:soft:release:init", { widgetId });
+  }, []);
+
   // Checkout — promote all of this user's soft locks to 5-minute hard locks.
   const hardLock = useCallback(() => {
     const socket = socketRef.current;
@@ -202,5 +210,5 @@ export function useCanvasSocket({
     socket.emit("widget:place", { widgetId, x, y });
   }, []);
 
-  return { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd, placeWidget };
+  return { connected, me, sendCursor, updateViewport, softLock, releaseSoftLock, hardLock, moveWidget, moveWidgetEnd, placeWidget };
 }
