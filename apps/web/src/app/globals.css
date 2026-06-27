@@ -816,6 +816,7 @@ select {
   background: var(--color-bg-deep);
   border-radius: 4px;
   overflow: hidden;
+  cursor: pointer;
 }
 .minimap-dot {
   position: absolute;
