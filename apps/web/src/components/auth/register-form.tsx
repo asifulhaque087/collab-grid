@@ -17,7 +17,13 @@ import {
   type RegisterFormValues,
 } from "@/lib/auth-schemas";
 
-export function RegisterForm({ googleAuthUrl }: { googleAuthUrl: string }) {
+export function RegisterForm({
+  googleAuthUrl,
+  plan,
+}: {
+  googleAuthUrl: string;
+  plan?: string;
+}) {
   const router = useRouter();
   const {
     register,
@@ -40,7 +46,11 @@ export function RegisterForm({ googleAuthUrl }: { googleAuthUrl: string }) {
       return;
     }
     toast.success("Account created");
-    router.replace("/dashboard");
+    // Carry a chosen plan into the subscription checkout funnel; otherwise land
+    // straight on the dashboard.
+    router.replace(
+      plan ? `/subscription/checkout?plan=${encodeURIComponent(plan)}` : "/dashboard",
+    );
     router.refresh();
   };
 

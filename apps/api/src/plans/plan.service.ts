@@ -24,6 +24,25 @@ function toSlug(name: string): string {
     .replace(/[^a-z0-9-]/g, '');
 }
 
+const UNLIMITED_QUOTA = -1;
+
+// Monthly price per plan slug — mirrors SubscriptionService.PLAN_MONTHLY_PRICE.
+// The schema has no price column, so price is derived from the slug.
+const PLAN_MONTHLY_PRICE: Record<string, number> = {
+  free: 0,
+  pro: 9,
+};
+
+// Maps a quota'd permission subject onto its homepage feature caption.
+const QUOTA_FEATURE_TEXT: Record<string, string> = {
+  Board: 'boards',
+  Group: 'custom roles per tenant',
+  SmartWidget: 'widgets per board',
+};
+
+// Render order for the derived feature bullets.
+const QUOTA_FEATURE_ORDER = ['Board', 'Group', 'SmartWidget'];
+
 @Injectable()
 export class PlanService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
@@ -75,6 +94,54 @@ export class PlanService {
         subject: gp.permission.subject,
       })),
     }));
+  }
+
+  // Public, unauthenticated plan cards for the marketing homepage funnel.
+  // Quota numbers stored on each plan's group permissions become feature
+  // bullets; price is derived from the slug. Cheapest plan first.
+  async findPublicPlans() {
+    const [plans, err] = await tryit(
+      this.db.query.groupTable.findMany({
+        where: eq(groupTable.type, 'plan'),
+        with: { groupPermissions: { with: { permission: true } } },
+      }),
+    );
+
+    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+
+    return (plans ?? [])
+      .map((p) => {
+        const monthlyPrice = PLAN_MONTHLY_PRICE[p.slug] ?? 0;
+
+        const features = p.groupPermissions
+          .filter(
+            (gp) =>
+              gp.totalOperation !== null &&
+              QUOTA_FEATURE_TEXT[gp.permission.subject],
+          )
+          .sort(
+            (a, b) =>
+              QUOTA_FEATURE_ORDER.indexOf(a.permission.subject) -
+              QUOTA_FEATURE_ORDER.indexOf(b.permission.subject),
+          )
+          .map((gp) => ({
+            value:
+              gp.totalOperation === UNLIMITED_QUOTA
+                ? 'Unlimited'
+                : String(gp.totalOperation),
+            text: QUOTA_FEATURE_TEXT[gp.permission.subject],
+          }));
+
+        return {
+          id: p.id,
+          slug: p.slug,
+          title: p.title,
+          monthlyPrice,
+          featured: monthlyPrice > 0,
+          features,
+        };
+      })
+      .sort((a, b) => a.monthlyPrice - b.monthlyPrice);
   }
 
   async create(dto: CreatePlanDto, userId: string) {
