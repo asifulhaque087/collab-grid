@@ -81,6 +81,7 @@ export class OrderService {
             buyerUserId: dto.buyerUserId,
             buyerName: dto.buyerName,
             email: dto.email,
+            phone: dto.phone,
             address: dto.address,
             city: dto.city,
             postalCode: dto.postalCode,
@@ -119,7 +120,11 @@ export class OrderService {
 
     // Payment captured — finalize the purchase: remove the sold widgets, clear
     // their locks, and broadcast widget:purchased to everyone on the board.
-    await this.gateway.completePurchase(dto.boardId, dto.widgetIds);
+    await this.gateway.completePurchase(
+      dto.boardId,
+      dto.widgetIds,
+      dto.buyerUserId,
+    );
 
     return { orderId: order.id, duplicate: false };
   }

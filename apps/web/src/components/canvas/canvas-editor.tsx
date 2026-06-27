@@ -103,7 +103,7 @@ export function CanvasEditor({
     };
   }, []);
 
-  const { connected, me, sendCursor, updateViewport, softLock, hardLock, moveWidget, moveWidgetEnd, placeWidget } = useCanvasSocket({
+  const { connected, me, sendCursor, updateViewport, softLock, releaseSoftLock, hardLock, moveWidget, moveWidgetEnd, placeWidget } = useCanvasSocket({
     slug: board.slug,
     enabled: realtimeEnabled,
     initialViewport: computeViewport,
@@ -282,6 +282,10 @@ export function CanvasEditor({
   );
 
   const releaseLock = (id: string) => {
+    // Drop the lock in Redis too (when connected) so it doesn't survive a
+    // refresh; the broadcast clears it for every viewer. Update locally either
+    // way so the sidebar responds instantly.
+    if (connected) releaseSoftLock(id);
     setWidgets((prev) =>
       prev.map((w) => (w.id === id ? { ...w, state: "active", lockTime: undefined } : w))
     );
@@ -300,7 +304,15 @@ export function CanvasEditor({
         boardId: board.boardId!,
         slug: board.slug,
         buyerUserId: me?.userId ?? "",
-        items: mine.map((w) => ({ id: w.id, name: w.name, price: priceToNumber(w.price) })),
+        endUser,
+        // Hard lock lasts 5 minutes from now — the checkout page counts down to it.
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        items: mine.map((w) => ({
+          id: w.id,
+          name: w.name,
+          price: priceToNumber(w.price),
+          img: w.img,
+        })),
       };
       sessionStorage.setItem(CHECKOUT_CART_KEY, JSON.stringify(cart));
       router.push("/checkout");
@@ -781,11 +793,14 @@ export function CanvasEditor({
             </>
           )}
           <button
-            className="float-tool-btn"
-            title="Lock info"
-            onClick={() => toast.info("3 active locks on this board")}
+            className={cn("float-tool-btn", sidebarOpen && "active")}
+            title={sidebarOpen ? "Hide locked items" : "Show locked items"}
+            onClick={() => setSidebarOpen((o) => !o)}
           >
             <Lock />
+            {lockedItems.length > 0 && (
+              <span className="float-tool-badge">{lockedItems.length}</span>
+            )}
           </button>
         </div>
 

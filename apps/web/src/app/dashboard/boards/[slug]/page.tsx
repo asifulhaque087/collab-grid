@@ -4,6 +4,7 @@ import { getInventoryItems } from "@/actions/inventory";
 import { Header } from "@/components/layout/header";
 import { CanvasEditor } from "@/components/canvas/canvas-editor";
 import { toInventoryThumb } from "@/lib/canvas-mappers";
+import { requireAuth } from "@/lib/auth";
 import type { BoardCanvas } from "@/types/canvas";
 
 // The live canvas board editor renders full-width under the global header
@@ -13,6 +14,10 @@ export default async function CanvasBoardPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  // This is the tenant-facing editor — anonymous end users belong on the public
+  // /b/[slug] route, so gate it behind auth (redirects to /sign-in otherwise).
+  await requireAuth();
+
   const { slug } = await params;
 
   // Resolve the real board so the editor knows its id (for new widgets) and can
