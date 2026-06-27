@@ -44,24 +44,6 @@ export interface ArchCard {
   tech: string;
 }
 
-/** A pricing plan card. */
-export interface HomePlan {
-  name: string;
-  price: string;
-  priceUnit: string;
-  blurb: string;
-  features: PlanFeature[];
-  featured: boolean;
-  tag?: string;
-  cta: { label: string; href: string };
-}
-
-export interface PlanFeature {
-  /** bold value prefix, e.g. "2" or "Unlimited" */
-  value?: string;
-  text: string;
-}
-
 export interface LegendItem {
   color: string;
   label: string;
