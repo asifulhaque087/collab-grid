@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import type { Quota } from "@/lib/ability";
 
 const API_URL = process.env.API_URL ?? "http://localhost:3001";
 
@@ -17,7 +18,7 @@ export interface CurrentUser {
   plan: string;
   roles: string[];
   permissions: { action: string; subject: string }[];
-  quotas: unknown[];
+  quotas: Quota[];
 }
 
 // Resolves the signed-in user from the auth cookies, or null when there's no

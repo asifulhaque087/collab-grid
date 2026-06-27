@@ -1,12 +1,21 @@
-# Current Feature
+# Current Feature: Dashboard Permissions & Navigation
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Make the sidebar "plan usages" box dynamic — render the real permission/quota usage from the user's plan snapshot instead of static values.
+- Hide the Transactions menu for tenants; show it only for super-admin.
+- Add a logout option to a dropdown that opens when clicking the profile menu in the dashboard topbar.
+
 ## Notes
+
+- Source spec: `context/features/16-dashboard-permissions-and-navigation.spec.md`
+- Plan usage box currently static in the dashboard sidebar — needs to reflect dynamic permission quotas (Boards, Roles, Widgets, etc.).
+- Transactions is an Administration-level menu; gating likely belongs alongside existing sidebar permission/role logic (CASL / route-permissions).
+- Profile dropdown: clicking topbar profile → dropdown with logout action.
 
 ## History
 

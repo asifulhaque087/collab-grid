@@ -109,6 +109,36 @@ export async function registerAction(
   return { success: true, data: body };
 }
 
+// Signs the user out: tells the API to revoke the refresh token (forwarding the
+// auth cookies), then clears both cookies on the Next side so the browser
+// session ends. Best-effort on the API call — cookies are cleared regardless.
+export async function logoutAction(): Promise<ActionResult<null>> {
+  const store = await cookies();
+  const accessToken = store.get("accessToken")?.value;
+  const refreshToken = store.get("refreshToken")?.value;
+
+  const cookieHeader = [
+    accessToken && `accessToken=${accessToken}`,
+    refreshToken && `refreshToken=${refreshToken}`,
+  ]
+    .filter(Boolean)
+    .join("; ");
+
+  try {
+    await fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      headers: { Cookie: cookieHeader },
+    });
+  } catch {
+    // Ignore — we still clear the local session below.
+  }
+
+  store.delete("accessToken");
+  store.delete("refreshToken");
+
+  return { success: true, data: null };
+}
+
 export async function forgotPasswordAction(
   input: ForgotPasswordValues,
 ): Promise<ActionResult<{ message: string }>> {

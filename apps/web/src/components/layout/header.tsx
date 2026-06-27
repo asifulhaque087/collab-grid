@@ -1,5 +1,6 @@
 import { LayoutGrid } from "lucide-react";
 import { HeaderActions } from "./header-actions";
+import type { CurrentUser } from "@/lib/auth";
 
 function TelemetryItem({
   dot,
@@ -24,7 +25,7 @@ function TelemetryItem({
   );
 }
 
-export function Header() {
+export function Header({ user }: { user: CurrentUser }) {
   return (
     <header className="z-[100] col-span-2 flex h-[var(--header-h)] shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-6">
       <div className="flex min-w-0 items-center gap-4">
@@ -47,7 +48,7 @@ export function Header() {
           <TelemetryItem dot="amber">Locks: 3</TelemetryItem>
           <TelemetryItem>Latency: 4ms</TelemetryItem>
         </div>
-        <HeaderActions />
+        <HeaderActions name={user.name} email={user.email} />
       </div>
     </header>
   );

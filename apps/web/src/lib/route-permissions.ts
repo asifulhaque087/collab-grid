@@ -1,5 +1,12 @@
 import { Action, Subjects } from "./ability";
 
+// The super-admin super-grant (manage:all). Only the super-admin role holds it,
+// so gating a route on it makes the route + its sidebar item super-admin-only.
+export const SUPER_ADMIN_REQUIREMENT: PermissionRequirement = {
+  action: Action.Manage,
+  subject: Subjects.All,
+};
+
 // The permission a dashboard route requires to be viewed. The PermissionGuard
 // resolves the current path to one of these and redirects to /unauthorized when
 // the user's ability can't satisfy it.
@@ -21,7 +28,8 @@ const ROUTE_PERMISSIONS: Array<{
   { prefix: "/dashboard/roles", requirement: { action: Action.Read, subject: Subjects.Group } },
   { prefix: "/dashboard/plans", requirement: { action: Action.Read, subject: Subjects.Group } },
   { prefix: "/dashboard/orders", requirement: { action: Action.Read, subject: Subjects.PaymentHistory } },
-  { prefix: "/dashboard/transactions", requirement: { action: Action.Read, subject: Subjects.PaymentHistory } },
+  // Transactions is super-admin-only — tenants get Orders instead.
+  { prefix: "/dashboard/transactions", requirement: SUPER_ADMIN_REQUIREMENT },
 ];
 
 // Resolve the permission required to view the given path, or null when the
