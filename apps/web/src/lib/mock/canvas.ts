@@ -7,6 +7,8 @@ const board: BoardCanvas = {
   slug: "friday-flash-sale",
   title: "Friday Flash Sale",
   access: "public",
+  maxWidth: 6000,
+  maxHeight: 4000,
   widgets: [
     { id: "w1", name: "Jamdani Saree — Premium", price: "৳4,500", qty: 33, state: "active", x: 120, y: 80, width: 190, img: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400&h=300&fit=crop" },
     { id: "w2", name: "Kantha Stitch Scarf", price: "৳1,200", qty: 86, state: "active", x: 380, y: 60, width: 190, img: "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=400&h=300&fit=crop" },
