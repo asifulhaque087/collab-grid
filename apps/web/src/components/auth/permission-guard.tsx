@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createAbilityFor } from "@/lib/ability";
-import { getRequiredPermissionForPath } from "@/lib/route-permissions";
+import { getRequiredPermissionForPath, canAccess } from "@/lib/route-permissions";
 
 // Server-side route guard. Reads the current path (stamped by proxy.ts), looks
 // up the permission that path requires, builds the user's CASL ability, and
@@ -22,7 +22,7 @@ export async function PermissionGuard({
   const user = await getCurrentUser();
   const ability = createAbilityFor(user);
 
-  if (!ability.can(requirement.action, requirement.subject)) {
+  if (!canAccess(ability, requirement)) {
     redirect("/unauthorized");
   }
 
