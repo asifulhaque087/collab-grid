@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { ViewRoleModal } from "./view-role-modal";
 import {
   DataTable,
   Th,
@@ -33,6 +34,7 @@ interface RolesTableProps {
 
 export function RolesTable({ roles, onEdit }: RolesTableProps) {
   const [deletingRole, setDeletingRole] = useState<ApiRole | null>(null);
+  const [viewingRole, setViewingRole] = useState<ApiRole | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function confirmDelete() {
@@ -79,22 +81,19 @@ export function RolesTable({ roles, onEdit }: RolesTableProps) {
             </Td>
             <Td align="right">
               <RowActions>
-                {role.isSystem ? (
-                  <RowActionButton title="View" onClick={() => toast.info("System role — read only")}>
-                    <Eye />
+                <RowActionButton title="View" onClick={() => setViewingRole(role)}>
+                  <Eye />
+                </RowActionButton>
+                <RowActionButton title="Edit" onClick={() => onEdit(role)}>
+                  <Pencil />
+                </RowActionButton>
+                {!role.isSystem && (
+                  <RowActionButton
+                    title="Delete"
+                    onClick={() => setDeletingRole(role)}
+                  >
+                    <Trash2 />
                   </RowActionButton>
-                ) : (
-                  <>
-                    <RowActionButton title="Edit" onClick={() => onEdit(role)}>
-                      <Pencil />
-                    </RowActionButton>
-                    <RowActionButton
-                      title="Delete"
-                      onClick={() => setDeletingRole(role)}
-                    >
-                      <Trash2 />
-                    </RowActionButton>
-                  </>
                 )}
               </RowActions>
             </Td>
@@ -123,6 +122,12 @@ export function RolesTable({ roles, onEdit }: RolesTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ViewRoleModal
+        open={Boolean(viewingRole)}
+        onOpenChange={(open) => !open && setViewingRole(null)}
+        role={viewingRole}
+      />
     </>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { ViewPlanModal } from "./view-plan-modal";
 import {
   DataTable,
   Th,
@@ -33,6 +34,7 @@ interface PlansTableProps {
 
 export function PlansTable({ plans, onEdit }: PlansTableProps) {
   const [deletingPlan, setDeletingPlan] = useState<ApiPlan | null>(null);
+  const [viewingPlan, setViewingPlan] = useState<ApiPlan | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function confirmDelete() {
@@ -79,22 +81,19 @@ export function PlansTable({ plans, onEdit }: PlansTableProps) {
             </Td>
             <Td align="right">
               <RowActions>
-                {plan.isSystem ? (
-                  <RowActionButton title="View" onClick={() => toast.info("System plan — read only")}>
-                    <Eye />
+                <RowActionButton title="View" onClick={() => setViewingPlan(plan)}>
+                  <Eye />
+                </RowActionButton>
+                <RowActionButton title="Edit" onClick={() => onEdit(plan)}>
+                  <Pencil />
+                </RowActionButton>
+                {!plan.isSystem && (
+                  <RowActionButton
+                    title="Delete"
+                    onClick={() => setDeletingPlan(plan)}
+                  >
+                    <Trash2 />
                   </RowActionButton>
-                ) : (
-                  <>
-                    <RowActionButton title="Edit" onClick={() => onEdit(plan)}>
-                      <Pencil />
-                    </RowActionButton>
-                    <RowActionButton
-                      title="Delete"
-                      onClick={() => setDeletingPlan(plan)}
-                    >
-                      <Trash2 />
-                    </RowActionButton>
-                  </>
                 )}
               </RowActions>
             </Td>
@@ -123,6 +122,12 @@ export function PlansTable({ plans, onEdit }: PlansTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ViewPlanModal
+        open={Boolean(viewingPlan)}
+        onOpenChange={(open) => !open && setViewingPlan(null)}
+        plan={viewingPlan}
+      />
     </>
   );
 }
