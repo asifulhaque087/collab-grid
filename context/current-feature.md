@@ -1,12 +1,23 @@
-# Current Feature
+# Current Feature: Hide Tenant-Only Menus from Super Admin
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Super-admin (holder of `manage:all`) should NOT see tenant-business menus in the dashboard sidebar: **Boards**, **Inventory**, **Orders**, and **Billing**.
+- Those four routes should also be blocked server-side for super-admin (redirect to `/unauthorized`), not just hidden in the nav — so direct URL access is denied too.
+- Super-admin retains the SaaS-management menus: Users, Roles, Plans, Transactions, Settings.
+- Tenant / sub-user nav and access are unchanged — they keep Boards, Inventory, Orders, Billing.
+
 ## Notes
+
+- Root cause: super-admin holds `manage:all`, so CASL `ability.can(...)` returns `true` for every route gate in [route-permissions.ts](apps/web/src/lib/route-permissions.ts). Boards/Inventory/Orders are gated on tenant `read:*` permissions that `manage:all` satisfies, so they show. Billing is currently ungated entirely, so it always shows.
+- Need a way to mark a route/menu as **tenant-only** = visible to anyone EXCEPT the `manage:all` super-grant. A plain CASL `can` check can't express "hide from the all-powerful role"; this likely needs an explicit exclusion (e.g. a `denyForSuperAdmin` flag or a "tenant feature" requirement) checked in both the sidebar filter ([sidebar.tsx](apps/web/src/components/layout/sidebar.tsx)) and the server `PermissionGuard`.
+- Affected menus: Boards, Inventory (Workspace), Orders (Administration), Billing (System). Settings stays shared.
+- Billing has no current route gate — adding one means wiring it into `ROUTE_PERMISSIONS` and confirming the `/dashboard/billing` page still works for tenants.
+- Keep it frontend-RBAC consistent: mirror any new exclusion in the backend if those endpoints aren't already tenant-scoped (Orders = `read:PaymentHistory`, which super-admin's `manage:all` also satisfies — worth checking the API guards).
 
 ## History
 
