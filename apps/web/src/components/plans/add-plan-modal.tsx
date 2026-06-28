@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useController, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Minus, Plus, Infinity as InfinityIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,76 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+// A polished quota stepper: − / + buttons flank a centered numeric field with
+// the native browser spinners hidden. Blank = permission excluded; stepping
+// below 0 lands on -1, shown as ∞ (unlimited).
+function QuotaField({
+  control,
+  name,
+}: {
+  control: Control<FormValues>;
+  name: `quotas.${string}`;
+}) {
+  const { field } = useController({ control, name, defaultValue: "" });
+  const raw = field.value ?? "";
+  const num = raw === "" ? null : Number(raw);
+  const isUnlimited = raw === "-1";
+
+  const set = (v: number | null) => field.onChange(v === null ? "" : String(v));
+
+  const dec = () => {
+    if (num === null || Number.isNaN(num)) return; // blank: nothing to step
+    set(Math.max(-1, num - 1)); // floors at -1 (= unlimited)
+  };
+  const inc = () => {
+    if (num === null || Number.isNaN(num) || isUnlimited) return set(0);
+    set(num + 1);
+  };
+
+  return (
+    <div className="flex h-8 items-center overflow-hidden rounded-md border border-border bg-bg transition-colors focus-within:border-active">
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={dec}
+        disabled={num === null || isUnlimited}
+        className="flex h-full w-7 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+      >
+        <Minus className="size-3.5" />
+      </button>
+      {isUnlimited ? (
+        <button
+          type="button"
+          onClick={inc}
+          title="Unlimited — click to set a number"
+          className="flex h-full w-12 items-center justify-center text-active"
+        >
+          <InfinityIcon className="size-4" />
+        </button>
+      ) : (
+        <input
+          type="number"
+          step={1}
+          min={-1}
+          value={raw}
+          onChange={(e) => field.onChange(e.target.value)}
+          onBlur={field.onBlur}
+          placeholder="—"
+          className="no-spinner h-full w-12 bg-transparent text-center font-mono text-[0.85rem] text-text outline-none placeholder:text-text-muted"
+        />
+      )}
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={inc}
+        className="flex h-full w-7 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+      >
+        <Plus className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
 interface AddPlanModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -47,6 +118,7 @@ export function AddPlanModal({
   const {
     register,
     handleSubmit,
+    control,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
@@ -135,14 +207,7 @@ export function AddPlanModal({
                     name={perm.name}
                     scope={`${perm.action} · ${perm.subject}`}
                   >
-                    <Input
-                      type="number"
-                      step={1}
-                      min={-1}
-                      placeholder="—"
-                      className="w-20"
-                      {...register(`quotas.${perm.id}`)}
-                    />
+                    <QuotaField control={control} name={`quotas.${perm.id}`} />
                   </PermItem>
                 ))}
               </PermGrid>
