@@ -1,21 +1,12 @@
-# Current Feature: Scope Plan Permissions to Tenant Role Subset
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- The Add/Edit Plan modal permission picker should list **only the tenant role's permissions** (the subset), not the full permission catalog.
-- Currently `GET /plans/permissions` → [PlanService.listPermissions()](apps/api/src/plans/plan.service.ts#L50) returns every row in `permissionsTable`, including the super-admin `manage:all` grant — none of which a plan should ever quota.
-- Filter at the source so the modal only ever sees permissions a tenant can actually hold.
-
 ## Notes
-
-- **Source of truth**: the seeded `tenant` system role (slug = `TENANT_ROLE_SLUG`) is granted exactly `TENANT_PERMISSIONS` — every catalog entry except `manage:all` (see `isTenantPermission` in [seed.ts](apps/api/drizzle/seed.ts#L38)). Plan quotas are guaranteed (compile-time) to be a subset of these.
-- **Preferred fix location**: backend `listPermissions()` — scope the query to permissions belonging to the tenant role group (join `groupPermission` where group slug = `tenant`), or exclude `manage:all`. Joining the tenant role keeps it data-driven and self-correcting if the role's grants change. Frontend modal/page need no change (still consumes `ApiPermission[]`).
-- Endpoint is consumed only by [plans/page.tsx](apps/web/src/app/dashboard/(shell)/plans/page.tsx#L22) → [PlansView](apps/web/src/components/plans/plans-view.tsx) → [AddPlanModal](apps/web/src/components/plans/add-plan-modal.tsx#L115). Affects both create and edit (same modal).
-- Keep existing `orderBy(subject, action)`. No schema/migration change.
 
 ## History
 
@@ -54,3 +45,5 @@ In Progress
 - **Reactive Minimap** — Both canvas routes (shared `CanvasEditor`) now render a live minimap instead of hardcoded placeholders. Dots map each widget's `x`/`y` over board world dims (`maxWidth`/`maxHeight`) as percentages, colored by state via `minimapColor()` (active→teal, mine/peer→amber, hard→red, sold→emerald), updating reactively as widgets place/move/lock/sell. The `.minimap-viewport` rect is computed at render from live `pan`/`zoom` (clamped %), tracking what the user sees. `handleMinimapClick` maps the click fraction back to a world point and pans it to the viewport center (same math as `centerOnCanvas`); added `cursor:pointer` to `.minimap-inner`. Build 3/3.
 
 - **Docker Multi-Stage Setup** — Multi-stage Dockerfiles for `apps/web` + `apps/api`, built from the repo root so the pnpm workspace + `@collab-grid/common` resolve. Stages: `deps`/`prod-deps` (scoped `--filter …`, `--frozen-lockfile`, pnpm store cache mounts), `development`, `build`, and lean non-root alpine `production`. Web ships Next.js standalone output (`output:'standalone'` + `outputFileTracingRoot` at monorepo root). API runtime copies only prod node_modules + built `common` + `apps/api/dist`; entry is `dist/src/main.js` (drizzle.config.ts widens tsc rootDir). `.dockerignore` slims context. docker-compose adds web + api dev services via Compose Watch (`sync` for app src, `sync+restart` for `packages/common` so its dist rebuilds, `rebuild` on manifests/lockfile) atop existing redis + rabbitmq; Postgres is remote (Neon). Verified: prod images build + boot (web 74MiB serves 200; api 244MiB boots, resolves common, all Nest modules init), both dev targets build, `docker compose config` valid.
+
+- **Plan Permissions as Tenant-Scoped Quotas** — `GET /plans/permissions` now inner-joins `group_permission`→`group` filtered to the `tenant` role, so the plan modal lists only tenant permissions (drops super-admin `manage:all`). Plan create/update DTOs take `permissions:[{permissionId,totalOperation}]` and persist the quota (was hardcoded `null`, which subscription silently skipped). Modal switches → a custom −/+ stepper (native spinners hidden via `.no-spinner`, −1 shown as a teal ∞); blank = excluded. `findAll`/`findById` return `totalOperation` so edit prefills. Added `pnpm clean`/`clean:all` cache scripts. Build 3/3.
