@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, Bell, Settings, User, LogOut } from "lucide-react";
+import { Settings, User, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { logoutAction } from "@/actions/auth";
 import {
@@ -68,13 +68,7 @@ export function HeaderActions({
 
   return (
     <>
-      <IconButton label="Search" onClick={() => toast.info("Search panel coming soon")}>
-        <Search />
-      </IconButton>
-      <IconButton label="Notifications" badge onClick={() => toast.info("No new notifications")}>
-        <Bell />
-      </IconButton>
-      <IconButton label="Settings" onClick={() => toast.info("Navigating to settings…")}>
+      <IconButton label="Settings" onClick={() => router.push("/dashboard/settings")}>
         <Settings />
       </IconButton>
 

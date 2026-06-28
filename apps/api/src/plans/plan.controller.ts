@@ -28,26 +28,26 @@ export class PlanController {
   constructor(private readonly planService: PlanService) {}
 
   @Get('permissions')
-  @RequirePermission({ action: Action.Read, subject: Subjects.Permission })
+  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
   listPermissions() {
     return this.planService.listPermissions();
   }
 
   @Get()
-  @RequirePermission({ action: Action.Read, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
   findAll() {
     return this.planService.findAll();
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @RequirePermission({ action: Action.Create, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
   create(@Body() dto: CreatePlanDto, @GetUser() user: AuthUser) {
     return this.planService.create(dto, user.userId);
   }
 
   @Patch(':id')
-  @RequirePermission({ action: Action.Update, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePlanDto,
@@ -57,7 +57,7 @@ export class PlanController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermission({ action: Action.Delete, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.planService.remove(id);
   }
