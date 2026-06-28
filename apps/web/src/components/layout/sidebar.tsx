@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navSections } from "@/lib/nav";
 import { cn } from "@/lib/utils";
-import { getRequiredPermissionForPath } from "@/lib/route-permissions";
+import { getRequiredPermissionForPath, canAccess } from "@/lib/route-permissions";
 import { usePermission } from "@/components/providers/permission-provider";
 import { useSidebar } from "./sidebar-context";
 import { PlanUsageCard } from "./plan-usage-card";
@@ -27,7 +27,7 @@ export function Sidebar() {
       ...section,
       items: section.items.filter((item) => {
         const req = getRequiredPermissionForPath(item.href);
-        return !req || ability.can(req.action, req.subject);
+        return !req || canAccess(ability, req);
       }),
     }))
     .filter((section) => section.items.length > 0);
