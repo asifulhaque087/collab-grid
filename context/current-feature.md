@@ -1,12 +1,21 @@
-# Current Feature
+# Current Feature: Scope Plan Permissions to Tenant Role Subset
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- The Add/Edit Plan modal permission picker should list **only the tenant role's permissions** (the subset), not the full permission catalog.
+- Currently `GET /plans/permissions` → [PlanService.listPermissions()](apps/api/src/plans/plan.service.ts#L50) returns every row in `permissionsTable`, including the super-admin `manage:all` grant — none of which a plan should ever quota.
+- Filter at the source so the modal only ever sees permissions a tenant can actually hold.
+
 ## Notes
+
+- **Source of truth**: the seeded `tenant` system role (slug = `TENANT_ROLE_SLUG`) is granted exactly `TENANT_PERMISSIONS` — every catalog entry except `manage:all` (see `isTenantPermission` in [seed.ts](apps/api/drizzle/seed.ts#L38)). Plan quotas are guaranteed (compile-time) to be a subset of these.
+- **Preferred fix location**: backend `listPermissions()` — scope the query to permissions belonging to the tenant role group (join `groupPermission` where group slug = `tenant`), or exclude `manage:all`. Joining the tenant role keeps it data-driven and self-correcting if the role's grants change. Frontend modal/page need no change (still consumes `ApiPermission[]`).
+- Endpoint is consumed only by [plans/page.tsx](apps/web/src/app/dashboard/(shell)/plans/page.tsx#L22) → [PlansView](apps/web/src/components/plans/plans-view.tsx) → [AddPlanModal](apps/web/src/components/plans/add-plan-modal.tsx#L115). Affects both create and edit (same modal).
+- Keep existing `orderBy(subject, action)`. No schema/migration change.
 
 ## History
 

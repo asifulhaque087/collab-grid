@@ -13,9 +13,14 @@ async function authHeaders(): Promise<HeadersInit> {
     : { 'Content-Type': 'application/json' };
 }
 
+export interface PlanPermissionQuota {
+  permissionId: string;
+  totalOperation: number;
+}
+
 export async function createPlan(data: {
   name: string;
-  permissionIds: string[];
+  permissions: PlanPermissionQuota[];
 }) {
   const res = await fetch(`${API_URL}/plans`, {
     method: 'POST',
@@ -34,7 +39,7 @@ export async function createPlan(data: {
 
 export async function updatePlan(
   id: string,
-  data: { name?: string; permissionIds?: string[] },
+  data: { name?: string; permissions?: PlanPermissionQuota[] },
 ) {
   const res = await fetch(`${API_URL}/plans/${id}`, {
     method: 'PATCH',
