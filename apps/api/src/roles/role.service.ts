@@ -5,7 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { tryit } from '@collab-grid/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
@@ -89,17 +89,24 @@ export class RoleService {
   }
 
   async findAll(userId: string) {
-    const createdBy = await this.resolveCreatedBy(userId);
+    const tree = await this.resolveCreatedBy(userId);
 
-    // Super-admin sees all roles; tenants see system roles + their own custom roles
+    // Root accounts (super-admin / a registered tenant) have no parent; the
+    // users they create are sub-users with parentId set.
+    const [userRow, userErr] = await tryit(
+      this.db
+        .select({ parentId: userTable.parentId })
+        .from(userTable)
+        .where(eq(userTable.id, userId))
+        .limit(1)
+        .then((res) => res[0]),
+    );
+    if (userErr) throw new InternalServerErrorException('An unexpected error occurred');
+    const isRoot = (userRow?.parentId ?? null) === null;
+
     const [roles, err] = await tryit(
       this.db.query.groupTable.findMany({
-        where:
-          createdBy === 'admin'
-            ? eq(groupTable.type, 'role')
-            : and(
-                eq(groupTable.type, 'role'),
-              ),
+        where: eq(groupTable.type, 'role'),
         with: {
           groupPermissions: {
             with: { permission: true },
@@ -111,13 +118,19 @@ export class RoleService {
 
     if (err) throw new InternalServerErrorException('An unexpected error occurred');
 
+    // Visibility rules:
+    // - super-admin (admin tree root): roles whose createdBy is constant or admin
+    // - tenant (tenant tree root): roles whose createdBy is tenant
+    // - sub-users (either tree): only the roles they created themselves
+    const isVisible = (r: { createdBy: string; createdByUserId: string | null }) => {
+      if (!isRoot) return r.createdByUserId === userId;
+      return tree === 'admin'
+        ? r.createdBy === 'constant' || r.createdBy === 'admin'
+        : r.createdBy === 'tenant';
+    };
+
     return (roles ?? [])
-      .filter(
-        (r) =>
-          createdBy === 'admin' ||
-          r.createdBy === 'constant' ||
-          r.createdByUserId === userId,
-      )
+      .filter(isVisible)
       .map((r) => ({
         id: r.id,
         slug: r.slug,
@@ -183,11 +196,8 @@ export class RoleService {
   }
 
   async update(id: string, dto: UpdateRoleDto, userId: string) {
+    // System roles can be edited (but not deleted — see remove()).
     const role = await this.findById(id);
-
-    if (role.isSystem) {
-      throw new ForbiddenException('System roles cannot be modified');
-    }
 
     const createdBy = await this.resolveCreatedBy(userId);
     if (createdBy !== 'admin' && role.createdByUserId !== userId) {
@@ -199,7 +209,13 @@ export class RoleService {
         if (dto.name) {
           await tx
             .update(groupTable)
-            .set({ slug: toSlug(dto.name), title: dto.name })
+            // Keep system role slugs stable — they're referenced in code
+            // (SUPER_ADMIN_ROLE_SLUG/TENANT_ROLE_SLUG, registration, RBAC).
+            .set(
+              role.isSystem
+                ? { title: dto.name }
+                : { slug: toSlug(dto.name), title: dto.name },
+            )
             .where(eq(groupTable.id, id));
         }
 
