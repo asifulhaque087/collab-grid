@@ -191,18 +191,21 @@ export class PlanService {
   }
 
   async update(id: string, dto: UpdatePlanDto) {
+    // System plans can be edited (but not deleted — see remove()).
     const plan = await this.findById(id);
-
-    if (plan.isSystem) {
-      throw new ForbiddenException('System plans cannot be modified');
-    }
 
     const [, txErr] = await tryit(
       this.db.transaction(async (tx) => {
         if (dto.name) {
           await tx
             .update(groupTable)
-            .set({ slug: toSlug(dto.name), title: dto.name })
+            // Keep system plan slugs stable — they're referenced in code
+            // (FREE_PLAN_SLUG/PRO_PLAN_SLUG, price lookups, subscription).
+            .set(
+              plan.isSystem
+                ? { title: dto.name }
+                : { slug: toSlug(dto.name), title: dto.name },
+            )
             .where(eq(groupTable.id, id));
         }
 
