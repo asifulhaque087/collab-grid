@@ -1179,3 +1179,8 @@ html:has(.home-page) { scroll-behavior: smooth; }
 .home-page .hp-btn-checkout:hover { background: #f59e0b; }
 .home-page .hp-btn-pay { background: var(--committed); color: #042f1e; }
 .home-page .hp-btn-pay:hover { background: #10b981; }
+
+/* Hide native number-input spinners (used by the quota stepper). */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spinner { -moz-appearance: textfield; appearance: textfield; }
