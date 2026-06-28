@@ -1,32 +1,12 @@
-# Current Feature: Topbar Cleanup & Role/Plan View Modal
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- **Topbar**: Remove the Search and Notifications (Bell) icon buttons from the dashboard header ([header-actions.tsx](apps/web/src/components/layout/header-actions.tsx)).
-- **Topbar**: Make the Settings icon button navigate to `/dashboard/settings` instead of showing a "coming soon" toast.
-- **Role/Plan tables**: Ensure Edit + Delete actions are present in the actions column. (Already wired for non-system rows via the existing API; confirm/keep.)
-- **View modal**: Replace the current `toast.info` "read only" View action (Eye icon, shown on system roles/plans) with a real modal that displays the role/plan details (title, created-by, members/subscribers, full permission list). Consider exposing a View action for all rows, not just system ones.
-- **Plans = super-admin only** (frontend + backend): hide the Plans sidebar item from tenants (super-admin only) and gate the Plan controller to super-admin (`manage:all`). Tenants subscribe via Billing, they don't manage plans.
-- **Role/plan visibility model** (role.service.findAll): classify the actor by tree (`resolveCreatedBy` → admin/tenant) and root-vs-sub-user (`parentId === null`):
-  - super-admin (admin root): roles whose `createdBy` is `constant` or `admin`.
-  - tenant (tenant root): roles whose `createdBy` is `tenant`.
-  - sub-user (either tree): only roles where `createdByUserId === self`.
-  - Plans only ever have `createdBy` constant/admin and the controller is super-admin-gated, so `plan.service.findAll` returning all already == "constant + admin" for super-admin (no change needed).
-- **Known follow-up**: admin sub-users managing *their own* plans isn't wired — the web RBAC is CASL permission-based with no org-tree signal, so Plans is gated on `manage:all` (super-admin) rather than admin-tree. Needs `tree` exposed through `/auth/me` + a backend admin-tree guard.
-
 ## Notes
-
-- **Backend already exists** — no new API needed:
-  - Roles ([role.controller.ts](apps/api/src/roles/role.controller.ts)): `GET /roles` (findAll, returns permissions + createdBy + memberCount), `POST`, `PATCH :id`, `DELETE :id`, `GET /roles/permissions`.
-  - Plans ([plan.controller.ts](apps/api/src/plans/plan.controller.ts)): `GET /plans` (findAll), `POST`, `PATCH :id`, `DELETE :id`, `GET /plans/permissions`.
-  - The View modal can be built entirely from the `ApiRole` / `ApiPlan` objects already loaded into the table (each carries `permissions`, `createdBy`, `isSystem`, counts) — no single-record fetch endpoint required.
-- System roles/plans are protected (unremovable) — keep Edit/Delete hidden for `isSystem` rows; the View modal is their read-only inspection path.
-- Tables to touch: [roles-table.tsx](apps/web/src/components/roles/roles-table.tsx), [plans-table.tsx](apps/web/src/components/plans/plans-table.tsx). Both already import the `Eye` icon and gate it behind `isSystem`.
-- Settings route exists at `apps/web/src/app/dashboard/(shell)/settings/page.tsx`; profile dropdown already routes there via `router.push("/dashboard/settings")`.
 
 ## History
 
@@ -67,3 +47,5 @@ In Progress
 - **Docker Multi-Stage Setup** — Multi-stage Dockerfiles for `apps/web` + `apps/api`, built from the repo root so the pnpm workspace + `@collab-grid/common` resolve. Stages: `deps`/`prod-deps` (scoped `--filter …`, `--frozen-lockfile`, pnpm store cache mounts), `development`, `build`, and lean non-root alpine `production`. Web ships Next.js standalone output (`output:'standalone'` + `outputFileTracingRoot` at monorepo root). API runtime copies only prod node_modules + built `common` + `apps/api/dist`; entry is `dist/src/main.js` (drizzle.config.ts widens tsc rootDir). `.dockerignore` slims context. docker-compose adds web + api dev services via Compose Watch (`sync` for app src, `sync+restart` for `packages/common` so its dist rebuilds, `rebuild` on manifests/lockfile) atop existing redis + rabbitmq; Postgres is remote (Neon). Verified: prod images build + boot (web 74MiB serves 200; api 244MiB boots, resolves common, all Nest modules init), both dev targets build, `docker compose config` valid.
 
 - **Plan Permissions as Tenant-Scoped Quotas** — `GET /plans/permissions` now inner-joins `group_permission`→`group` filtered to the `tenant` role, so the plan modal lists only tenant permissions (drops super-admin `manage:all`). Plan create/update DTOs take `permissions:[{permissionId,totalOperation}]` and persist the quota (was hardcoded `null`, which subscription silently skipped). Modal switches → a custom −/+ stepper (native spinners hidden via `.no-spinner`, −1 shown as a teal ∞); blank = excluded. `findAll`/`findById` return `totalOperation` so edit prefills. Added `pnpm clean`/`clean:all` cache scripts. Build 3/3.
+
+- **Role/Plan Admin UX & Visibility** — Topbar: dropped Search + Notifications icons; Settings now routes to `/dashboard/settings`. New read-only View modals ([view-role-modal](apps/web/src/components/roles/view-role-modal.tsx)/[view-plan-modal](apps/web/src/components/plans/view-plan-modal.tsx)) built from the in-table `ApiRole`/`ApiPlan` (no new endpoint) — plan modal shows per-perm quota (∞/n/Granted). Row actions: View + Edit on every row, Delete only on non-system. Backend: system roles/plans are now editable (removed `isSystem` guard in both `update`s) but still undeletable; system slugs held stable on edit to protect RBAC/price/registration lookups. Plans gated to super-admin (`manage:all`) frontend (route-permissions) + backend (PlanController). `role.service.findAll` scopes visibility by tree (`resolveCreatedBy`) + root/sub-user (`parentId`): super-admin→constant|admin, tenant→tenant, sub-user→own. Follow-ups noted: admin sub-user plan access (needs org-tree in web RBAC); tenant rule is literal `createdBy='tenant'` (cross-tenant name visibility). Build 3/3.
