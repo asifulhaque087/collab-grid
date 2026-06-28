@@ -1,5 +1,6 @@
 import { LayoutGrid } from "lucide-react";
 import { HeaderActions } from "./header-actions";
+import { SidebarToggle } from "./sidebar-toggle";
 import type { CurrentUser } from "@/lib/auth";
 
 function TelemetryItem({
@@ -27,8 +28,9 @@ function TelemetryItem({
 
 export function Header({ user }: { user: CurrentUser }) {
   return (
-    <header className="z-[100] col-span-2 flex h-[var(--header-h)] shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-6">
-      <div className="flex min-w-0 items-center gap-4">
+    <header className="z-[100] flex h-[var(--header-h)] shrink-0 items-center justify-between gap-3 border-b border-border bg-surface px-4 sm:px-6">
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <SidebarToggle />
         <div className="flex shrink-0 items-center gap-2.5">
           <div className="grid size-8 place-items-center rounded-sm bg-[linear-gradient(135deg,var(--color-active),var(--color-brand))]">
             <LayoutGrid className="size-[18px] text-white" strokeWidth={2.5} />
@@ -37,13 +39,13 @@ export function Header({ user }: { user: CurrentUser }) {
             Collab<span className="text-active">Grid</span>
           </div>
         </div>
-        <div className="h-7 w-px shrink-0 bg-border" />
-        <div className="truncate text-[0.95rem] font-semibold text-text-dim">
+        <div className="hidden h-7 w-px shrink-0 bg-border md:block" />
+        <div className="hidden truncate text-[0.95rem] font-semibold text-text-dim md:block">
           Aarong — Retail Workspace
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <div className="mr-3 flex items-center gap-4">
+        <div className="mr-3 hidden items-center gap-4 lg:flex">
           <TelemetryItem dot="green">Socket: Connected</TelemetryItem>
           <TelemetryItem dot="amber">Locks: 3</TelemetryItem>
           <TelemetryItem>Latency: 4ms</TelemetryItem>
