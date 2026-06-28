@@ -28,7 +28,7 @@ export default function BillingPage() {
           </div>
           <StatusBadge variant="active">Active</StatusBadge>
         </div>
-        <div className="mb-4 grid grid-cols-3 gap-4">
+        <div className="mb-4 grid grid-cols-3 gap-4 max-sm:grid-cols-1">
           <UsageStat label="Boards" used="2" total="2" />
           <UsageStat label="Custom Roles" used="2" total="3" />
           <UsageStat label="Widgets / Board" used="24" total="25" />

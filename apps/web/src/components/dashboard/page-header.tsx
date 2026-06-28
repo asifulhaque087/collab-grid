@@ -8,12 +8,14 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-7 flex items-start justify-between">
+    <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 className="text-[1.6rem] font-bold tracking-tight text-text">{title}</h1>
         {subtitle && <p className="mt-1 text-[0.875rem] text-text-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2.5">{actions}</div>}
+      {actions && (
+        <div className="flex flex-wrap items-center gap-2.5">{actions}</div>
+      )}
     </div>
   );
 }
