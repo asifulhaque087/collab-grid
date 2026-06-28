@@ -1,4 +1,12 @@
-import { IsArray, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { PlanPermissionQuotaDto } from './create-plan.dto';
 
 export class UpdatePlanDto {
   @IsOptional()
@@ -8,6 +16,7 @@ export class UpdatePlanDto {
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
-  permissionIds?: string[];
+  @ValidateNested({ each: true })
+  @Type(() => PlanPermissionQuotaDto)
+  permissions?: PlanPermissionQuotaDto[];
 }

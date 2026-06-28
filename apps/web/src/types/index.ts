@@ -121,6 +121,12 @@ export interface Plan {
   highlighted: boolean;
 }
 
+// A plan's permission carries its quota cap (totalOperation):
+// null = boolean capability, -1 = unlimited, >= 0 = capped quota.
+export interface ApiPlanPermission extends ApiPermission {
+  totalOperation: number | null;
+}
+
 export interface ApiPlan {
   id: string;
   slug: string;
@@ -130,7 +136,7 @@ export interface ApiPlan {
   createdAt: string | null;
   isSystem: boolean;
   subscriberCount: number;
-  permissions: ApiPermission[];
+  permissions: ApiPlanPermission[];
 }
 
 export type OrderStatus = "paid" | "pending" | "expired";

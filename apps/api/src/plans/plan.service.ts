@@ -13,6 +13,7 @@ import {
   groupPermissionTable,
   permissionsTable,
 } from '@/schemas';
+import { TENANT_ROLE_SLUG } from '@/auth/rbac.constants';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 
@@ -47,6 +48,8 @@ const QUOTA_FEATURE_ORDER = ['Board', 'Group', 'SmartWidget'];
 export class PlanService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
+  // Plans only ever quota the tenant role's permissions, so the picker is
+  // scoped to that role's grants (excludes the super-admin `manage:all`).
   async listPermissions() {
     const [perms, err] = await tryit(
       this.db
@@ -58,6 +61,12 @@ export class PlanService {
           description: permissionsTable.description,
         })
         .from(permissionsTable)
+        .innerJoin(
+          groupPermissionTable,
+          eq(groupPermissionTable.permissionId, permissionsTable.id),
+        )
+        .innerJoin(groupTable, eq(groupTable.id, groupPermissionTable.groupId))
+        .where(eq(groupTable.slug, TENANT_ROLE_SLUG))
         .orderBy(permissionsTable.subject, permissionsTable.action),
     );
 
@@ -92,6 +101,7 @@ export class PlanService {
         name: gp.permission.name,
         action: gp.permission.action,
         subject: gp.permission.subject,
+        totalOperation: gp.totalOperation,
       })),
     }));
   }
@@ -161,12 +171,12 @@ export class PlanService {
           })
           .returning();
 
-        if (dto.permissionIds.length > 0) {
+        if (dto.permissions.length > 0) {
           await tx.insert(groupPermissionTable).values(
-            dto.permissionIds.map((permissionId) => ({
+            dto.permissions.map((p) => ({
               groupId: created.id,
-              permissionId,
-              totalOperation: null,
+              permissionId: p.permissionId,
+              totalOperation: p.totalOperation,
             })),
           );
         }
@@ -196,17 +206,17 @@ export class PlanService {
             .where(eq(groupTable.id, id));
         }
 
-        if (dto.permissionIds !== undefined) {
+        if (dto.permissions !== undefined) {
           await tx
             .delete(groupPermissionTable)
             .where(eq(groupPermissionTable.groupId, id));
 
-          if (dto.permissionIds.length > 0) {
+          if (dto.permissions.length > 0) {
             await tx.insert(groupPermissionTable).values(
-              dto.permissionIds.map((permissionId) => ({
+              dto.permissions.map((p) => ({
                 groupId: id,
-                permissionId,
-                totalOperation: null,
+                permissionId: p.permissionId,
+                totalOperation: p.totalOperation,
               })),
             );
           }
@@ -261,6 +271,7 @@ export class PlanService {
         name: gp.permission.name,
         action: gp.permission.action,
         subject: gp.permission.subject,
+        totalOperation: gp.totalOperation,
       })),
     };
   }
