@@ -10,7 +10,7 @@ export function PermGrid({
   return (
     <div
       className={cn(
-        "grid max-h-[320px] grid-cols-2 overflow-y-auto rounded-md border border-border bg-bg",
+        "grid max-h-[320px] grid-cols-1 overflow-y-auto rounded-md border border-border bg-bg sm:grid-cols-2",
         className
       )}
     >

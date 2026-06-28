@@ -57,7 +57,7 @@ export function StatCard({ stat }: { stat: Stat }) {
 
 export function StatsRow({ stats }: { stats: Stat[] }) {
   return (
-    <div className="mb-7 grid grid-cols-4 gap-4">
+    <div className="mb-7 grid grid-cols-2 gap-4 lg:grid-cols-4">
       {stats.map((stat) => (
         <StatCard key={stat.label} stat={stat} />
       ))}
