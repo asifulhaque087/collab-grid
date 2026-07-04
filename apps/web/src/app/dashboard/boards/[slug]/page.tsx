@@ -45,7 +45,7 @@ export default async function CanvasBoardPage({
 
   return (
     <div className="flex h-screen flex-col">
-      <Header user={user} />
+      {/* <Header user={user} /> */}
       <div className="min-h-0 flex-1 overflow-hidden">
         <CanvasEditor board={board} />
       </div>

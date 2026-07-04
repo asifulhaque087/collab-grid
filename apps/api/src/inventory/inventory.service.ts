@@ -21,6 +21,7 @@ interface ParsedCsvRow {
   sku: string;
   price?: string;
   quantity: number;
+  photo: string;
 }
 
 @Injectable()
@@ -170,7 +171,8 @@ export class InventoryService {
             sku: row.sku,
             quantity: row.quantity,
             price: row.price ?? null,
-            photo: null,
+            // photo: null,
+            photo: row.photo,
             width: DEFAULT_WIDGET_SIZE,
             height: DEFAULT_WIDGET_SIZE,
           })),
@@ -201,7 +203,7 @@ export class InventoryService {
     const rows: ParsedCsvRow[] = [];
     for (const line of lines.slice(startIdx)) {
       const cells = line.split(',').map((c) => c.trim());
-      const [name, sku, price, quantity] = cells;
+      const [name, sku, price, quantity, photo] = cells;
       if (!name || !sku) continue;
 
       const qty = Number.parseInt(quantity ?? '', 10);
@@ -210,6 +212,7 @@ export class InventoryService {
         sku,
         price: price && !Number.isNaN(Number(price)) ? price : undefined,
         quantity: Number.isNaN(qty) ? 0 : qty,
+        photo: photo
       });
     }
 
