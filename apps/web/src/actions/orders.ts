@@ -1,6 +1,8 @@
 'use server';
 
-const API_URL = process.env.API_URL ?? 'http://localhost:3001';
+import { vars } from "@/vars";
+
+const API_URL = vars.API_GATEWAY_URL;
 
 export interface OrderInput {
   idempotencyKey: string;

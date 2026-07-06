@@ -41,10 +41,10 @@ CMD ["pnpm", "--filter", "web", "dev"]
 FROM base AS build
 ENV NEXT_TELEMETRY_DISABLED=1
 # NEXT_PUBLIC_* are inlined at build time — supply via --build-arg for prod.
-ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_WS_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ARG NEXT_PUBLIC_GATEWAY_URL
+ARG NEXT_PUBLIC_SOCKET_URL
+ENV NEXT_PUBLIC_GATEWAY_URL=$NEXT_PUBLIC_GATEWAY_URL
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./

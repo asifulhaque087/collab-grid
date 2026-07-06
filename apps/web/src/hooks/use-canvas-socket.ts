@@ -15,8 +15,9 @@ import type {
   ServerWidget,
   Viewport,
 } from "@/types/realtime";
+import { vars } from "@/vars";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3001";
+const WS_URL = vars.SOCKET_GATEWAY_URL;
 const USER_ID_KEY = "canvas:userId";
 const USER_NAME_KEY = "canvas:userName";
 

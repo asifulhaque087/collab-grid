@@ -2,8 +2,9 @@ import { cookies } from "next/headers";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PlansView } from "@/components/plans/plans-view";
 import type { ApiPlan, ApiPermission } from "@/types";
+import { vars } from "@/vars";
 
-const API_URL = process.env.API_URL ?? "http://localhost:3001";
+const API_URL = vars.API_GATEWAY_URL;
 
 async function fetchJson<T>(path: string): Promise<T> {
   const store = await cookies();

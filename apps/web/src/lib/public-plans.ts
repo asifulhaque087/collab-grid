@@ -1,7 +1,9 @@
 // Server-side fetch for the public plan cards shown on the marketing homepage
 // and the subscription checkout page. No auth required.
 
-const API_URL = process.env.API_URL ?? "http://localhost:3001";
+import { vars } from "@/vars";
+
+const API_URL = vars.API_GATEWAY_URL;
 
 export interface PublicPlanFeature {
   value: string;

@@ -12,8 +12,9 @@ import { Input } from "@/components/ui/input";
 import { FormField, FormRow } from "@/components/ui/form-field";
 import { createOrder } from "@/actions/orders";
 import { CHECKOUT_CART_KEY, type CheckoutCart } from "@/types/realtime";
+import { vars } from "@/vars";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+const API_URL = vars.API_GATEWAY_URL;
 
 const schema = z.object({
   // Trimmed shipping form: email (optional), phone, address.

@@ -2,8 +2,9 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { vars } from '@/vars';
 
-const API_URL = process.env.API_URL ?? 'http://localhost:3001';
+const API_URL = vars.API_GATEWAY_URL;
 
 async function authHeaders(): Promise<HeadersInit> {
   const store = await cookies();

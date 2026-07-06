@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { TransactionsView } from "@/components/transactions/transactions-view";
 import type { Transaction } from "@/types";
+import { vars } from "@/vars";
 
-const API_URL = process.env.API_URL ?? "http://localhost:3001";
+const API_URL = vars.API_GATEWAY_URL;
 
 interface ApiPayment {
   id: string;

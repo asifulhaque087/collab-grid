@@ -1,14 +1,15 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Quota } from "@/lib/ability";
+import { vars } from "@/vars";
 
-const API_URL = process.env.API_URL ?? "http://localhost:3001";
+const API_URL = vars.API_GATEWAY_URL;
 
 // Browser-facing API origin for the Google OAuth full-page redirect. Computed
 // in server components and threaded down to the (client) Google button so the
 // callback's cookies land directly on the browser.
 export function googleAuthUrl(): string {
-  return `${API_URL}/auth/google`;
+  return `${vars.PUBLIC_API_GATEWAY_URL}/auth/google`;
 }
 
 export interface CurrentUser {
