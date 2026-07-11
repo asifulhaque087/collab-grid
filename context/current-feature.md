@@ -1,24 +1,16 @@
-# Current Feature: Update Routing
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Reorganize `apps/web/src/app` into three Next.js Route Groups: `(public)`, `(private)`, `(auth)`
-- `(private)` — every protected page (dashboard tree, subscription/checkout)
-- `(auth)` — login, register, forgot-password, reset-password (already a group; keep at root)
-- `(public)` — every other page (homepage `/`, `/b/[slug]`, `/checkout`, `/unauthorized`)
-- Keep `getCurrentUser` in `apps/web/src/lib/auth.ts` untouched
-
 ## Notes
 
-- Route groups don't affect URL paths, so `/dashboard`, `/b/[slug]`, etc. stay identical.
-- `api/[[...path]]`, `favicon.ico`, `fonts/`, `globals.css`, root `layout.tsx` stay at root (outside groups).
-- Do not update `getCurrentUser` in `apps/web/src/lib/auth.ts` — separate feature later.
-
 ## History
+
+- **Update Routing** — Reorganized `apps/web/src/app` into three Next.js Route Groups for a strict separation of concerns: `(public)` holds the homepage `/`, public board `/b/[slug]`, `/checkout`, and `/unauthorized`; `(private)` holds the dashboard tree and `/subscription/checkout`; `(auth)` already existed at root (sign-in/up, forgot/reset password) and was kept. Route groups don't alter URL paths, so all 18 routes resolve identically. Root `layout.tsx`, the `api/[[...path]]` BFF catch-all, `favicon.ico`, `fonts/`, and `globals.css` stay outside the groups. `getCurrentUser` in `apps/web/src/lib/auth.ts` left untouched. Build + lint pass (pre-existing canvas-editor ref lint warnings unrelated).
 
 - **Hide Tenant-Only Menus from Super Admin** — Super-admin holds `manage:all`, which satisfied every CASL route gate, so tenant-business menus (Boards, Inventory, Orders) showed in the sidebar and Billing was ungated entirely. Added a `tenantOnly` flag to `PermissionRequirement` + a shared `canAccess(ability, req)` helper ([route-permissions.ts](apps/web/src/lib/route-permissions.ts)) that denies the `manage:all` holder first, then applies the optional `action`/`subject` gate (now optional, so Billing gates on `tenantOnly` alone). Both consumers — sidebar filter ([sidebar.tsx](apps/web/src/components/layout/sidebar.tsx)) + server `PermissionGuard` ([permission-guard.tsx](apps/web/src/components/auth/permission-guard.tsx)) — route through `canAccess`, so the 4 menus hide AND direct URLs redirect super-admin to `/unauthorized`. Marked Boards/Inventory/Orders/Billing tenant-only; `/dashboard` redirect is now role-aware (super-admin → `/dashboard/users`, else Boards) so login no longer bounces to unauthorized. Tenant/sub-user unchanged. Backend API guards left as follow-up (still accept `manage:all`). Build 3/3.
 
