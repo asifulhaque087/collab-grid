@@ -1,22 +1,12 @@
-# Current Feature: Token-Based Auth
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Shift auth from cookie-based to pure token-based: `login`, `register`, and `google/callback` controllers return only an `accessToken` + `refreshToken` pair (in the response body), not httpOnly cookies.
-- Remove refresh-token rotation logic from `AccessTokenGuard` (`apps/api/src/auth/guards/access-token.guard.ts`) — no silent rotation, no cookie writes.
-- Add a new refresh endpoint (e.g. `POST /auth/refresh`) that uses `AuthService.refreshAccessToken` for explicit, centralized token rotation.
-- Centralize/simplify token-rotation logic so callers rotate via the dedicated refresh endpoint rather than the guard.
-
 ## Notes
-
-- `auth.service.ts` already exposes `refreshAccessToken(RefreshAccessTokenDto)` (looks up user by stored refresh token, mints a new pair, returns `{ newAccessToken, newRefreshToken }`); the new endpoint just wraps it behind a `RefreshAccessTokenDto` body.
-- `AuthTokens` type (`apps/api/src/auth/auth.types.ts`) is the token-pair shape the controllers should return; `getCookieSettings`/cookie writes can be dropped from the affected controllers.
-- `google/callback` currently redirects to `CLIENT_URL` after setting cookies — needs to instead return tokens (the redirect-only flow likely becomes a token-returning response; decide whether the OAuth redirect handler issues a redirect with tokens in query or returns JSON).
-- Open question for the web client (out of scope here unless extended): frontend currently relies on httpOnly cookies / `getCurrentUser()` reading cookies — a follow-up will be needed to store and send bearer tokens, and to connect sockets with `auth.token`, but this spec targets the API only.
 
 ## History
 
@@ -63,3 +53,5 @@ In Progress
 - **Role/Plan Admin UX & Visibility** — Topbar: dropped Search + Notifications icons; Settings now routes to `/dashboard/settings`. New read-only View modals ([view-role-modal](apps/web/src/components/roles/view-role-modal.tsx)/[view-plan-modal](apps/web/src/components/plans/view-plan-modal.tsx)) built from the in-table `ApiRole`/`ApiPlan` (no new endpoint) — plan modal shows per-perm quota (∞/n/Granted). Row actions: View + Edit on every row, Delete only on non-system. Backend: system roles/plans are now editable (removed `isSystem` guard in both `update`s) but still undeletable; system slugs held stable on edit to protect RBAC/price/registration lookups. Plans gated to super-admin (`manage:all`) frontend (route-permissions) + backend (PlanController). `role.service.findAll` scopes visibility by tree (`resolveCreatedBy`) + root/sub-user (`parentId`): super-admin→constant|admin, tenant→tenant, sub-user→own. Follow-ups noted: admin sub-user plan access (needs org-tree in web RBAC); tenant rule is literal `createdBy='tenant'` (cross-tenant name visibility). Build 3/3.
 
 - **Responsive Dashboard Pages** — Dashboard shell now works on mobile. Shell [layout](apps/web/src/app/dashboard/(shell)/layout.tsx) moved off the fixed CSS grid to a flex column wrapped in a new `SidebarProvider` ([sidebar-context](apps/web/src/components/layout/sidebar-context.tsx)); the [sidebar](apps/web/src/components/layout/sidebar.tsx) becomes a fixed off-canvas drawer below the header with a tap-to-dismiss backdrop, auto-closing on route change/link tap, and docks `md:static` at ≥768px. New [sidebar-toggle](apps/web/src/components/layout/sidebar-toggle.tsx) hamburger (`md:hidden`) in the [header](apps/web/src/components/layout/header.tsx), which also hides telemetry (`lg`)/workspace label (`md`) on small screens. `StatsRow` 2→4 cols, `PageHeader` stacks, billing usage grid + `FormRow` + perm grid go single-col on mobile, dialogs gain a side gutter + `max-h-[90dvh]` scroll. Tables already scrolled via shared `DataTable` (`overflow-x-auto`+`min-w-[700px]`). Canvas editor out of scope. Build 3/3.
+
+- **Token-Based Auth** — Shifted the API from cookie-based to pure token-based auth. `login`/`register` now return `{ user, accessToken, refreshToken }`; `google/callback` redirects to `${CLIENT_URL}/api/auth/callback?accessToken=…&refreshToken=…` (BFF route to be built later). Added `POST /auth/refresh` as the single centralized rotation point wrapping `AuthService.refreshAccessToken`, and removed refresh-token rotation from `AccessTokenGuard`. Removed `cookie-parser` and all cookie handling (`main.ts`, `getCookieSettings`, guard cookie fallback); socket auth now reads the bearer token from `handshake.auth.token`. Web client still uses cookies — that's a separate BFF follow-up. Build + lint pass.
