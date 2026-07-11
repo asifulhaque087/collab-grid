@@ -1,15 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { RedisIoAdapter } from './realtime/redis-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  // Required for AccessTokenGuard to read the httpOnly accessToken/refreshToken
-  // cookies off the request.
-  app.use(cookieParser());
 
   // Back socket.io with Redis Pub/Sub so WebSocket broadcasts span every API
   // instance (falls back to in-memory when Redis is unavailable).

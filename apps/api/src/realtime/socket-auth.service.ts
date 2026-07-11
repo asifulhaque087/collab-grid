@@ -30,12 +30,12 @@ export class SocketAuthService {
     private readonly config: ConfigService,
   ) {}
 
-  // Verify the accessToken cookie sent on the socket handshake. Returns the
-  // authenticated userId, or null for anonymous/invalid clients.
+  // Verify the access token carried on the socket handshake (sent by the
+  // client as `auth.token`). Returns the authenticated userId, or null for
+  // anonymous/invalid clients.
   authenticate(client: Socket): string | null {
-    const cookie = client.handshake.headers.cookie;
-    if (!cookie) return null;
-    const token = this.readCookie(cookie, 'accessToken');
+    const token = (client.handshake.auth as { token?: string } | undefined)
+      ?.token;
     if (!token) return null;
     try {
       const payload = this.jwt.verify<JwtPayload>(token, {
@@ -143,13 +143,5 @@ export class SocketAuthService {
     }
 
     return buildAbility(grants).can(Action.Update, Subjects.SmartWidget);
-  }
-
-  private readCookie(cookieHeader: string, name: string): string | null {
-    for (const part of cookieHeader.split(';')) {
-      const [k, ...v] = part.trim().split('=');
-      if (k === name) return decodeURIComponent(v.join('='));
-    }
-    return null;
   }
 }

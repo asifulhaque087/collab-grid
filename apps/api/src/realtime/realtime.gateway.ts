@@ -113,8 +113,8 @@ export class RealtimeGateway
     const board = await this.realtime.getPublicBoard(payload.slug);
     if (!board) return { error: 'Board not found' };
 
-    // Authenticate once (JWT from handshake cookie) — drives both the access
-    // gate and move privilege. Anonymous end users resolve to null.
+    // Authenticate once (JWT from handshake auth.token) — drives both the
+    // access gate and move privilege. Anonymous end users resolve to null.
     const authUserId = this.socketAuth.authenticate(client);
 
     // Access gate: public boards are open to anyone; restricted (unpublished)

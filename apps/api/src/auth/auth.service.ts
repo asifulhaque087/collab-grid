@@ -570,36 +570,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  getCookieSettings(accessToken: string, refreshToken: string) {
-    const accessTokenExp = this.configService.getOrThrow<string>(
-      'ACCESS_TOKEN_EXPIRATION',
-    );
-    const refreshTokenExp = this.configService.getOrThrow<string>(
-      'REFRESH_TOKEN_EXPIRATION',
-    );
-
-    return {
-      access: {
-        name: 'accessToken',
-        value: accessToken,
-        options: {
-          httpOnly: true,
-          secure: false,
-          maxAge: ms(accessTokenExp as ms.StringValue),
-        },
-      },
-      refresh: {
-        name: 'refreshToken',
-        value: refreshToken,
-        options: {
-          httpOnly: true,
-          secure: false,
-          maxAge: ms(refreshTokenExp as ms.StringValue),
-        },
-      },
-    };
-  }
-
   isTokenExpired(token: string, secret: string): boolean {
     try {
       this.jwtService.verify(token, { secret, clockTolerance: 10 });
