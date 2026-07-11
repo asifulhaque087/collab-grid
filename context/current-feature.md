@@ -1,12 +1,22 @@
-# Current Feature
+# Current Feature: Update Routing
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Reorganize `apps/web/src/app` into three Next.js Route Groups: `(public)`, `(private)`, `(auth)`
+- `(private)` — every protected page (dashboard tree, subscription/checkout)
+- `(auth)` — login, register, forgot-password, reset-password (already a group; keep at root)
+- `(public)` — every other page (homepage `/`, `/b/[slug]`, `/checkout`, `/unauthorized`)
+- Keep `getCurrentUser` in `apps/web/src/lib/auth.ts` untouched
+
 ## Notes
+
+- Route groups don't affect URL paths, so `/dashboard`, `/b/[slug]`, etc. stay identical.
+- `api/[[...path]]`, `favicon.ico`, `fonts/`, `globals.css`, root `layout.tsx` stay at root (outside groups).
+- Do not update `getCurrentUser` in `apps/web/src/lib/auth.ts` — separate feature later.
 
 ## History
 
