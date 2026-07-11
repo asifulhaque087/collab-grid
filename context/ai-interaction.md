@@ -18,7 +18,7 @@ This is the common workflow that we will use for every single feature/fix:
 4. **Test** - Verify it works in the browser. Run `pnpm run build` to check for errors
 5. **Iterate** - Iterate and change things if needed
 6. **Commit** - Only after build passes and everything works
-7. **Merge** - Merge to main
+7. **Merge** - Merge to dev
 8. **Delete Branch** - Delete branch after merge
 9. Mark as completed in @context/current-feature.md and add to history. Make sure history message not more than 300 characters.
 
@@ -34,7 +34,7 @@ We will create a new branch for every feature/fix. Name branch **feature/[featur
 - Ask before committing (don't auto-commit)
 - Use conventional commit messages (feat:, fix:, chore:, etc.)
 - Keep commits focused (one feature/fix per commit)
-- Do not mention Claude to any commit messages
+- Do not mention AI name to any commit messages
 
 ## When Stuck
 
