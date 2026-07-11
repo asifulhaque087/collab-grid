@@ -1,12 +1,22 @@
-# Current Feature
+# Current Feature: Token-Based Auth
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Shift auth from cookie-based to pure token-based: `login`, `register`, and `google/callback` controllers return only an `accessToken` + `refreshToken` pair (in the response body), not httpOnly cookies.
+- Remove refresh-token rotation logic from `AccessTokenGuard` (`apps/api/src/auth/guards/access-token.guard.ts`) — no silent rotation, no cookie writes.
+- Add a new refresh endpoint (e.g. `POST /auth/refresh`) that uses `AuthService.refreshAccessToken` for explicit, centralized token rotation.
+- Centralize/simplify token-rotation logic so callers rotate via the dedicated refresh endpoint rather than the guard.
+
 ## Notes
+
+- `auth.service.ts` already exposes `refreshAccessToken(RefreshAccessTokenDto)` (looks up user by stored refresh token, mints a new pair, returns `{ newAccessToken, newRefreshToken }`); the new endpoint just wraps it behind a `RefreshAccessTokenDto` body.
+- `AuthTokens` type (`apps/api/src/auth/auth.types.ts`) is the token-pair shape the controllers should return; `getCookieSettings`/cookie writes can be dropped from the affected controllers.
+- `google/callback` currently redirects to `CLIENT_URL` after setting cookies — needs to instead return tokens (the redirect-only flow likely becomes a token-returning response; decide whether the OAuth redirect handler issues a redirect with tokens in query or returns JSON).
+- Open question for the web client (out of scope here unless extended): frontend currently relies on httpOnly cookies / `getCurrentUser()` reading cookies — a follow-up will be needed to store and send bearer tokens, and to connect sockets with `auth.token`, but this spec targets the API only.
 
 ## History
 

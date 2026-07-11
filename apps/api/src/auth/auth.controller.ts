@@ -16,6 +16,7 @@ import { RegisterUserDto } from '@/auth/dto/register-user.dto';
 import { LoginUserDto } from '@/auth/dto/login-user.dto';
 import { ForgotPasswordDto } from '@/auth/dto/forgot-password.dto';
 import { ResetPasswordDto } from '@/auth/dto/reset-password.dto';
+import { RefreshAccessTokenDto } from '@/auth/dto/refresh-access-token.dto';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
 import { AuthTokens, AuthUser } from '@/auth/auth.types';
@@ -35,72 +36,54 @@ export class AuthController {
   ) {}
 
   // Email/password registration. Creates the user (free plan + doctor role +
-  // quota snapshot), sets the auth cookies, and returns the safe user fields.
+  // quota snapshot) and returns the auth token pair + safe user fields. The
+  // client stores the tokens (no httpOnly cookies are set).
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Body() dto: RegisterUserDto,
-    @Res() res: Response,
-  ): Promise<void> {
+  ): Promise<{
+    user: { id: string; name: string; email: string; plan: string };
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const user = await this.authService.registerUser(dto);
 
-    const cookieSettings = this.authService.getCookieSettings(
-      user.accessToken,
-      user.refreshToken,
-    );
-
-    res.cookie(
-      cookieSettings.access.name,
-      cookieSettings.access.value,
-      cookieSettings.access.options,
-    );
-    res.cookie(
-      cookieSettings.refresh.name,
-      cookieSettings.refresh.value,
-      cookieSettings.refresh.options,
-    );
-
-    // Never leak the password hash or refresh token in the response body;
-    // tokens travel in httpOnly cookies.
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      plan: user.plan,
-    });
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        plan: user.plan,
+      },
+      accessToken: user.accessToken,
+      refreshToken: user.refreshToken,
+    };
   }
 
-  // Email/password login. Verifies credentials, sets the auth cookies, and
-  // returns the safe user fields (same shape as register).
+  // Email/password login. Verifies credentials and returns the auth token pair
+  // + safe user fields (same shape as register). The client stores the tokens.
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginUserDto, @Res() res: Response): Promise<void> {
+  async login(
+    @Body() dto: LoginUserDto,
+  ): Promise<{
+    user: { id: string; name: string; email: string; plan: string };
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const user = await this.authService.loginUser(dto);
 
-    const cookieSettings = this.authService.getCookieSettings(
-      user.accessToken,
-      user.refreshToken,
-    );
-
-    res.cookie(
-      cookieSettings.access.name,
-      cookieSettings.access.value,
-      cookieSettings.access.options,
-    );
-    res.cookie(
-      cookieSettings.refresh.name,
-      cookieSettings.refresh.value,
-      cookieSettings.refresh.options,
-    );
-
-    // Never leak the password hash or refresh token in the response body;
-    // tokens travel in httpOnly cookies.
-    res.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      plan: user.plan,
-    });
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        plan: user.plan,
+      },
+      accessToken: user.accessToken,
+      refreshToken: user.refreshToken,
+    };
   }
 
   // Starts the password-reset flow: emails a reset link if the account exists.
@@ -157,23 +140,30 @@ export class AuthController {
     };
   }
 
-  // Signs the user out: clears the server-side refresh token and both httpOnly
-  // auth cookies. The guard ensures only an authenticated caller reaches here.
+  // Signs the user out: clears the server-side refresh token. The client is
+  // responsible for discarding the stored access/refresh tokens. The guard
+  // ensures only an authenticated caller reaches here.
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async logout(
-    @GetUser() authUser: AuthUser,
-    @Res() res: Response,
-  ): Promise<void> {
+  async logout(@GetUser() authUser: AuthUser): Promise<{ message: string }> {
     await this.authService.logout(authUser.userId);
 
-    // Match the options the cookies were set with so the browser clears them.
-    const clearOptions = { httpOnly: true, secure: false };
-    res.clearCookie('accessToken', clearOptions);
-    res.clearCookie('refreshToken', clearOptions);
+    return { message: 'Signed out successfully.' };
+  }
 
-    res.json({ message: 'Signed out successfully.' });
+  // Explicit token rotation. The client calls this with its stored refresh
+  // token to mint a fresh access/refresh pair — this is the single,
+  // centralized place rotation happens (the guard no longer rotates).
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Body() dto: RefreshAccessTokenDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const { newAccessToken, newRefreshToken } =
+      await this.authService.refreshAccessToken(dto);
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
   // Kicks off the Google OAuth redirect; the guard handles the rest.
@@ -182,29 +172,19 @@ export class AuthController {
   googleAuth(): void {}
 
   // Google redirects here after consent. `req.user` is the token pair returned
-  // by GoogleStrategy.validate(); we set the cookies and bounce to the client.
+  // by GoogleStrategy.validate(); we hand the tokens back to the client as
+  // query params on the client URL (no httpOnly cookies are set, so the SPA
+  // stores them directly).
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   googleAuthRedirect(
     @GetUser() tokens: AuthTokens,
     @Res() res: Response,
   ): void {
-    const cookieSettings = this.authService.getCookieSettings(
+    const clientUrl = this.configService.getOrThrow<string>('CLIENT_URL');
+    const redirect = `${clientUrl}/api/auth/callback?accessToken=${encodeURIComponent(
       tokens.accessToken,
-      tokens.refreshToken,
-    );
-
-    res.cookie(
-      cookieSettings.access.name,
-      cookieSettings.access.value,
-      cookieSettings.access.options,
-    );
-    res.cookie(
-      cookieSettings.refresh.name,
-      cookieSettings.refresh.value,
-      cookieSettings.refresh.options,
-    );
-
-    res.redirect(this.configService.getOrThrow<string>('CLIENT_URL'));
+    )}&refreshToken=${encodeURIComponent(tokens.refreshToken)}`;
+    res.redirect(redirect);
   }
 }
