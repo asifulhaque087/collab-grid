@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/actions/auth";
-import { bffFetch, extractErrorMessage } from "@/lib/api";
+import { API_URL, extractErrorMessage, jsonHeaders } from "@/lib/api";
 
 export type SubscribeResult = {
   plan: string;
@@ -24,9 +24,9 @@ export async function subscribeAction(input: {
 
   let res: Response;
   try {
-    res = await bffFetch("/subscription", {
+    res = await fetch(`${API_URL}/subscription`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await jsonHeaders(),
       body: JSON.stringify({ ...input, transactionId }),
     });
   } catch {

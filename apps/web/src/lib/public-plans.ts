@@ -1,7 +1,7 @@
 // Server-side fetch for the public plan cards shown on the marketing homepage
 // and the subscription checkout page. No auth required.
 
-import { bffFetch } from "@/lib/api";
+import { API_URL } from "@/lib/api";
 
 export interface PublicPlanFeature {
   value: string;
@@ -19,7 +19,7 @@ export interface PublicPlan {
 
 export async function getPublicPlans(): Promise<PublicPlan[]> {
   try {
-    const res = await bffFetch("/plans/public");
+    const res = await fetch(`${API_URL}/plans/public`);
     if (!res.ok) return [];
     return (await res.json()) as PublicPlan[];
   } catch {

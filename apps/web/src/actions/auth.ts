@@ -1,28 +1,25 @@
 "use server";
 
-import { cookies } from "next/headers";
-import type {
-  ForgotPasswordValues,
-  ResetPasswordValues,
-} from "@/lib/auth-schemas";
-import { bffFetch, extractErrorMessage } from "@/lib/api";
+import { cookies, headers } from "next/headers";
+import type { ForgotPasswordValues, ResetPasswordValues } from "@/lib/auth-schemas";
+import { API_URL, extractErrorMessage, jsonHeaders } from "@/lib/api";
 
-export type ActionResult<T = unknown> =
-  | { success: true; data: T }
-  | { success: false; error: string };
+export type ActionResult<T = unknown> = { success: true; data: T } | { success: false; error: string };
 
 // Signs the user out: tells the API to revoke the refresh token (through the
-// BFF, which authenticates with the bearer cookie), then clears both cookies on
+// BFF, which authenticates with the bearer header), then clears both cookies on
 // the Next side so the browser session ends. Best-effort on the API call —
 // cookies are cleared regardless.
 export async function logoutAction(): Promise<ActionResult<null>> {
   const store = await cookies();
-  const accessToken = store.get("accessToken")?.value;
-  const refreshToken = store.get("refreshToken")?.value;
+  const bearer = (await headers()).get("authorization");
 
-  if (accessToken || refreshToken) {
+  if (bearer) {
     try {
-      await bffFetch("/auth/logout", { method: "POST" });
+      await fetch(`${API_URL}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: bearer },
+      });
     } catch {
       // Ignore — we still clear the local session below.
     }
@@ -34,11 +31,10 @@ export async function logoutAction(): Promise<ActionResult<null>> {
   return { success: true, data: null };
 }
 
-export async function forgotPasswordAction(
-  input: ForgotPasswordValues,
-): Promise<ActionResult<{ message: string }>> {
-  const res = await bffFetch("/auth/forgot-password", {
+export async function forgotPasswordAction(input: ForgotPasswordValues): Promise<ActionResult<{ message: string }>> {
+  const res = await fetch(`${API_URL}/auth/forgot-password`, {
     method: "POST",
+    headers: await jsonHeaders(),
     body: JSON.stringify(input),
   });
   const body = await res.json().catch(() => null);
@@ -53,11 +49,10 @@ export async function forgotPasswordAction(
   return { success: true, data: body as { message: string } };
 }
 
-export async function resetPasswordAction(
-  input: ResetPasswordValues,
-): Promise<ActionResult<{ message: string }>> {
-  const res = await bffFetch("/auth/reset-password", {
+export async function resetPasswordAction(input: ResetPasswordValues): Promise<ActionResult<{ message: string }>> {
+  const res = await fetch(`${API_URL}/auth//reset-password`, {
     method: "POST",
+    headers: await jsonHeaders(),
     body: JSON.stringify(input),
   });
   const body = await res.json().catch(() => null);

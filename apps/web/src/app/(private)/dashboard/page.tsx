@@ -7,6 +7,7 @@ import { createAbilityFor, Action, Subjects } from "@/lib/ability";
 // they land on Users, the first menu they manage.
 export default async function DashboardIndex() {
   const user = await getCurrentUser();
+
   const ability = createAbilityFor(user);
   if (ability.can(Action.Manage, Subjects.All)) {
     redirect("/dashboard/users");

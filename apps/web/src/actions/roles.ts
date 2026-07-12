@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { bffFetch } from '@/lib/api';
+import { API_URL, jsonHeaders } from '@/lib/api';
 
 type ApiError = { message?: string };
 
@@ -9,9 +9,9 @@ export async function createRole(data: {
   name: string;
   permissionIds: string[];
 }) {
-  const res = await bffFetch('/roles', {
+  const res = await fetch(`${API_URL}/roles`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
@@ -28,9 +28,9 @@ export async function updateRole(
   id: string,
   data: { name?: string; permissionIds?: string[] },
 ) {
-  const res = await bffFetch(`/roles/${id}`, {
+  const res = await fetch(`${API_URL}/roles/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
@@ -44,7 +44,10 @@ export async function updateRole(
 }
 
 export async function deleteRole(id: string) {
-  const res = await bffFetch(`/roles/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${API_URL}/roles/${id}`, {
+    method: 'DELETE',
+    headers: await jsonHeaders(),
+  });
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;

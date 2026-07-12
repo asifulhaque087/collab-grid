@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import type { ApiInventory } from '@/types';
-import { bffFetch } from '@/lib/api';
+import { API_URL, authHeaders, jsonHeaders } from '@/lib/api';
 
 type ApiError = { message?: string };
 
@@ -19,15 +19,17 @@ export interface InventoryInput {
 
 export async function getInventoryItems(boardId?: string): Promise<ApiInventory[]> {
   const query = boardId ? `?boardId=${boardId}` : '';
-  const res = await bffFetch(`/inventory${query}`);
+  const res = await fetch(`${API_URL}/inventory${query}`, {
+    headers: await authHeaders(),
+  });
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function createInventory(data: InventoryInput) {
-  const res = await bffFetch('/inventory', {
+  const res = await fetch(`${API_URL}/inventory`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
@@ -41,9 +43,9 @@ export async function createInventory(data: InventoryInput) {
 }
 
 export async function updateInventory(id: string, data: Partial<InventoryInput>) {
-  const res = await bffFetch(`/inventory/${id}`, {
+  const res = await fetch(`${API_URL}/inventory/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
@@ -57,7 +59,10 @@ export async function updateInventory(id: string, data: Partial<InventoryInput>)
 }
 
 export async function deleteInventory(id: string) {
-  const res = await bffFetch(`/inventory/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${API_URL}/inventory/${id}`, {
+    method: 'DELETE',
+    headers: await authHeaders(),
+  });
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
@@ -68,7 +73,8 @@ export async function deleteInventory(id: string) {
 }
 
 // CSV bulk import. Forwards the multipart upload to the API's /inventory/import
-// endpoint; a boardId attaches every imported item to that board.
+// endpoint; a boardId attaches every imported item to that board. No JSON
+// content-type here — fetch sets the multipart boundary from the FormData body.
 export async function importInventoryCsv(formData: FormData) {
   const boardId = formData.get('boardId');
   const forward = new FormData();
@@ -76,8 +82,9 @@ export async function importInventoryCsv(formData: FormData) {
   if (file) forward.append('file', file);
   if (boardId) forward.append('boardId', boardId);
 
-  const res = await bffFetch('/inventory/import', {
+  const res = await fetch(`${API_URL}/inventory/import`, {
     method: 'POST',
+    headers: await authHeaders(),
     body: forward,
   });
 

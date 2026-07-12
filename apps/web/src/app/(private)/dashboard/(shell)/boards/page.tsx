@@ -6,10 +6,12 @@ import { BoardCard } from "@/components/boards/board-card";
 import { NewBoardCard } from "@/components/boards/new-board-card";
 import { BoardsActions } from "@/components/boards/boards-actions";
 import type { ApiBoard } from "@/types";
-import { bffFetch } from "@/lib/api";
+import { API_URL, authHeaders } from "@/lib/api";
 
 async function getBoards(): Promise<ApiBoard[]> {
-  const res = await bffFetch("/boards");
+  const res = await fetch(`http://localhost:3000/api/private/boards`, { headers: await authHeaders() });
+  // const res = await fetch(`${API_URL}/api/private/boards`, { headers: await authHeaders() });
+
   if (!res.ok) return [];
   return res.json();
 }
@@ -19,20 +21,13 @@ export default async function BoardsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Boards"
-        subtitle="Manage your collaborative canvas workspaces"
-        actions={<BoardsActions />}
-      />
+      <PageHeader title="Boards" subtitle="Manage your collaborative canvas workspaces" actions={<BoardsActions />} />
       <StatsRow stats={stats} />
       <SectionHeader
         title="All Boards"
         actions={
           <div className="flex gap-1.5">
-            <button
-              title="Grid view"
-              className="grid size-9 place-items-center rounded-sm border border-active bg-surface text-active"
-            >
+            <button title="Grid view" className="grid size-9 place-items-center rounded-sm border border-active bg-surface text-active">
               <LayoutGrid className="size-4" />
             </button>
             <button

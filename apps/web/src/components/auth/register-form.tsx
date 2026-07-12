@@ -12,18 +12,9 @@ import { AuthCard, AuthDivider } from "@/components/auth/auth-card";
 import { GoogleButton } from "@/components/auth/google-button";
 import { PasswordInput } from "@/components/auth/password-input";
 import { extractErrorMessage } from "@/lib/errors";
-import {
-  registerFormSchema,
-  type RegisterFormValues,
-} from "@/lib/auth-schemas";
+import { registerFormSchema, type RegisterFormValues } from "@/lib/auth-schemas";
 
-export function RegisterForm({
-  googleAuthUrl,
-  plan,
-}: {
-  googleAuthUrl: string;
-  plan?: string;
-}) {
+export function RegisterForm({ googleAuthUrl, plan }: { googleAuthUrl: string; plan?: string }) {
   const router = useRouter();
   const {
     register,
@@ -36,7 +27,7 @@ export function RegisterForm({
 
   const onSubmit = async (values: RegisterFormValues) => {
     // confirmPassword is client-only — send just the API fields.
-    const res = await fetch("/api/auth/register", {
+    const res = await fetch("/api/public/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -53,9 +44,7 @@ export function RegisterForm({
     toast.success("Account created");
     // Carry a chosen plan into the subscription checkout funnel; otherwise land
     // straight on the dashboard.
-    router.replace(
-      plan ? `/subscription/checkout?plan=${encodeURIComponent(plan)}` : "/dashboard",
-    );
+    router.replace(plan ? `/subscription/checkout?plan=${encodeURIComponent(plan)}` : "/dashboard");
     router.refresh();
   };
 
@@ -76,40 +65,15 @@ export function RegisterForm({
       <AuthDivider />
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <FormField label="Name" htmlFor="name" error={errors.name?.message}>
-          <Input
-            id="name"
-            type="text"
-            autoComplete="name"
-            placeholder="Jane Cooper"
-            {...register("name")}
-          />
+          <Input id="name" type="text" autoComplete="name" placeholder="Jane Cooper" {...register("name")} />
         </FormField>
         <FormField label="Email" htmlFor="email" error={errors.email?.message}>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@company.com"
-            {...register("email")}
-          />
+          <Input id="email" type="email" autoComplete="email" placeholder="you@company.com" {...register("email")} />
         </FormField>
-        <FormField
-          label="Password"
-          htmlFor="password"
-          error={errors.password?.message}
-        >
-          <PasswordInput
-            id="password"
-            autoComplete="new-password"
-            placeholder="At least 8 characters"
-            {...register("password")}
-          />
+        <FormField label="Password" htmlFor="password" error={errors.password?.message}>
+          <PasswordInput id="password" autoComplete="new-password" placeholder="At least 8 characters" {...register("password")} />
         </FormField>
-        <FormField
-          label="Confirm Password"
-          htmlFor="confirmPassword"
-          error={errors.confirmPassword?.message}
-        >
+        <FormField label="Confirm Password" htmlFor="confirmPassword" error={errors.confirmPassword?.message}>
           <PasswordInput
             id="confirmPassword"
             autoComplete="new-password"

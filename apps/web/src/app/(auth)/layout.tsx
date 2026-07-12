@@ -1,18 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoMark } from "@/components/home/logo-mark";
-import { getCurrentUser } from "@/lib/auth";
+import { headers } from "next/headers";
 
 // Shared shell for the auth pages. Server component so it can bounce already
 // authenticated visitors straight to the dashboard before any form renders.
 // Reuses the `.home-page` scope for the dotted-grid backdrop and logo styling.
-export default async function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
+export default async function AuthLayout({ children }: { children: React.ReactNode }) {
+  const headerList = await headers();
+  const authorization = headerList.get("authorization") ?? "";
+  if (authorization) redirect("/dashboard");
 
   return (
     <div className="home-page flex min-h-screen flex-col">
@@ -22,9 +19,7 @@ export default async function AuthLayout({
           CollabGrid
         </Link>
       </header>
-      <main className="relative z-[1] flex flex-1 items-center justify-center px-6 pb-16">
-        {children}
-      </main>
+      <main className="relative z-[1] flex flex-1 items-center justify-center px-6 pb-16">{children}</main>
     </div>
   );
 }

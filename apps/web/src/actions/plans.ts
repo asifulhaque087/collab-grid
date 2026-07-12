@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { bffFetch } from '@/lib/api';
+import { API_URL, jsonHeaders } from '@/lib/api';
 
 type ApiError = { message?: string };
 
@@ -14,9 +14,9 @@ export async function createPlan(data: {
   name: string;
   permissions: PlanPermissionQuota[];
 }) {
-  const res = await bffFetch('/plans', {
+  const res = await fetch(`${API_URL}/plans`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
@@ -33,9 +33,9 @@ export async function updatePlan(
   id: string,
   data: { name?: string; permissions?: PlanPermissionQuota[] },
 ) {
-  const res = await bffFetch(`/plans/${id}`, {
+  const res = await fetch(`${API_URL}/plans/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
@@ -49,7 +49,10 @@ export async function updatePlan(
 }
 
 export async function deletePlan(id: string) {
-  const res = await bffFetch(`/plans/${id}`, { method: 'DELETE' });
+  const res = await fetch(`${API_URL}/plans/${id}`, {
+    method: 'DELETE',
+    headers: await jsonHeaders(),
+  });
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;

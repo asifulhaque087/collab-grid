@@ -1,48 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { vars } from "@/vars";
-import {
-  ACCESS_TOKEN_MAX_AGE,
-  AUTH_COOKIE_OPTS,
-  REFRESH_TOKEN_MAX_AGE,
-} from "@/lib/auth-cookies";
+import { ACCESS_TOKEN_MAX_AGE, AUTH_COOKIE_OPTS, REFRESH_TOKEN_MAX_AGE } from "@/lib/auth-cookies";
 
-// Node runtime: we do a server-side fetch to the NestJS backend and may read
-// cookies, so the default Node.js runtime (not Edge) is required.
+// Node runtime: we do a server-side fetch to the NestJS backend.
 export const runtime = "nodejs";
 
 // Strip the /api prefix to recover the upstream path. The catch-all matches
 // /api/*, so pathname is always "/api/...". Guard against a bare "/api".
 function upstreamPath(pathname: string): string {
-  const withoutPrefix = pathname.replace(/^\/api\/?/, "");
+  const withoutPrefix = pathname.replace(/^\/api\/private\/?/, "");
   return withoutPrefix.startsWith("/") ? withoutPrefix : `/${withoutPrefix}`;
 }
 
-// Forward only the headers the backend needs; drop hop-by-hop headers and the
-// cookie (the backend is token-based, not cookie-based).
-function upstreamHeaders(request: NextRequest): Headers {
+// Forward only the headers the backend needs; drop hop-by-hop headers, the
+// cookie (the backend is token-based, not cookie-based), and let the
+// middleware-injected `authorization` header authenticate the upstream call.
+function upstreamHeaders(request: NextRequest, bodyLength?: number): Headers {
   const headers = new Headers();
-  for (const [key, value] of request.headers) {
-    const lower = key.toLowerCase();
-    if (
-      lower === "host" ||
-      lower === "content-length" ||
-      lower === "cookie" ||
-      lower === "connection"
-    ) {
-      continue;
-    }
-    headers.set(key, value);
+
+  const key = "authorization";
+  // const value = request.headers.get("authorization");
+  const value = request.headers.get("authorization") ?? "";
+
+  // console.log("|||||||||||||||||||||||||||||||| ", request.headers.get("x-current-path"));
+  console.log("|||||||||||||||||||||||||||||||| ", request.headers);
+  // console.log("|||||||||||||||||||||||||||||||| ", value);
+
+  if (!value) throw new Error("Unauthorizationnnnnn");
+
+  headers.set(key, value);
+
+  const contentType = request.headers.get("content-type") ?? "application/json";
+  headers.set("Content-Type", contentType);
+
+  if (bodyLength !== undefined && bodyLength > 0) {
+    headers.set("Content-Length", bodyLength.toString());
   }
+
   return headers;
 }
 
 // If the backend returned a fresh token pair (login/register/refresh), set them
 // as httpOnly cookies on the browser-facing response.
-function applyAuthCookies(
-  response: NextResponse,
-  body: Record<string, unknown> | null,
-): void {
+function applyAuthCookies(response: NextResponse, body: Record<string, unknown> | null): void {
   if (!body) return;
   const accessToken = body.accessToken;
   const refreshToken = body.refreshToken;
@@ -62,22 +62,18 @@ function applyAuthCookies(
 
 async function proxy(request: NextRequest): Promise<NextResponse> {
   const path = upstreamPath(request.nextUrl.pathname);
-  const target = `${vars.API_GATEWAY_URL}${path}${request.nextUrl.search}`;
 
-  const headers = upstreamHeaders(request);
+  // const target = `${vars.API_GATEWAY_URL}${path}${request.nextUrl.search}`;
 
-  // Inject the bearer token from the httpOnly cookie so the token-based backend
-  // can authenticate the request. The browser's own Authorization header (if
-  // any) is preserved.
-  const store = await cookies();
-  const accessToken = store.get("accessToken")?.value;
-  if (accessToken && !headers.has("authorization")) {
-    headers.set("authorization", `Bearer ${accessToken}`);
-  }
+  const target = `${"http://api:3001"}${path}${request.nextUrl.search}`;
+
+  // const headers = upstreamHeaders(request);
 
   const method = request.method;
   const hasBody = method !== "GET" && method !== "HEAD";
   const body = hasBody ? await request.arrayBuffer() : undefined;
+
+  const headers = upstreamHeaders(request, body?.byteLength);
 
   let backendRes: Response;
   try {
@@ -89,44 +85,18 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
       redirect: "manual",
     });
   } catch {
-    return NextResponse.json(
-      { message: "Unable to reach the server. Try again." },
-      { status: 502 },
-    );
+    return NextResponse.json({ message: "Unable to reach the server. Try again." }, { status: 502 });
   }
 
   const responseHeaders = new Headers();
   const contentType = backendRes.headers.get("content-type") ?? "";
-  for (const [key, value] of backendRes.headers) {
-    const lower = key.toLowerCase();
-    if (
-      [
-        "content-type",
-        "content-disposition",
-        "content-length",
-        "cache-control",
-        "pragma",
-        "expires",
-        "etag",
-        "location",
-      ].includes(lower)
-    ) {
-      responseHeaders.set(key, value);
-    }
-  }
-  // Forward any Set-Cookie the backend emits (future-proofing).
-  const setCookies = backendRes.headers.getSetCookie?.() ?? [];
-  for (const cookie of setCookies) {
-    responseHeaders.append("set-cookie", cookie);
-  }
 
   const status = backendRes.status;
+  console.log("backend response is ", backendRes);
 
   // JSON responses: parse so we can extract + set auth cookies, then re-emit.
   if (contentType.includes("application/json")) {
-    const json = (await backendRes.json().catch(() => null)) as
-      | Record<string, unknown>
-      | null;
+    const json = (await backendRes.json().catch(() => null)) as Record<string, unknown> | null;
     const response = NextResponse.json(json ?? {}, {
       status,
       headers: responseHeaders,

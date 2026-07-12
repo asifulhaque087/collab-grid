@@ -40,9 +40,7 @@ export class AuthController {
   // client stores the tokens (no httpOnly cookies are set).
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(
-    @Body() dto: RegisterUserDto,
-  ): Promise<{
+  async register(@Body() dto: RegisterUserDto): Promise<{
     user: { id: string; name: string; email: string; plan: string };
     accessToken: string;
     refreshToken: string;
@@ -65,9 +63,7 @@ export class AuthController {
   // + safe user fields (same shape as register). The client stores the tokens.
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() dto: LoginUserDto,
-  ): Promise<{
+  async login(@Body() dto: LoginUserDto): Promise<{
     user: { id: string; name: string; email: string; plan: string };
     accessToken: string;
     refreshToken: string;

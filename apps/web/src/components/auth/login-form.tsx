@@ -26,7 +26,8 @@ export function LoginForm({ googleAuthUrl }: { googleAuthUrl: string }) {
   });
 
   const onSubmit = async (values: LoginValues) => {
-    const res = await fetch("/api/auth/login", {
+    // console.log("@@@@@@@@@@@@@@@@@@ 1")
+    const res = await fetch("/api/public/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
@@ -58,31 +59,13 @@ export function LoginForm({ googleAuthUrl }: { googleAuthUrl: string }) {
       <AuthDivider />
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <FormField label="Email" htmlFor="email" error={errors.email?.message}>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@company.com"
-            {...register("email")}
-          />
+          <Input id="email" type="email" autoComplete="email" placeholder="you@company.com" {...register("email")} />
         </FormField>
-        <FormField
-          label="Password"
-          htmlFor="password"
-          error={errors.password?.message}
-        >
-          <PasswordInput
-            id="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            {...register("password")}
-          />
+        <FormField label="Password" htmlFor="password" error={errors.password?.message}>
+          <PasswordInput id="password" autoComplete="current-password" placeholder="••••••••" {...register("password")} />
         </FormField>
         <div className="mb-4 -mt-1 text-right">
-          <Link
-            href="/forgot-password"
-            className="text-[0.8rem] text-text-dim hover:text-text"
-          >
+          <Link href="/forgot-password" className="text-[0.8rem] text-text-dim hover:text-text">
             Forgot password?
           </Link>
         </div>

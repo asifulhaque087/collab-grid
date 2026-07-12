@@ -1,6 +1,6 @@
 'use server';
 
-import { bffFetch } from '@/lib/api';
+import { API_URL } from '@/lib/api';
 
 type ApiError = { message?: string };
 
@@ -24,7 +24,7 @@ export interface OrderResult {
 // Anonymous end-user checkout — no auth. The idempotencyKey makes a repeat
 // submit a no-op (returns the original order) instead of a double charge.
 export async function createOrder(input: OrderInput): Promise<OrderResult> {
-  const res = await bffFetch('/orders', {
+  const res = await fetch(`${API_URL}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),

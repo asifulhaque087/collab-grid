@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { CurrentUser } from "@/lib/auth";
 import { createAbilityFor } from "@/lib/ability";
 import { getRequiredPermissionForPath, canAccess } from "@/lib/route-permissions";
 
@@ -8,18 +8,21 @@ import { getRequiredPermissionForPath, canAccess } from "@/lib/route-permissions
 // up the permission that path requires, builds the user's CASL ability, and
 // redirects to /unauthorized when the user can't satisfy it. Routes with no
 // requirement render straight through.
-export async function PermissionGuard({
-  children,
-}: {
+
+interface Props {
   children: React.ReactNode;
-}) {
+  user: CurrentUser;
+}
+
+export async function PermissionGuard(props: Props) {
+  const { children, user } = props;
   const headerList = await headers();
   const pathname = headerList.get("x-current-path") ?? "";
 
   const requirement = getRequiredPermissionForPath(pathname);
   if (!requirement) return <>{children}</>;
 
-  const user = await getCurrentUser();
+  // const user = await getCurrentUser();
   const ability = createAbilityFor(user);
 
   if (!canAccess(ability, requirement)) {
