@@ -1,25 +1,10 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { ApiInventory } from '@/types';
-import { vars } from '@/vars';
+import { bffFetch } from '@/lib/api';
 
-const API_URL = vars.API_GATEWAY_URL;
-
-async function authHeaders(): Promise<HeadersInit> {
-  const store = await cookies();
-  const token = store.get('accessToken')?.value;
-  return token
-    ? { Cookie: `accessToken=${token}`, 'Content-Type': 'application/json' }
-    : { 'Content-Type': 'application/json' };
-}
-
-async function authCookie(): Promise<HeadersInit> {
-  const store = await cookies();
-  const token = store.get('accessToken')?.value;
-  return token ? { Cookie: `accessToken=${token}` } : {};
-}
+type ApiError = { message?: string };
 
 export interface InventoryInput {
   name: string;
@@ -34,23 +19,20 @@ export interface InventoryInput {
 
 export async function getInventoryItems(boardId?: string): Promise<ApiInventory[]> {
   const query = boardId ? `?boardId=${boardId}` : '';
-  const res = await fetch(`${API_URL}/inventory${query}`, {
-    headers: await authCookie(),
-    cache: 'no-store',
-  });
+  const res = await bffFetch(`/inventory${query}`);
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function createInventory(data: InventoryInput) {
-  const res = await fetch(`${API_URL}/inventory`, {
+  const res = await bffFetch('/inventory', {
     method: 'POST',
-    headers: await authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to create inventory item');
   }
 
@@ -59,14 +41,14 @@ export async function createInventory(data: InventoryInput) {
 }
 
 export async function updateInventory(id: string, data: Partial<InventoryInput>) {
-  const res = await fetch(`${API_URL}/inventory/${id}`, {
+  const res = await bffFetch(`/inventory/${id}`, {
     method: 'PATCH',
-    headers: await authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to update inventory item');
   }
 
@@ -75,13 +57,10 @@ export async function updateInventory(id: string, data: Partial<InventoryInput>)
 }
 
 export async function deleteInventory(id: string) {
-  const res = await fetch(`${API_URL}/inventory/${id}`, {
-    method: 'DELETE',
-    headers: await authCookie(),
-  });
+  const res = await bffFetch(`/inventory/${id}`, { method: 'DELETE' });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to delete inventory item');
   }
 
@@ -97,14 +76,13 @@ export async function importInventoryCsv(formData: FormData) {
   if (file) forward.append('file', file);
   if (boardId) forward.append('boardId', boardId);
 
-  const res = await fetch(`${API_URL}/inventory/import`, {
+  const res = await bffFetch('/inventory/import', {
     method: 'POST',
-    headers: await authCookie(),
     body: forward,
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to import inventory');
   }
 

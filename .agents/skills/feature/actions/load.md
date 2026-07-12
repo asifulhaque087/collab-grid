@@ -13,3 +13,9 @@
    - Set Status to "Not Started"
 
 3. Confirm spec loaded and show the feature summary
+
+# CRITICAL EXECUTION GUARDRAIL
+
+- STOP IMMEDIATELY after outputting the confirmation and feature summary in Step 3.
+- DO NOT modify any application code, write implementation logic, or begin working on the goals.
+- Wait for the user to explicitly invoke the `/feature start` command before writing or executing any feature code.

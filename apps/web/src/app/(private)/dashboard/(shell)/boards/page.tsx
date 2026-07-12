@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { LayoutGrid, List } from "lucide-react";
 import { getBoardStats } from "@/lib/mock/boards";
 import { PageHeader, SectionHeader } from "@/components/dashboard/page-header";
@@ -7,17 +6,10 @@ import { BoardCard } from "@/components/boards/board-card";
 import { NewBoardCard } from "@/components/boards/new-board-card";
 import { BoardsActions } from "@/components/boards/boards-actions";
 import type { ApiBoard } from "@/types";
-import { vars } from "@/vars";
-
-const API_URL = vars.API_GATEWAY_URL;
+import { bffFetch } from "@/lib/api";
 
 async function getBoards(): Promise<ApiBoard[]> {
-  const store = await cookies();
-  const token = store.get("accessToken")?.value;
-  const res = await fetch(`${API_URL}/boards`, {
-    headers: token ? { Cookie: `accessToken=${token}` } : {},
-    cache: "no-store",
-  });
+  const res = await bffFetch("/boards");
   if (!res.ok) return [];
   return res.json();
 }

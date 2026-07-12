@@ -12,9 +12,6 @@ import { Input } from "@/components/ui/input";
 import { FormField, FormRow } from "@/components/ui/form-field";
 import { createOrder } from "@/actions/orders";
 import { CHECKOUT_CART_KEY, type CheckoutCart } from "@/types/realtime";
-import { vars } from "@/vars";
-
-const API_URL = vars.API_GATEWAY_URL;
 
 const schema = z.object({
   // Trimmed shipping form: email (optional), phone, address.
@@ -128,7 +125,7 @@ export default function CheckoutPage() {
             Order <span className="font-mono">{orderId}</span>
           </p>
         </div>
-        <a href={`${API_URL}/orders/${orderId}/invoice`} target="_blank" rel="noreferrer">
+        <a href={`/api/orders/${orderId}/invoice`} target="_blank" rel="noreferrer">
           <Button>
             <Download />
             Download PDF invoice

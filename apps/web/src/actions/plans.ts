@@ -1,18 +1,9 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { vars } from '@/vars';
+import { bffFetch } from '@/lib/api';
 
-const API_URL = vars.API_GATEWAY_URL;
-
-async function authHeaders(): Promise<HeadersInit> {
-  const store = await cookies();
-  const token = store.get('accessToken')?.value;
-  return token
-    ? { Cookie: `accessToken=${token}`, 'Content-Type': 'application/json' }
-    : { 'Content-Type': 'application/json' };
-}
+type ApiError = { message?: string };
 
 export interface PlanPermissionQuota {
   permissionId: string;
@@ -23,14 +14,14 @@ export async function createPlan(data: {
   name: string;
   permissions: PlanPermissionQuota[];
 }) {
-  const res = await fetch(`${API_URL}/plans`, {
+  const res = await bffFetch('/plans', {
     method: 'POST',
-    headers: await authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to create plan');
   }
 
@@ -42,14 +33,14 @@ export async function updatePlan(
   id: string,
   data: { name?: string; permissions?: PlanPermissionQuota[] },
 ) {
-  const res = await fetch(`${API_URL}/plans/${id}`, {
+  const res = await bffFetch(`/plans/${id}`, {
     method: 'PATCH',
-    headers: await authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to update plan');
   }
 
@@ -58,13 +49,10 @@ export async function updatePlan(
 }
 
 export async function deletePlan(id: string) {
-  const res = await fetch(`${API_URL}/plans/${id}`, {
-    method: 'DELETE',
-    headers: await authHeaders(),
-  });
+  const res = await bffFetch(`/plans/${id}`, { method: 'DELETE' });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to delete plan');
   }
 

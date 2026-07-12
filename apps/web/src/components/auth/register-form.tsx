@@ -11,7 +11,7 @@ import { FormField } from "@/components/ui/form-field";
 import { AuthCard, AuthDivider } from "@/components/auth/auth-card";
 import { GoogleButton } from "@/components/auth/google-button";
 import { PasswordInput } from "@/components/auth/password-input";
-import { registerAction } from "@/actions/auth";
+import { extractErrorMessage } from "@/lib/errors";
 import {
   registerFormSchema,
   type RegisterFormValues,
@@ -36,13 +36,18 @@ export function RegisterForm({
 
   const onSubmit = async (values: RegisterFormValues) => {
     // confirmPassword is client-only — send just the API fields.
-    const result = await registerAction({
-      name: values.name,
-      email: values.email,
-      password: values.password,
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+      }),
     });
-    if (!result.success) {
-      toast.error(result.error);
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(extractErrorMessage(data, "Registration failed"));
       return;
     }
     toast.success("Account created");

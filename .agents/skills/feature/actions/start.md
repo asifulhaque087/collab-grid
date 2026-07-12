@@ -5,3 +5,8 @@
 3. Set Status to "In Progress"
 4. Create and checkout the feature branch (derive name from H1 heading)
 5. List the goals, then implement them one by one
+
+# CRITICAL EXECUTION GUARDRAIL
+
+- STOP IMMEDIATELY after Step 5.
+- Wait for the user to explicitly invoke the `/feature complete` command to complete the feature.

@@ -1,7 +1,6 @@
 import { getBoardCanvas } from "@/lib/mock/canvas";
 import { getBoardBySlug } from "@/actions/boards";
 import { getInventoryItems } from "@/actions/inventory";
-import { Header } from "@/components/layout/header";
 import { CanvasEditor } from "@/components/canvas/canvas-editor";
 import { toInventoryThumb } from "@/lib/canvas-mappers";
 import { requireAuth } from "@/lib/auth";
@@ -16,7 +15,7 @@ export default async function CanvasBoardPage({
 }) {
   // This is the tenant-facing editor — anonymous end users belong on the public
   // /b/[slug] route, so gate it behind auth (redirects to /sign-in otherwise).
-  const user = await requireAuth();
+  await requireAuth();
 
   const { slug } = await params;
 

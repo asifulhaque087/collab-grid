@@ -1,18 +1,10 @@
-import { cookies } from "next/headers";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PlansView } from "@/components/plans/plans-view";
 import type { ApiPlan, ApiPermission } from "@/types";
-import { vars } from "@/vars";
-
-const API_URL = vars.API_GATEWAY_URL;
+import { bffFetch } from "@/lib/api";
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const store = await cookies();
-  const token = store.get("accessToken")?.value;
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: token ? { Cookie: `accessToken=${token}` } : {},
-    cache: "no-store",
-  });
+  const res = await bffFetch(path);
   if (!res.ok) return [] as unknown as T;
   return res.json();
 }

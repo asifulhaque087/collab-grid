@@ -1,9 +1,6 @@
-import { cookies } from "next/headers";
 import { TransactionsView } from "@/components/transactions/transactions-view";
 import type { Transaction } from "@/types";
-import { vars } from "@/vars";
-
-const API_URL = vars.API_GATEWAY_URL;
+import { bffFetch } from "@/lib/api";
 
 interface ApiPayment {
   id: string;
@@ -18,12 +15,7 @@ interface ApiPayment {
 }
 
 async function fetchPayments(): Promise<ApiPayment[]> {
-  const store = await cookies();
-  const token = store.get("accessToken")?.value;
-  const res = await fetch(`${API_URL}/subscription/payments`, {
-    headers: token ? { Cookie: `accessToken=${token}` } : {},
-    cache: "no-store",
-  });
+  const res = await bffFetch("/subscription/payments");
   if (!res.ok) return [];
   return res.json();
 }

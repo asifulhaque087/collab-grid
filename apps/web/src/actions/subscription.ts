@@ -1,19 +1,8 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/actions/auth";
-import { vars } from "@/vars";
-
-const API_URL = vars.API_GATEWAY_URL;
-
-async function authHeaders(): Promise<HeadersInit> {
-  const store = await cookies();
-  const token = store.get("accessToken")?.value;
-  return token
-    ? { Cookie: `accessToken=${token}`, "Content-Type": "application/json" }
-    : { "Content-Type": "application/json" };
-}
+import { bffFetch, extractErrorMessage } from "@/lib/api";
 
 export type SubscribeResult = {
   plan: string;
@@ -35,9 +24,9 @@ export async function subscribeAction(input: {
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/subscription`, {
+    res = await bffFetch("/subscription", {
       method: "POST",
-      headers: await authHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...input, transactionId }),
     });
   } catch {
@@ -47,13 +36,7 @@ export async function subscribeAction(input: {
   const body = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const message =
-      body && typeof body === "object" && "message" in body
-        ? Array.isArray((body as { message: unknown }).message)
-          ? ((body as { message: string[] }).message).join(", ")
-          : String((body as { message: unknown }).message)
-        : "Subscription failed";
-    return { success: false, error: message };
+    return { success: false, error: extractErrorMessage(body, "Subscription failed") };
   }
 
   revalidatePath("/dashboard/billing");

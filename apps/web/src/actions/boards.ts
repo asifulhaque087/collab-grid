@@ -1,38 +1,19 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { ApiBoard } from '@/types';
-import { vars } from '@/vars';
+import { bffFetch } from '@/lib/api';
 
-const API_URL = vars.API_GATEWAY_URL;
-
-async function authHeaders(): Promise<HeadersInit> {
-  const store = await cookies();
-  const token = store.get('accessToken')?.value;
-  return token
-    ? { Cookie: `accessToken=${token}`, 'Content-Type': 'application/json' }
-    : { 'Content-Type': 'application/json' };
-}
+type ApiError = { message?: string };
 
 export async function getBoards(): Promise<ApiBoard[]> {
-  const store = await cookies();
-  const token = store.get('accessToken')?.value;
-  const res = await fetch(`${API_URL}/boards`, {
-    headers: token ? { Cookie: `accessToken=${token}` } : {},
-    cache: 'no-store',
-  });
+  const res = await bffFetch('/boards');
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function getBoardBySlug(slug: string): Promise<ApiBoard | null> {
-  const store = await cookies();
-  const token = store.get('accessToken')?.value;
-  const res = await fetch(`${API_URL}/boards/by-slug/${slug}`, {
-    headers: token ? { Cookie: `accessToken=${token}` } : {},
-    cache: 'no-store',
-  });
+  const res = await bffFetch(`/boards/by-slug/${slug}`);
   if (!res.ok) return null;
   return res.json();
 }
@@ -40,9 +21,7 @@ export async function getBoardBySlug(slug: string): Promise<ApiBoard | null> {
 // Public, unauthenticated board lookup for the end-user route (/b/[slug]).
 // Returns null unless the board exists and is published (access: 'public').
 export async function getPublicBoard(slug: string): Promise<ApiBoard | null> {
-  const res = await fetch(`${API_URL}/boards/public/${slug}`, {
-    cache: 'no-store',
-  });
+  const res = await bffFetch(`/boards/public/${slug}`);
   if (!res.ok) return null;
   return res.json();
 }
@@ -55,14 +34,14 @@ export interface BoardInput {
 }
 
 export async function createBoard(data: BoardInput) {
-  const res = await fetch(`${API_URL}/boards`, {
+  const res = await bffFetch('/boards', {
     method: 'POST',
-    headers: await authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to create board');
   }
 
@@ -71,14 +50,14 @@ export async function createBoard(data: BoardInput) {
 }
 
 export async function updateBoard(id: string, data: Partial<BoardInput>) {
-  const res = await fetch(`${API_URL}/boards/${id}`, {
+  const res = await bffFetch(`/boards/${id}`, {
     method: 'PATCH',
-    headers: await authHeaders(),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to update board');
   }
 
@@ -87,13 +66,10 @@ export async function updateBoard(id: string, data: Partial<BoardInput>) {
 }
 
 export async function deleteBoard(id: string) {
-  const res = await fetch(`${API_URL}/boards/${id}`, {
-    method: 'DELETE',
-    headers: await authHeaders(),
-  });
+  const res = await bffFetch(`/boards/${id}`, { method: 'DELETE' });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const body = (await res.json().catch(() => ({}))) as ApiError;
     throw new Error(body?.message ?? 'Failed to delete board');
   }
 

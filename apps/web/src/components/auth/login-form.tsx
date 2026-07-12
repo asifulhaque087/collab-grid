@@ -11,7 +11,7 @@ import { FormField } from "@/components/ui/form-field";
 import { AuthCard, AuthDivider } from "@/components/auth/auth-card";
 import { GoogleButton } from "@/components/auth/google-button";
 import { PasswordInput } from "@/components/auth/password-input";
-import { loginAction } from "@/actions/auth";
+import { extractErrorMessage } from "@/lib/errors";
 import { loginSchema, type LoginValues } from "@/lib/auth-schemas";
 
 export function LoginForm({ googleAuthUrl }: { googleAuthUrl: string }) {
@@ -26,9 +26,14 @@ export function LoginForm({ googleAuthUrl }: { googleAuthUrl: string }) {
   });
 
   const onSubmit = async (values: LoginValues) => {
-    const result = await loginAction(values);
-    if (!result.success) {
-      toast.error(result.error);
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      toast.error(extractErrorMessage(data, "Login failed"));
       return;
     }
     toast.success("Signed in");

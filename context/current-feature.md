@@ -1,12 +1,21 @@
-# Current Feature
+# Current Feature: BFF Auth
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Implement BFF pattern in Next.js: every API call first routes through a Next.js API route, which proxies to the NestJS backend.
+- Use React `cache()` for `getCurrentUser` (after it is converted to go through the API route).
+- Login and register API calls originate from client components, hit the Next.js API route, which calls the NestJS login/register endpoints; Nest returns tokens and Next.js sets them as cookies.
+- Next.js middleware (`proxy.ts`, Next 16) verifies the access token, and if invalid, verifies the refresh token; on valid refresh, calls the Nest `/auth/refresh` rotation endpoint, sets new token cookies, injects headers for the SSR page, injects `request.nextUrl.pathname` for the `permission-guard.tsx` permission check, and verifies tokens with the same secret from `@apps/api/.env`.
+
 ## Notes
+
+- Backend already moved to token-based auth: `login`/`register` return `{ user, accessToken, refreshToken }`; `google/callback` redirects to `${CLIENT_URL}/api/auth/callback?accessToken=…&refreshToken=…`; `POST /auth/refresh` is the centralized rotation point.
+- Web client still uses cookies — this feature closes that BFF loop.
+- Relevant files: `@apps/web/src/proxy.ts`, `@apps/web/src/lib/auth.ts` (getCurrentUser), `@apps/web/src/components/auth/permission-guard.tsx`, `@apps/api/src/auth/auth.controller.ts`.
 
 ## History
 
