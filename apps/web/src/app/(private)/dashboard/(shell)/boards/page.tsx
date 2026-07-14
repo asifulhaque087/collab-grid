@@ -6,10 +6,12 @@ import { BoardCard } from "@/components/boards/board-card";
 import { NewBoardCard } from "@/components/boards/new-board-card";
 import { BoardsActions } from "@/components/boards/boards-actions";
 import type { ApiBoard } from "@/types";
-import { API_URL, authHeaders } from "@/lib/api";
+import { authHeaders, privateApi } from "@/lib/api";
 
 async function getBoards(): Promise<ApiBoard[]> {
-  const res = await fetch(`http://localhost:3000/api/private/boards`, { headers: await authHeaders() });
+  // const res = await fetch(`http://localhost:3000/api/private/boards`, { headers: await authHeaders() });
+
+  const res = await privateApi("/boards", { headers: await authHeaders() });
   // const res = await fetch(`${API_URL}/api/private/boards`, { headers: await authHeaders() });
 
   if (!res.ok) return [];

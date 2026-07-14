@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/actions/auth";
-import { API_URL, extractErrorMessage, jsonHeaders } from "@/lib/api";
+import { extractErrorMessage, jsonHeaders, privateApi } from "@/lib/api";
 
 export type SubscribeResult = {
   plan: string;
@@ -13,18 +13,12 @@ export type SubscribeResult = {
 
 // Activates a plan for the freshly registered tenant. No real gateway yet —
 // the demo transaction id stands in for a payment confirmation.
-export async function subscribeAction(input: {
-  plan: string;
-  durationMonth: 1 | 6 | 12 | 24;
-}): Promise<ActionResult<SubscribeResult>> {
-  const transactionId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? `demo-${crypto.randomUUID()}`
-      : `demo-${Date.now()}`;
+export async function subscribeAction(input: { plan: string; durationMonth: 1 | 6 | 12 | 24 }): Promise<ActionResult<SubscribeResult>> {
+  const transactionId = typeof crypto !== "undefined" && "randomUUID" in crypto ? `demo-${crypto.randomUUID()}` : `demo-${Date.now()}`;
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/subscription`, {
+    res = await privateApi("/subscription", {
       method: "POST",
       headers: await jsonHeaders(),
       body: JSON.stringify({ ...input, transactionId }),

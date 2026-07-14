@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { API_URL, jsonHeaders } from '@/lib/api';
+import { jsonHeaders, privateApi } from '@/lib/api';
 
 type ApiError = { message?: string };
 
@@ -9,7 +9,7 @@ export async function createRole(data: {
   name: string;
   permissionIds: string[];
 }) {
-  const res = await fetch(`${API_URL}/roles`, {
+  const res = await privateApi('/roles', {
     method: 'POST',
     headers: await jsonHeaders(),
     body: JSON.stringify(data),
@@ -28,7 +28,7 @@ export async function updateRole(
   id: string,
   data: { name?: string; permissionIds?: string[] },
 ) {
-  const res = await fetch(`${API_URL}/roles/${id}`, {
+  const res = await privateApi(`/roles/${id}`, {
     method: 'PATCH',
     headers: await jsonHeaders(),
     body: JSON.stringify(data),
@@ -44,7 +44,7 @@ export async function updateRole(
 }
 
 export async function deleteRole(id: string) {
-  const res = await fetch(`${API_URL}/roles/${id}`, {
+  const res = await privateApi(`/roles/${id}`, {
     method: 'DELETE',
     headers: await jsonHeaders(),
   });

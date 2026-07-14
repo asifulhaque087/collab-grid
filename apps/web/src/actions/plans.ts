@@ -1,7 +1,7 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { API_URL, jsonHeaders } from '@/lib/api';
+import { revalidatePath } from "next/cache";
+import { jsonHeaders, privateApi } from "@/lib/api";
 
 type ApiError = { message?: string };
 
@@ -10,54 +10,48 @@ export interface PlanPermissionQuota {
   totalOperation: number;
 }
 
-export async function createPlan(data: {
-  name: string;
-  permissions: PlanPermissionQuota[];
-}) {
-  const res = await fetch(`${API_URL}/plans`, {
-    method: 'POST',
+export async function createPlan(data: { name: string; permissions: PlanPermissionQuota[] }) {
+  const res = await privateApi("/plans", {
+    method: "POST",
     headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
-    throw new Error(body?.message ?? 'Failed to create plan');
+    throw new Error(body?.message ?? "Failed to create plan");
   }
 
-  revalidatePath('/dashboard/plans');
+  revalidatePath("/dashboard/plans");
   return res.json();
 }
 
-export async function updatePlan(
-  id: string,
-  data: { name?: string; permissions?: PlanPermissionQuota[] },
-) {
-  const res = await fetch(`${API_URL}/plans/${id}`, {
-    method: 'PATCH',
+export async function updatePlan(id: string, data: { name?: string; permissions?: PlanPermissionQuota[] }) {
+  const res = await privateApi(`/plans/${id}`, {
+    method: "PATCH",
     headers: await jsonHeaders(),
     body: JSON.stringify(data),
   });
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
-    throw new Error(body?.message ?? 'Failed to update plan');
+    throw new Error(body?.message ?? "Failed to update plan");
   }
 
-  revalidatePath('/dashboard/plans');
+  revalidatePath("/dashboard/plans");
   return res.json();
 }
 
 export async function deletePlan(id: string) {
-  const res = await fetch(`${API_URL}/plans/${id}`, {
-    method: 'DELETE',
+  const res = await privateApi(`/plans/${id}`, {
+    method: "DELETE",
     headers: await jsonHeaders(),
   });
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
-    throw new Error(body?.message ?? 'Failed to delete plan');
+    throw new Error(body?.message ?? "Failed to delete plan");
   }
 
-  revalidatePath('/dashboard/plans');
+  revalidatePath("/dashboard/plans");
 }

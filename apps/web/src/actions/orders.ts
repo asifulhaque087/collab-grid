@@ -1,6 +1,6 @@
-'use server';
+"use server";
 
-import { API_URL } from '@/lib/api';
+import { publicApi } from "@/lib/api";
 
 type ApiError = { message?: string };
 
@@ -24,9 +24,9 @@ export interface OrderResult {
 // Anonymous end-user checkout — no auth. The idempotencyKey makes a repeat
 // submit a no-op (returns the original order) instead of a double charge.
 export async function createOrder(input: OrderInput): Promise<OrderResult> {
-  const res = await fetch(`${API_URL}/orders`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const res = await publicApi("/orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
 
@@ -34,7 +34,7 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
     const body = (await res.json().catch(() => ({}))) as ApiError;
     return {
       success: false,
-      error: body?.message ?? 'Payment failed. Please try again.',
+      error: body?.message ?? "Payment failed. Please try again.",
     };
   }
 

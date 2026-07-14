@@ -28,3 +28,17 @@ export async function jsonHeaders(): Promise<HeadersInit> {
     "Content-Type": "application/json",
   };
 }
+
+const LOCAL_SERVER = "http://localhost:3000";
+
+// Prepend /api/private to the local server or API_URL
+export async function privateApi(endpoint: string, options: RequestInit = {}) {
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  return fetch(`${LOCAL_SERVER}/api/private${cleanEndpoint}`, options);
+}
+
+// Prepend /api/public to the local server or API_URL
+export async function publicApi(endpoint: string, options: RequestInit = {}) {
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  return fetch(`${LOCAL_SERVER}/api/public${cleanEndpoint}`, options);
+}

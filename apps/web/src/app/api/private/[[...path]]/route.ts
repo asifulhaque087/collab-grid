@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { vars } from "@/vars";
 import { ACCESS_TOKEN_MAX_AGE, AUTH_COOKIE_OPTS, REFRESH_TOKEN_MAX_AGE } from "@/lib/auth-cookies";
 
 // Node runtime: we do a server-side fetch to the NestJS backend.
@@ -93,6 +92,10 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
 
   const status = backendRes.status;
   console.log("backend response is ", backendRes);
+
+  if (status === 204 || status === 304) {
+    return new NextResponse(null, { status, headers: responseHeaders });
+  }
 
   // JSON responses: parse so we can extract + set auth cookies, then re-emit.
   if (contentType.includes("application/json")) {

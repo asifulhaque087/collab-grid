@@ -1,6 +1,6 @@
 import { TransactionsView } from "@/components/transactions/transactions-view";
 import type { Transaction } from "@/types";
-import { API_URL, authHeaders } from "@/lib/api";
+import { authHeaders, privateApi } from "@/lib/api";
 
 interface ApiPayment {
   id: string;
@@ -15,9 +15,8 @@ interface ApiPayment {
 }
 
 async function fetchPayments(): Promise<ApiPayment[]> {
-  const res = await fetch(`${API_URL}/subscription/payments`, {
-    headers: await authHeaders(),
-  });
+  const res = await privateApi("/subscription/payments", { headers: await authHeaders() });
+
   if (!res.ok) return [];
   return res.json();
 }
