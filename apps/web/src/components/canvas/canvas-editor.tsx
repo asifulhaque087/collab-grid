@@ -115,6 +115,8 @@ export function CanvasEditor({
     slug: board.slug,
     enabled: realtimeEnabled,
     initialViewport: computeViewport,
+    authenticated: !endUser,
+    boardId: board.boardId ?? undefined,
     onJoined: (result) => {
       // myLocks recovers the user's own active locks after a refresh — force
       // those to "mine" regardless of identity timing.

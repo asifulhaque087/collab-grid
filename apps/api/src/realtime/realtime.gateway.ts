@@ -87,9 +87,13 @@ export class RealtimeGateway
 
   // A client may pass a stored userId/name (sessionStorage) so a refresh keeps
   // its identity and locks; otherwise we mint a fresh anonymous identity.
+  // When a valid WS exchange token is present (authenticated tenant editor),
+  // the token's userId takes precedence over the stored identity.
   handleConnection(client: Socket) {
     const { userId, name } = client.handshake.auth ?? {};
-    const user = this.realtime.buildUser(userId, name);
+    const wsUser = this.socketAuth.verifyWsToken(client);
+    const id = wsUser?.id ?? userId;
+    const user = this.realtime.buildUser(id, wsUser ? undefined : name);
     const data: SocketData = { user, zones: new Set(), canMove: false };
     client.data = data;
     client.emit('session', user);

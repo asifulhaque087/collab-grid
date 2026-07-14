@@ -7,7 +7,6 @@ import { tryit } from '@collab-grid/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import { buildAbility } from '@/auth/ability';
 import { Action, Subjects, type PermissionTuple } from '@/auth/permissions';
-import type { JwtPayload } from '@/auth/auth.types';
 import {
   boardTable,
   groupPermissionTable,
@@ -30,22 +29,49 @@ export class SocketAuthService {
     private readonly config: ConfigService,
   ) {}
 
-  // Verify the access token carried on the socket handshake (sent by the
-  // client as `auth.token`). Returns the authenticated userId, or null for
-  // anonymous/invalid clients.
-  authenticate(client: Socket): string | null {
+  // Mint a short-lived WebSocket token bound to a specific user + board.
+  // Called by TokenExchangeController after the user authenticates via the
+  // regular HTTP auth flow. The returned token is sent by the client as
+  // handshake.auth.token and verified in verifyWsToken / authenticate.
+  async createWsToken(
+    userId: string,
+    boardId: string,
+  ): Promise<string> {
+    return this.jwt.signAsync(
+      { id: userId, boardId, purpose: 'ws-auth' },
+      {
+        secret: this.config.getOrThrow<string>('WS_TOKEN_SECRET'),
+        expiresIn: '30s',
+      },
+    );
+  }
+
+  // Verify a WS exchange token and return its payload (userId + boardId).
+  // Returns null when the token is missing, expired, or has the wrong purpose.
+  verifyWsToken(client: Socket): { id: string; boardId: string } | null {
     const token = (client.handshake.auth as { token?: string } | undefined)
       ?.token;
     if (!token) return null;
     try {
-      const payload = this.jwt.verify<JwtPayload>(token, {
-        secret: this.config.getOrThrow<string>('ACCESS_TOKEN_SECRET'),
+      const payload = this.jwt.verify<{
+        id: string;
+        boardId: string;
+        purpose: string;
+      }>(token, {
+        secret: this.config.getOrThrow<string>('WS_TOKEN_SECRET'),
         clockTolerance: 10,
       });
-      return payload.id;
+      if (payload.purpose !== 'ws-auth') return null;
+      return { id: payload.id, boardId: payload.boardId };
     } catch {
       return null;
     }
+  }
+
+  // Verify the WS exchange token and return the authenticated userId.
+  // Returns null for anonymous/invalid clients (public end users).
+  authenticate(client: Socket): string | null {
+    return this.verifyWsToken(client)?.id ?? null;
   }
 
   // True when the user owns the board (tenant scope). Used to let the owner open

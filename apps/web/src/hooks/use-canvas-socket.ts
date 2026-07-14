@@ -59,6 +59,11 @@ interface Options extends Callbacks {
   enabled: boolean;
   /** World-space viewport at the moment of joining. */
   initialViewport: () => Viewport;
+  /** When true, fetch a short-lived WS token from the BFF before connecting
+   *  (tenant-facing editor). Public end-user boards leave this false. */
+  authenticated?: boolean;
+  /** The board's database ID, required when authenticated=true. */
+  boardId?: string;
 }
 
 const CURSOR_THROTTLE_MS = 40;
@@ -68,6 +73,8 @@ export function useCanvasSocket({
   slug,
   enabled,
   initialViewport,
+  authenticated,
+  boardId,
   ...cb
 }: Options) {
   const [connected, setConnected] = useState(false);
@@ -90,55 +97,87 @@ export function useCanvasSocket({
   useEffect(() => {
     if (!enabled) return;
 
-    const { userId, name } = readStoredIdentity();
-    const socket = io(`${WS_URL}/canvas`, {
-      transports: ["websocket"],
-      // Send the httpOnly auth cookie so the gateway can authorize widget moves
-      // (tenant/sub-user). Anonymous end users simply have no cookie.
-      withCredentials: true,
-      auth: { userId, name },
-    });
-    socketRef.current = socket;
+    let cancelled = false;
 
-    socket.on("session", (user: CanvasUser) => {
-      setMe(user);
-      sessionStorage.setItem(USER_ID_KEY, user.userId);
-      sessionStorage.setItem(USER_NAME_KEY, user.name);
-    });
+    async function connect() {
+      let wsToken: string | undefined;
+      const { userId, name } = readStoredIdentity();
 
-    socket.on("connect", () => {
-      setConnected(true);
-      socket.emit(
-        "board:join",
-        { slug, viewport: initialViewportRef.current() },
-        (result: BoardJoinResult | { error: string }) => {
-          if ("error" in result) return;
-          cbRef.current.onJoined?.(result);
-        },
-      );
-    });
+      // For the authenticated (tenant-facing) editor, exchange the session
+      // token for a short-lived WS token bound to this board.
+      if (authenticated && boardId) {
+        try {
+          const res = await fetch("/api/private/realtime/token-exchange", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ boardId }),
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { token: string };
+            wsToken = data.token;
+          }
+        } catch {
+          // Token exchange failed — connect without a WS token. The server
+          // will treat the socket as anonymous (end-user restrictions apply).
+        }
+      }
 
-    socket.on("disconnect", () => setConnected(false));
-    socket.on("cursor:move:receive", (p: CursorReceive) => cbRef.current.onCursor?.(p));
-    socket.on("peer:joined", (p: CanvasUser) => cbRef.current.onPeerJoined?.(p));
-    socket.on("peer:left", (p: { userId: string }) => cbRef.current.onPeerLeft?.(p.userId));
-    socket.on("widget:lock:soft:fixed", (l: LockFixed) => cbRef.current.onLockFixed?.(l));
-    socket.on("widget:lock:soft:release", (l: LockReleased) => cbRef.current.onLockReleased?.(l));
-    socket.on("widget:lock:soft:denied", (d: LockDenied) => cbRef.current.onLockDenied?.(d));
-    socket.on("widget:moved", (m: WidgetMoved) => cbRef.current.onWidgetMoved?.(m));
-    socket.on("widget:anchored", (m: WidgetMoved) => cbRef.current.onWidgetAnchored?.(m));
-    socket.on("widget:placed", (w: ServerWidget) => cbRef.current.onWidgetPlaced?.(w));
-    socket.on("widget:lock:hard:fixed", (l: HardFixed) => cbRef.current.onHardFixed?.(l));
-    socket.on("widget:lock:hard:release", (l: HardReleased) => cbRef.current.onHardReleased?.(l));
-    socket.on("widget:purchased", (p: Purchased) => cbRef.current.onPurchased?.(p));
+      if (cancelled) return;
+
+      const socket = io(`${WS_URL}/canvas`, {
+        transports: ["websocket"],
+        withCredentials: true,
+        auth: { token: wsToken, userId, name },
+      });
+      socketRef.current = socket;
+
+      socket.on("session", (user: CanvasUser) => {
+        setMe(user);
+        sessionStorage.setItem(USER_ID_KEY, user.userId);
+        sessionStorage.setItem(USER_NAME_KEY, user.name);
+      });
+
+      socket.on("connect", () => {
+        setConnected(true);
+        socket.emit(
+          "board:join",
+          { slug, viewport: initialViewportRef.current() },
+          (result: BoardJoinResult | { error: string }) => {
+            if ("error" in result) return;
+            cbRef.current.onJoined?.(result);
+          },
+        );
+      });
+
+      socket.on("disconnect", () => setConnected(false));
+      socket.on("cursor:move:receive", (p: CursorReceive) => cbRef.current.onCursor?.(p));
+      socket.on("peer:joined", (p: CanvasUser) => cbRef.current.onPeerJoined?.(p));
+      socket.on("peer:left", (p: { userId: string }) => cbRef.current.onPeerLeft?.(p.userId));
+      socket.on("widget:lock:soft:fixed", (l: LockFixed) => cbRef.current.onLockFixed?.(l));
+      socket.on("widget:lock:soft:release", (l: LockReleased) => cbRef.current.onLockReleased?.(l));
+      socket.on("widget:lock:soft:denied", (d: LockDenied) => cbRef.current.onLockDenied?.(d));
+      socket.on("widget:moved", (m: WidgetMoved) => cbRef.current.onWidgetMoved?.(m));
+      socket.on("widget:anchored", (m: WidgetMoved) => cbRef.current.onWidgetAnchored?.(m));
+      socket.on("widget:placed", (w: ServerWidget) => cbRef.current.onWidgetPlaced?.(w));
+      socket.on("widget:lock:hard:fixed", (l: HardFixed) => cbRef.current.onHardFixed?.(l));
+      socket.on("widget:lock:hard:release", (l: HardReleased) => cbRef.current.onHardReleased?.(l));
+      socket.on("widget:purchased", (p: Purchased) => cbRef.current.onPurchased?.(p));
+    }
+
+    // Connect is fire-and-forget — the async token fetch runs before io().
+    connect();
 
     return () => {
-      socket.removeAllListeners();
-      socket.disconnect();
-      socketRef.current = null;
+      cancelled = true;
+      const socket = socketRef.current;
+      if (socket) {
+        socket.removeAllListeners();
+        socket.disconnect();
+        socketRef.current = null;
+      }
       setConnected(false);
     };
-  }, [enabled, slug]);
+  }, [enabled, slug, authenticated, boardId]);
 
   const sendCursor = useCallback((x: number, y: number) => {
     const socket = socketRef.current;
