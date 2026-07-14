@@ -1,25 +1,12 @@
 # Current Feature
 
-Token Exchange for WebSocket
-
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Secure, authenticated, and resource-protected WebSocket connection initiation using a single-use ticket pattern
-- Next.js private API route (`/api/private/[[...path]]`) proxies token exchange to NestJS
-- NestJS returns a short-lived (30s) JWT token
-- Client uses token to authenticate WebSocket connection
-- Only applies to tenant-facing editor (`(private)` layout), not public `/b/[slug]`
-- Refactor `realtime.gateway.ts` and `socket-auth.service.ts` for new architecture
-- Add required controllers in `apps/api/src/realtime` module
-
 ## Notes
-
-- Token exchange should only be relevant for tenant-facing editor (`apps/web/src/app/(private)/layout.tsx`), not for `apps/web/src/app/(public)/b/[slug]/page.tsx`
-- Current auth handled in `apps/api/src/realtime/realtime.gateway.ts` and `apps/api/src/realtime/socket-auth.service.ts` — these need to change for the new architecture
 
 ## History
 
@@ -86,3 +73,5 @@ In Progress
 - **Responsive Dashboard Pages** — Dashboard shell now works on mobile. Shell [layout](<apps/web/src/app/dashboard/(shell)/layout.tsx>) moved off the fixed CSS grid to a flex column wrapped in a new `SidebarProvider` ([sidebar-context](apps/web/src/components/layout/sidebar-context.tsx)); the [sidebar](apps/web/src/components/layout/sidebar.tsx) becomes a fixed off-canvas drawer below the header with a tap-to-dismiss backdrop, auto-closing on route change/link tap, and docks `md:static` at ≥768px. New [sidebar-toggle](apps/web/src/components/layout/sidebar-toggle.tsx) hamburger (`md:hidden`) in the [header](apps/web/src/components/layout/header.tsx), which also hides telemetry (`lg`)/workspace label (`md`) on small screens. `StatsRow` 2→4 cols, `PageHeader` stacks, billing usage grid + `FormRow` + perm grid go single-col on mobile, dialogs gain a side gutter + `max-h-[90dvh]` scroll. Tables already scrolled via shared `DataTable` (`overflow-x-auto`+`min-w-[700px]`). Canvas editor out of scope. Build 3/3.
 
 - **Token-Based Auth** — Shifted the API from cookie-based to pure token-based auth. `login`/`register` now return `{ user, accessToken, refreshToken }`; `google/callback` redirects to `${CLIENT_URL}/api/auth/callback?accessToken=…&refreshToken=…` (BFF route to be built later). Added `POST /auth/refresh` as the single centralized rotation point wrapping `AuthService.refreshAccessToken`, and removed refresh-token rotation from `AccessTokenGuard`. Removed `cookie-parser` and all cookie handling (`main.ts`, `getCookieSettings`, guard cookie fallback); socket auth now reads the bearer token from `handshake.auth.token`. Web client still uses cookies — that's a separate BFF follow-up. Build + lint pass.
+
+- **Token Exchange for WebSocket** — Secure WebSocket connections for the tenant-facing editor via a token exchange pattern. New `POST /realtime/token-exchange` endpoint (guarded by `AccessTokenGuard`) signs a 30s JWT bound to `{ userId, boardId, purpose: 'ws-auth' }` with a dedicated `WS_TOKEN_SECRET`. `SocketAuthService.createWsToken`/`verifyWsToken` handle minting and validation; `authenticate` now delegates to `verifyWsToken`. `RealtimeGateway.handleConnection` prefers the WS token's userId over sessionStorage for authenticated users. Frontend `useCanvasSocket` hook fetches the WS token from the BFF before connecting when `authenticated=true`; `CanvasEditor` passes `authenticated: !endUser` so only the private editor (not public `/b/[slug]`) uses token exchange. Also fixed `getPublicBoard` server action path to match `PublicBoardController`'s `/boards/public/:slug` route (was missing the `/public/` segment). Build 3/3, API lint clean.
