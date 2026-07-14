@@ -1,12 +1,25 @@
 # Current Feature
 
+Token Exchange for WebSocket
+
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
+- Secure, authenticated, and resource-protected WebSocket connection initiation using a single-use ticket pattern
+- Next.js private API route (`/api/private/[[...path]]`) proxies token exchange to NestJS
+- NestJS returns a short-lived (30s) JWT token
+- Client uses token to authenticate WebSocket connection
+- Only applies to tenant-facing editor (`(private)` layout), not public `/b/[slug]`
+- Refactor `realtime.gateway.ts` and `socket-auth.service.ts` for new architecture
+- Add required controllers in `apps/api/src/realtime` module
+
 ## Notes
+
+- Token exchange should only be relevant for tenant-facing editor (`apps/web/src/app/(private)/layout.tsx`), not for `apps/web/src/app/(public)/b/[slug]/page.tsx`
+- Current auth handled in `apps/api/src/realtime/realtime.gateway.ts` and `apps/api/src/realtime/socket-auth.service.ts` — these need to change for the new architecture
 
 ## History
 

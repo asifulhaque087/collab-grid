@@ -22,7 +22,7 @@ export async function getBoardBySlug(slug: string): Promise<ApiBoard | null> {
 
 // Public, unauthenticated board lookup for the end-user route (/b/[slug]).
 export async function getPublicBoard(slug: string): Promise<ApiBoard | null> {
-  const res = await publicApi(`/boards/${slug}`);
+  const res = await publicApi(`/boards/public/${slug}`);
   if (!res.ok) return null;
   return res.json();
 }
