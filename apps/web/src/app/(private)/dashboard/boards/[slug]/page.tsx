@@ -3,19 +3,13 @@ import { getBoardBySlug } from "@/actions/boards";
 import { getInventoryItems } from "@/actions/inventory";
 import { CanvasEditor } from "@/components/canvas/canvas-editor";
 import { toInventoryThumb } from "@/lib/canvas-mappers";
-import { requireAuth } from "@/lib/auth";
 import type { BoardCanvas } from "@/types/canvas";
 
 // The live canvas board editor renders full-width under the global header
 // (no nav sidebar), matching the prototype's canvas mode.
-export default async function CanvasBoardPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function CanvasBoardPage({ params }: { params: Promise<{ slug: string }> }) {
   // This is the tenant-facing editor — anonymous end users belong on the public
-  // /b/[slug] route, so gate it behind auth (redirects to /sign-in otherwise).
-  await requireAuth();
+  // /b/[slug] route, so it is already gated in the @apps/web/src/app/(private)/layout.tsx
 
   const { slug } = await params;
 
