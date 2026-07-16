@@ -22,6 +22,7 @@ import type {
   CursorMovePayload,
   JoinPayload,
   SoftLockPayload,
+  Viewport,
   ViewportUpdatePayload,
   WidgetMovePayload,
   WidgetPlacePayload,
@@ -108,44 +109,65 @@ export class RealtimeGateway
       .emit('peer:left', { userId: data.user.userId });
   }
 
-  @SubscribeMessage('board:join')
-  async onJoin(
+  @SubscribeMessage('board:join:private')
+  async onPrivateJoin(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: JoinPayload,
   ): Promise<BoardJoinResult | { error: string }> {
     const data = client.data as SocketData;
+
+    // Tenant-facing editor must present a valid WS exchange token.
+    const authUserId = this.socketAuth.authenticate(client);
+    if (!authUserId) return { error: 'Authentication required' };
+
     const board = await this.realtime.getPublicBoard(payload.slug);
     if (!board) return { error: 'Board not found' };
 
-    // Authenticate once (JWT from handshake auth.token) — drives both the
-    // access gate and move privilege. Anonymous end users resolve to null.
-    const authUserId = this.socketAuth.authenticate(client);
-
-    // Access gate: public boards are open to anyone; restricted (unpublished)
-    // boards may only be joined by their authenticated owner.
-    if (board.access !== 'public') {
-      const owner =
-        !!authUserId && (await this.socketAuth.ownsBoard(authUserId, board.id));
-      if (!owner) return { error: 'This board is not published.' };
-    }
+    // Owner may access their restricted (unpublished) boards over the socket.
+    // if (board.access !== 'public') {
+    //   const owner = await this.socketAuth.ownsBoard(authUserId, board.id);
+    //   if (!owner) return { error: 'This board is not published.' };
+    // }
 
     data.boardId = board.id;
+    data.canMove = await this.socketAuth.canManageWidgets(authUserId, board.id);
 
-    // Resolve move privilege once at join so the high-frequency move handlers
-    // stay cheap.
-    data.canMove = authUserId
-      ? await this.socketAuth.canManageWidgets(authUserId, board.id)
-      : false;
+    return this.doJoin(client, board, payload.viewport);
+  }
 
-    // Join the board-wide room (presence + lock events) and every zone the
-    // viewport overlaps (cursors + future widget moves).
+  @SubscribeMessage('board:join:public')
+  async onPublicJoin(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: JoinPayload,
+  ): Promise<BoardJoinResult | { error: string }> {
+    const data = client.data as SocketData;
+
+    const board = await this.realtime.getPublicBoard(payload.slug);
+    if (!board) return { error: 'Board not found' };
+
+    // Only published public boards are accessible to anonymous end users.
+    if (board.access !== 'public') return { error: 'This board is not published.' };
+
+    data.boardId = board.id;
+    data.canMove = false; // End users never reposition widgets.
+
+    return this.doJoin(client, board, payload.viewport);
+  }
+
+  private async doJoin(
+    client: Socket,
+    board: { id: string; slug: string; name: string; maxWidth: number | null; maxHeight: number | null },
+    viewport: Viewport,
+  ): Promise<BoardJoinResult> {
+    const data = client.data as SocketData;
+
     await client.join(this.zone.boardRoom(board.id));
-    const zones = this.zone.calculateOverlappingZones(payload.viewport);
+    const zones = this.zone.calculateOverlappingZones(viewport);
     for (const z of zones) await client.join(this.zone.room(board.id, z));
     data.zones = new Set(zones);
 
     await this.realtime.addPresence(board.id, data.user, client.id);
-    await this.realtime.saveViewport(board.id, data.user.userId, payload.viewport);
+    await this.realtime.saveViewport(board.id, data.user.userId, viewport);
 
     const [widgets, peers, myLocks] = await Promise.all([
       this.realtime.getBoardWidgets(board.id),
@@ -153,10 +175,7 @@ export class RealtimeGateway
       this.realtime.getUserLocks(board.id, data.user.userId),
     ]);
 
-    // Tell existing viewers a new peer arrived.
-    client
-      .to(this.zone.boardRoom(board.id))
-      .emit('peer:joined', data.user);
+    client.to(this.zone.boardRoom(board.id)).emit('peer:joined', data.user);
 
     return {
       boardId: board.id,

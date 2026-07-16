@@ -139,8 +139,9 @@ export function useCanvasSocket({
 
       socket.on("connect", () => {
         setConnected(true);
+        const event = authenticated ? "board:join:private" : "board:join:public";
         socket.emit(
-          "board:join",
+          event,
           { slug, viewport: initialViewportRef.current() },
           (result: BoardJoinResult | { error: string }) => {
             if ("error" in result) return;
