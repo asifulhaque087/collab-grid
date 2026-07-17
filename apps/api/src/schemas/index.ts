@@ -159,6 +159,11 @@ export const limitUsageTable = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     used: integer('used').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => userTable.id, {
+        onDelete: 'cascade',
+      }),
     packagePermissionLimitId: uuid('package_permission_limit_id')
       .notNull()
       .references(() => packagePermissionLimitTable.id, {
@@ -166,24 +171,11 @@ export const limitUsageTable = pgTable(
       }),
   },
   (table) => [
-    index('limit_usage_pkg_perm_limit_id_idx').on(
+    index('limit_usage_pkg_perm_limit_user_id_idx').on(
       table.packagePermissionLimitId,
+      table.userId,
     ),
   ],
-);
-
-export const userLimitUsageTable = pgTable(
-  'user_limit_usage',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => userTable.id, { onDelete: 'cascade' }),
-    limitUsageId: uuid('limit_usage_id')
-      .notNull()
-      .references(() => limitUsageTable.id, { onDelete: 'cascade' }),
-  },
-  (table) => [index('user_limit_usage_user_id_idx').on(table.userId)],
 );
 
 // ### Suggested Additional Models
@@ -286,6 +278,7 @@ export const userTableRelations = relations(userTable, ({ one, many }) => ({
   smartWidgets: many(smartWidgetTable),
   userRoles: many(userRoleTable),
   subscriptions: many(subscriptionTable),
+  limitUsages: many(limitUsageTable),
 }));
 
 // ==========================================
@@ -394,25 +387,14 @@ export const subscriptionTableRelations = relations(
 
 export const limitUsageTableRelations = relations(
   limitUsageTable,
-  ({ one, many }) => ({
+  ({ one }) => ({
     packagePermissionLimit: one(packagePermissionLimitTable, {
       fields: [limitUsageTable.packagePermissionLimitId],
       references: [packagePermissionLimitTable.id],
     }),
-    userLimitUsages: many(userLimitUsageTable),
-  }),
-);
-
-export const userLimitUsageTableRelations = relations(
-  userLimitUsageTable,
-  ({ one }) => ({
     user: one(userTable, {
-      fields: [userLimitUsageTable.userId],
+      fields: [limitUsageTable.userId],
       references: [userTable.id],
-    }),
-    limitUsage: one(limitUsageTable, {
-      fields: [userLimitUsageTable.limitUsageId],
-      references: [limitUsageTable.id],
     }),
   }),
 );

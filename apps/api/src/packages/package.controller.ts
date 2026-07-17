@@ -14,7 +14,6 @@ import {
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { LimitGuard } from '@/auth/guards/limit.guard';
-import { LimitUpdaterGuard } from '@/auth/guards/limit-updater.guard';
 import { RequirePermission } from '@/auth/decorators/require-permission.decorator';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { Action, Subjects } from '@/auth/permissions';
@@ -24,7 +23,7 @@ import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 
 @Controller('packages')
-@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard, LimitUpdaterGuard)
+@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard)
 export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 

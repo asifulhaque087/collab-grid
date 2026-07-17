@@ -8,11 +8,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { tryit } from '@collab-grid/common';
 import type { Request } from 'express';
 import { REQUIRE_PERMISSION_KEY } from '@/auth/decorators/require-permission.decorator';
-import type { PermissionTuple } from '@/auth/permissions';
+import { Action, type PermissionTuple } from '@/auth/permissions';
 import type { AuthUser } from '@/auth/auth.types';
 import { DRIZZLE, type DrizzleDB } from '@/drizzle/drizzle.module';
 import {
@@ -34,7 +34,10 @@ export class LimitGuard implements CanActivate {
       PermissionTuple[] | undefined
     >(REQUIRE_PERMISSION_KEY, [context.getHandler(), context.getClass()]);
 
-    if (!required || required.length === 0) return true;
+    const createPerms = (required ?? []).filter(
+      (p) => p.action === Action.Create,
+    );
+    if (createPerms.length === 0) return true;
 
     const request = context.switchToHttp().getRequest<Request>();
     const user = request.user as AuthUser | undefined;
@@ -46,18 +49,10 @@ export class LimitGuard implements CanActivate {
     const tenantId = user.parentId ?? user.userId;
 
     const activeSubs = await this.getActiveSubscriptions(tenantId);
-
     if (!activeSubs || activeSubs.length === 0) return true;
 
-    const packageIds = activeSubs.map((s) => s.packageId);
-
-    for (const permission of required) {
-      const hasCapacity = await this.hasCapacity(packageIds, permission);
-      if (!hasCapacity) {
-        throw new ForbiddenException(
-          "You've reached your plan's limit for this feature. Upgrade to Pro to continue.",
-        );
-      }
+    for (const perm of createPerms) {
+      await this.incrementUsage(tenantId, activeSubs, perm);
     }
 
     return true;
@@ -87,7 +82,8 @@ export class LimitGuard implements CanActivate {
               gt(subscriptionTable.endDate, new Date()),
             ),
           ),
-        ),
+        )
+        .orderBy(subscriptionTable.startDate),
     );
 
     if (err) {
@@ -99,11 +95,95 @@ export class LimitGuard implements CanActivate {
     return rows ?? [];
   }
 
-  private async hasCapacity(
-    packageIds: string[],
+  private async incrementUsage(
+    tenantId: string,
+    activeSubs: { packageId: string }[],
     permission: PermissionTuple,
-  ): Promise<boolean> {
-    const [limitRows, limitErr] = await tryit(
+  ) {
+    for (const sub of activeSubs) {
+      const limitRow = await this.findLimit(sub.packageId, permission);
+      if (!limitRow) continue;
+
+      // If the limit is null or -1, they have unlimited access. No need to track/increment.
+      if (limitRow.limit === null || limitRow.limit === -1) return;
+
+      // 1. Attempt an atomic conditional update assuming the row already exists.
+      // This completes the read, safety check, and write in 1 database roundtrip.
+      const [updatedRows, updateErr] = await tryit(
+        this.db
+          .update(limitUsageTable)
+          .set({ used: sql`${limitUsageTable.used} + 1` })
+          .where(
+            and(
+              eq(limitUsageTable.userId, tenantId),
+              eq(limitUsageTable.packagePermissionLimitId, limitRow.id),
+              // Atomic safety guardrail: Only update if we are strictly under the limit
+              sql`${limitUsageTable.used} < ${limitRow.limit}`,
+            ),
+          )
+          .returning({ id: limitUsageTable.id }),
+      );
+
+      if (updateErr) {
+        throw new InternalServerErrorException(
+          'Failed to update workspace usage counter.',
+        );
+      }
+
+      // 2. Success Case: The record existed and was successfully incremented under the limit.
+      if (updatedRows && updatedRows.length > 0) {
+        return;
+      }
+
+      // 3. If no rows were updated, we need to check why:
+      // Case A: The tenant has reached their limit (row exists, but used >= limit).
+      // Case B: The row doesn't exist yet (e.g., brand new package permission).
+      const [existingRows] = await tryit(
+        this.db
+          .select({ used: limitUsageTable.used })
+          .from(limitUsageTable)
+          .where(
+            and(
+              eq(limitUsageTable.userId, tenantId),
+              eq(limitUsageTable.packagePermissionLimitId, limitRow.id),
+            ),
+          )
+          .limit(1),
+      );
+
+      const existing = existingRows?.[0];
+
+      if (existing) {
+        // Case A: The record exists, which means the atomic update skipped it because they are out of quota.
+        throw new ForbiddenException(
+          'The workspace has reached its limit for this action.',
+        );
+      }
+
+      // Case B: No record exists yet. Initialize the counter starting at 1.
+      const [created, insertErr] = await tryit(
+        this.db
+          .insert(limitUsageTable)
+          .values({
+            packagePermissionLimitId: limitRow.id,
+            userId: tenantId,
+            used: 1,
+          })
+          .returning({ id: limitUsageTable.id }),
+      );
+
+      if (insertErr || !created?.[0]) {
+        throw new InternalServerErrorException(
+          'Failed to initialize workspace usage counter.',
+        );
+      }
+
+      return;
+    }
+  }
+
+  private async findLimit(packageId: string, permission: PermissionTuple) {
+    const [rows, err] = await tryit(
       this.db
         .select({
           id: packagePermissionLimitTable.id,
@@ -116,36 +196,20 @@ export class LimitGuard implements CanActivate {
         )
         .where(
           and(
-            inArray(packagePermissionLimitTable.packageId, packageIds),
+            eq(packagePermissionLimitTable.packageId, packageId),
             eq(permissionsTable.action, permission.action),
             eq(permissionsTable.subject, permission.subject),
           ),
-        ),
+        )
+        .limit(1),
     );
 
-    if (limitErr) {
+    if (err) {
       throw new InternalServerErrorException(
-        'Failed to resolve permission limits.',
+        'Failed to resolve permission limit.',
       );
     }
 
-    if (!limitRows || limitRows.length === 0) return false;
-
-    for (const limitRow of limitRows) {
-      if (limitRow.limit === null || limitRow.limit === -1) return true;
-
-      const [usageRows] = await tryit(
-        this.db
-          .select({ totalUsed: sql<number>`coalesce(sum(used), 0)::int` })
-          .from(limitUsageTable)
-          .where(eq(limitUsageTable.packagePermissionLimitId, limitRow.id)),
-      );
-
-      const totalUsed = usageRows?.[0]?.totalUsed ?? 0;
-
-      if (totalUsed < limitRow.limit) return true;
-    }
-
-    return false;
+    return rows?.[0] ?? null;
   }
 }

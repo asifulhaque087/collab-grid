@@ -14,7 +14,6 @@ import {
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { LimitGuard } from '@/auth/guards/limit.guard';
-import { LimitUpdaterGuard } from '@/auth/guards/limit-updater.guard';
 import { RequirePermission } from '@/auth/decorators/require-permission.decorator';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { Action, Subjects } from '@/auth/permissions';
@@ -24,7 +23,7 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
 @Controller('roles')
-@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard, LimitUpdaterGuard)
+@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard)
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
@@ -49,10 +48,7 @@ export class RoleController {
 
   @Patch(':id')
   @RequirePermission({ action: Action.Update, subject: Subjects.Group })
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateRoleDto,
-  ) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRoleDto) {
     return this.roleService.update(id, dto);
   }
 

@@ -9,7 +9,6 @@ import { AuthService } from '@/auth/auth.service';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { LimitGuard } from '@/auth/guards/limit.guard';
-import { LimitUpdaterGuard } from '@/auth/guards/limit-updater.guard';
 import { GoogleStrategy } from '@/auth/strategies/google.strategy';
 import { JwtStrategy } from '@/auth/strategies/jwt.strategy';
 
@@ -38,8 +37,7 @@ import { JwtStrategy } from '@/auth/strategies/jwt.strategy';
     AccessTokenGuard,
     RoleGuard,
     LimitGuard,
-    LimitUpdaterGuard,
   ],
-  exports: [AuthService, AccessTokenGuard, RoleGuard, LimitGuard, LimitUpdaterGuard],
+  exports: [AuthService, AccessTokenGuard, RoleGuard, LimitGuard],
 })
 export class AuthModule {}

@@ -19,7 +19,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
 import { RoleGuard } from '@/auth/guards/role.guard';
 import { LimitGuard } from '@/auth/guards/limit.guard';
-import { LimitUpdaterGuard } from '@/auth/guards/limit-updater.guard';
 import { RequirePermission } from '@/auth/decorators/require-permission.decorator';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { Action, Subjects } from '@/auth/permissions';
@@ -36,7 +35,7 @@ interface UploadedCsv {
 }
 
 @Controller('inventory')
-@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard, LimitUpdaterGuard)
+@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
