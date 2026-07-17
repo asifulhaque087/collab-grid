@@ -17,8 +17,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
-import { PermissionsGuard } from '@/auth/guards/permissions.guard';
-import { QuotaGuard } from '@/auth/guards/quota.guard';
+import { RoleGuard } from '@/auth/guards/role.guard';
+import { LimitGuard } from '@/auth/guards/limit.guard';
+import { LimitUpdaterGuard } from '@/auth/guards/limit-updater.guard';
 import { RequirePermission } from '@/auth/decorators/require-permission.decorator';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { Action, Subjects } from '@/auth/permissions';
@@ -35,21 +36,21 @@ interface UploadedCsv {
 }
 
 @Controller('inventory')
-@UseGuards(AccessTokenGuard, PermissionsGuard, QuotaGuard)
+@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard, LimitUpdaterGuard)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Get()
   @RequirePermission({ action: Action.Read, subject: Subjects.SmartWidget })
   findAll(@GetUser() user: AuthUser, @Query('boardId') boardId?: string) {
-    return this.inventoryService.findAll(user.userId, boardId);
+    return this.inventoryService.findAll(user.userId, boardId, user.parentId);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission({ action: Action.Create, subject: Subjects.SmartWidget })
   create(@Body() dto: CreateInventoryDto, @GetUser() user: AuthUser) {
-    return this.inventoryService.create(dto, user.userId);
+    return this.inventoryService.create(dto, user.userId, user.parentId);
   }
 
   @Post('import')
@@ -62,7 +63,12 @@ export class InventoryController {
     @Body('boardId') boardId?: string,
   ) {
     if (!file) throw new BadRequestException('A CSV file is required.');
-    return this.inventoryService.importCsv(file.buffer, user.userId, boardId);
+    return this.inventoryService.importCsv(
+      file.buffer,
+      user.userId,
+      user.parentId,
+      boardId,
+    );
   }
 
   @Patch(':id')
@@ -72,13 +78,13 @@ export class InventoryController {
     @Body() dto: UpdateInventoryDto,
     @GetUser() user: AuthUser,
   ) {
-    return this.inventoryService.update(id, dto, user.userId);
+    return this.inventoryService.update(id, dto, user.userId, user.parentId);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission({ action: Action.Delete, subject: Subjects.SmartWidget })
   remove(@Param('id', ParseUUIDPipe) id: string, @GetUser() user: AuthUser) {
-    return this.inventoryService.remove(id, user.userId);
+    return this.inventoryService.remove(id, user.userId, user.parentId);
   }
 }

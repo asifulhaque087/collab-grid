@@ -9,22 +9,24 @@ import {
   permissionKey,
 } from '../src/auth/permissions';
 import {
-  FREE_PLAN_SLUG,
-  PRO_PLAN_SLUG,
+  FREE_PACKAGE_SLUG,
   TENANT_ROLE_SLUG,
   SUPER_ADMIN_ROLE_SLUG,
 } from '../src/auth/rbac.constants';
 
 const {
   permissionsTable,
-  groupTable,
-  groupPermissionTable,
+  roleTable,
+  rolePermissionTable,
+  userRoleTable,
+  packageTable,
+  packagePermissionLimitTable,
+  subscriptionTable,
   userTable,
-  userGroupTable,
-  userPlanSnapshotTable,
-  paymentHistoryTable,
   boardTable,
   smartWidgetTable,
+  orderTable,
+  orderItemTable,
 } = schema;
 
 const db = drizzle(new Pool({ connectionString: process.env.DATABASE_URL! }), {
@@ -32,8 +34,6 @@ const db = drizzle(new Pool({ connectionString: process.env.DATABASE_URL! }), {
 });
 
 // ─── Tenant permissions ───────────────────────────────────────────────────────
-// Roles are for permission checks. The tenant role is the source of truth for
-// what a tenant user is allowed to do at all.
 
 const isTenantPermission = (p: { action: string; subject: string }) =>
   !(p.action === Action.Manage && p.subject === Subjects.All);
@@ -44,24 +44,20 @@ const TENANT_PERMISSION_KEYS = new Set(
   TENANT_PERMISSIONS.map((p) => permissionKey(p.action, p.subject)),
 );
 
-// ─── Plan quotas ──────────────────────────────────────────────────────────────
-// Plans set numeric quotas on a *subset* of tenant permissions.
-// Every permission tracked by a plan MUST exist in TENANT_PERMISSIONS —
-// enforced by assertPlanSubsetOfTenant() before any DB writes.
+// ─── Package quotas ────────────────────────────────────────────────────────────
 
-const PLAN_QUOTAS: {
+const PACKAGE_QUOTAS: {
   action: Action;
   subject: Subjects;
   free: number;
-  pro: number;
 }[] = [
-  { action: Action.Create, subject: Subjects.Board, free: 2, pro: 15 },
-  { action: Action.Create, subject: Subjects.Group, free: 3, pro: 20 },
-  { action: Action.Create, subject: Subjects.SmartWidget, free: 25, pro: -1 },
+  { action: Action.Create, subject: Subjects.Board, free: 2 },
+  { action: Action.Create, subject: Subjects.Group, free: 3 },
+  { action: Action.Create, subject: Subjects.SmartWidget, free: 25 },
 ];
 
-function assertPlanSubsetOfTenant() {
-  const violations = PLAN_QUOTAS.filter(
+function assertQuotaSubsetOfTenant() {
+  const violations = PACKAGE_QUOTAS.filter(
     (q) => !TENANT_PERMISSION_KEYS.has(permissionKey(q.action, q.subject)),
   );
   if (violations.length > 0) {
@@ -69,74 +65,32 @@ function assertPlanSubsetOfTenant() {
       .map((v) => permissionKey(v.action, v.subject))
       .join(', ');
     throw new Error(
-      `Plan quotas reference permissions not in the tenant role: ${keys}. ` +
+      `Package quotas reference permissions not in the tenant role: ${keys}. ` +
         `Add them to PERMISSION_CATALOG (with isTenantPermission returning true) first.`,
     );
   }
 }
 
-// ─── Other static data ────────────────────────────────────────────────────────
-
-const SYSTEM_GROUPS = [
-  {
-    slug: SUPER_ADMIN_ROLE_SLUG,
-    title: 'Super Admin',
-    type: 'role' as const,
-    createdBy: 'constant' as const,
-  },
-  {
-    slug: TENANT_ROLE_SLUG,
-    title: 'Tenant',
-    type: 'role' as const,
-    createdBy: 'constant' as const,
-  },
-  {
-    slug: FREE_PLAN_SLUG,
-    title: 'Free',
-    type: 'plan' as const,
-    createdBy: 'constant' as const,
-  },
-  {
-    slug: PRO_PLAN_SLUG,
-    title: 'Pro',
-    type: 'plan' as const,
-    createdBy: 'constant' as const,
-  },
-] as const;
-
-const SEED_USERS = [
-  {
-    name: 'Super Admin',
-    email: 'admin@collabgrid.com',
-    plan: 'pro' as const,
-    groupSlug: SUPER_ADMIN_ROLE_SLUG,
-  },
-  {
-    name: 'Tenant User',
-    email: 'tenant@collabgrid.com',
-    plan: 'free' as const,
-    groupSlug: TENANT_ROLE_SLUG,
-  },
-];
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  // Guard: every plan quota must be covered by the tenant role first.
-  assertPlanSubsetOfTenant();
+  assertQuotaSubsetOfTenant();
 
   console.log('Seeding database...');
 
   // 0. Clear all tables in dependency order (leaf tables first).
   console.log('  Clearing tables...');
+  await db.delete(orderItemTable);
+  await db.delete(orderTable);
   await db.delete(smartWidgetTable);
   await db.delete(boardTable);
-  await db.delete(userPlanSnapshotTable);
-  await db.delete(paymentHistoryTable);
-  await db.delete(userGroupTable);
-  await db.delete(groupPermissionTable);
+  await db.delete(subscriptionTable);
+  await db.delete(packagePermissionLimitTable);
+  await db.delete(packageTable);
+  await db.delete(userRoleTable);
+  await db.delete(rolePermissionTable);
+  await db.delete(roleTable);
   await db.delete(userTable);
-  await db.delete(groupTable);
   await db.delete(permissionsTable);
 
   // 1. Seed permissions — derived entirely from PERMISSION_CATALOG.
@@ -156,98 +110,118 @@ async function main() {
     permissionIds[permissionKey(perm.action, perm.subject)] = row.id;
   }
 
-  // 2. Seed system groups (roles + plans).
-  console.log('  Seeding groups (roles + plans)...');
-  const groupIds: Record<string, string> = {};
+  // 2. Seed system roles.
+  console.log('  Seeding roles...');
 
-  for (const group of SYSTEM_GROUPS) {
-    const [row] = await db.insert(groupTable).values(group).returning();
-    groupIds[group.slug] = row.id;
-  }
+  const [superAdminRole] = await db
+    .insert(roleTable)
+    .values({
+      slug: SUPER_ADMIN_ROLE_SLUG,
+      title: 'Super Admin',
+      primaryUserId: null,
+      secondaryUserId: null,
+    })
+    .returning();
 
-  // 3. Seed group permissions.
-  console.log('  Seeding group permissions...');
-
-  // super-admin: single manage:all grant, no quota.
-  await db.insert(groupPermissionTable).values({
-    groupId: groupIds[SUPER_ADMIN_ROLE_SLUG],
-    permissionId: permissionIds[permissionKey(Action.Manage, Subjects.All)],
-    totalOperation: null,
-  });
-
-  // tenant role: every non-super-admin permission, no quota (boolean capability).
-  for (const perm of TENANT_PERMISSIONS) {
-    await db.insert(groupPermissionTable).values({
-      groupId: groupIds[TENANT_ROLE_SLUG],
-      permissionId: permissionIds[permissionKey(perm.action, perm.subject)],
-      totalOperation: null,
-    });
-  }
-
-  // plans: quota caps sourced from PLAN_QUOTAS (guaranteed subset of tenant above).
-  for (const quota of PLAN_QUOTAS) {
-    const key = permissionKey(quota.action, quota.subject);
-    await db.insert(groupPermissionTable).values([
-      {
-        groupId: groupIds[FREE_PLAN_SLUG],
-        permissionId: permissionIds[key],
-        totalOperation: quota.free,
-      },
-      {
-        groupId: groupIds[PRO_PLAN_SLUG],
-        permissionId: permissionIds[key],
-        totalOperation: quota.pro,
-      },
-    ]);
-  }
-
-  // 4. Seed users.
   console.log('  Seeding users...');
   const hashedPassword = hashSync('qwerty1234%', 10);
 
-  // Free-plan quota lookup, keyed by permission tuple.
-  const freeQuotaByKey = new Map(
-    PLAN_QUOTAS.map((q) => [permissionKey(q.action, q.subject), q.free]),
-  );
+  // 3. Seed super admin user.
+  const [superAdminUser] = await db
+    .insert(userTable)
+    .values({
+      name: 'Super Admin',
+      email: 'admin@collabgrid.com',
+      password: hashedPassword,
+      provider: 'local',
+    })
+    .returning();
 
-  for (const user of SEED_USERS) {
-    const [row] = await db
-      .insert(userTable)
-      .values({
-        name: user.name,
-        email: user.email,
-        password: hashedPassword,
-        provider: 'local',
-        plan: user.plan,
-      })
-      .returning();
+  await db.insert(userRoleTable).values({
+    userId: superAdminUser.id,
+    roleId: superAdminRole.id,
+  });
 
-    await db
-      .insert(userGroupTable)
-      .values({ userId: row.id, groupId: groupIds[user.groupSlug] });
+  // 4. Seed tenant role (owned by super admin).
+  const [tenantRole] = await db
+    .insert(roleTable)
+    .values({
+      slug: TENANT_ROLE_SLUG,
+      title: 'Tenant',
+      primaryUserId: superAdminUser.id,
+      secondaryUserId: superAdminUser.id,
+    })
+    .returning();
 
-    // The PermissionsGuard resolves tenant grants from userPlanSnapshot, so a
-    // tenant needs a snapshot to do anything. Seed every tenant permission:
-    // quota'd perms get the free-plan cap; the rest are boolean capabilities
-    // (granted/remaining = null = unlimited). Admins get grants via their role.
-    if (user.groupSlug === TENANT_ROLE_SLUG) {
-      await db.insert(userPlanSnapshotTable).values(
-        TENANT_PERMISSIONS.map((perm) => {
-          const quota = freeQuotaByKey.get(
-            permissionKey(perm.action, perm.subject),
-          );
-          return {
-            userId: row.id,
-            action: perm.action,
-            subject: perm.subject,
-            granted: quota ?? null,
-            remaining: quota ?? null,
-            extra: 0,
-          };
-        }),
-      );
-    }
+  // 5. Seed free package (owned by super admin).
+  console.log('  Seeding packages...');
+
+  const [freePackage] = await db
+    .insert(packageTable)
+    .values({
+      slug: FREE_PACKAGE_SLUG,
+      title: 'Free',
+      primaryUserId: superAdminUser.id,
+      secondaryUserId: superAdminUser.id,
+    })
+    .returning();
+
+  // 6. Seed role permissions.
+  console.log('  Seeding role permissions...');
+
+  // super-admin: single manage:all grant.
+  await db.insert(rolePermissionTable).values({
+    roleId: superAdminRole.id,
+    permissionId: permissionIds[permissionKey(Action.Manage, Subjects.All)],
+  });
+
+  // tenant role: every non-super-admin permission.
+  for (const perm of TENANT_PERMISSIONS) {
+    await db.insert(rolePermissionTable).values({
+      roleId: tenantRole.id,
+      permissionId: permissionIds[permissionKey(perm.action, perm.subject)],
+    });
   }
+
+  // 7. Seed package permission limits.
+  console.log('  Seeding package permission limits...');
+
+  for (const quota of PACKAGE_QUOTAS) {
+    const key = permissionKey(quota.action, quota.subject);
+    await db.insert(packagePermissionLimitTable).values({
+      packageId: freePackage.id,
+      permissionId: permissionIds[key],
+      limit: quota.free,
+    });
+  }
+
+  // 8. Seed tenant user.
+  console.log('  Seeding tenant user...');
+
+  const [tenantUser] = await db
+    .insert(userTable)
+    .values({
+      name: 'Tenant User',
+      email: 'tenant@collabgrid.com',
+      password: hashedPassword,
+      provider: 'local',
+    })
+    .returning();
+
+  await db.insert(userRoleTable).values({
+    userId: tenantUser.id,
+    roleId: tenantRole.id,
+  });
+
+  // 9. Seed subscription for tenant user (free package, never expires).
+  await db.insert(subscriptionTable).values({
+    userId: tenantUser.id,
+    packageId: freePackage.id,
+    startDate: new Date(),
+    endDate: null,
+    paymentMethod: 'manual',
+    amount: '0',
+  });
 
   console.log('Seed complete!');
   process.exit(0);

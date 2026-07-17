@@ -9,24 +9,22 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-// A single permission granted by a plan, with its quota cap.
-// totalOperation: -1 = unlimited, >= 0 = capped quota.
-export class PlanPermissionQuotaDto {
+export class PackagePermissionLimitDto {
   @IsUUID('4')
   permissionId!: string;
 
   @IsInt()
   @Min(-1)
-  totalOperation!: number;
+  limit!: number;
 }
 
-export class CreatePlanDto {
+export class CreatePackageDto {
   @IsString()
   @MinLength(1)
   name!: string;
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PlanPermissionQuotaDto)
-  permissions!: PlanPermissionQuotaDto[];
+  @Type(() => PackagePermissionLimitDto)
+  permissions!: PackagePermissionLimitDto[];
 }

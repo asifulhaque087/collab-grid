@@ -7,8 +7,9 @@ import { MailModule } from '@/mail/mail.module';
 import { AuthController } from '@/auth/auth.controller';
 import { AuthService } from '@/auth/auth.service';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
-import { PermissionsGuard } from '@/auth/guards/permissions.guard';
-import { QuotaGuard } from '@/auth/guards/quota.guard';
+import { RoleGuard } from '@/auth/guards/role.guard';
+import { LimitGuard } from '@/auth/guards/limit.guard';
+import { LimitUpdaterGuard } from '@/auth/guards/limit-updater.guard';
 import { GoogleStrategy } from '@/auth/strategies/google.strategy';
 import { JwtStrategy } from '@/auth/strategies/jwt.strategy';
 
@@ -35,9 +36,10 @@ import { JwtStrategy } from '@/auth/strategies/jwt.strategy';
     JwtStrategy,
     GoogleStrategy,
     AccessTokenGuard,
-    PermissionsGuard,
-    QuotaGuard,
+    RoleGuard,
+    LimitGuard,
+    LimitUpdaterGuard,
   ],
-  exports: [AuthService, AccessTokenGuard, PermissionsGuard, QuotaGuard],
+  exports: [AuthService, AccessTokenGuard, RoleGuard, LimitGuard, LimitUpdaterGuard],
 })
 export class AuthModule {}

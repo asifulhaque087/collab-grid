@@ -12,15 +12,15 @@ import { JwtService } from '@nestjs/jwt';
 import { tryit } from '@collab-grid/common';
 import bcrypt from 'bcryptjs';
 import ms from 'ms';
-import { eq, or } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
-  groupPermissionTable,
-  // groupPermissionTable,
-  groupTable,
   permissionsTable,
-  userGroupTable,
-  userPlanSnapshotTable,
+  roleTable,
+  rolePermissionTable,
+  userRoleTable,
+  packageTable,
+  subscriptionTable,
   userTable,
 } from '@/schemas';
 import type { Action, PermissionTuple, Subjects } from '@/auth/permissions';
@@ -30,8 +30,8 @@ import { RegisterUserDto } from '@/auth/dto/register-user.dto';
 import { LoginUserDto } from '@/auth/dto/login-user.dto';
 import { ForgotPasswordDto } from '@/auth/dto/forgot-password.dto';
 import { ResetPasswordDto } from '@/auth/dto/reset-password.dto';
-import { FREE_PLAN_SLUG, TENANT_ROLE_SLUG } from '@/auth/rbac.constants';
-import { AuthTokens } from '@/auth/auth.types';
+import { FREE_PACKAGE_SLUG, TENANT_ROLE_SLUG } from '@/auth/rbac.constants';
+import { AuthTokens, JwtPayload } from '@/auth/auth.types';
 import { MailService } from '@/mail/mail.service';
 
 const SALT_ROUNDS = 10;
@@ -40,44 +40,6 @@ const RESET_TOKEN_BYTES = 32;
 
 export function hashResetToken(rawToken: string): string {
   return createHash('sha256').update(rawToken).digest('hex');
-}
-
-export const UNLIMITED_QUOTA = -1;
-
-export function buildQuotaRows(
-  userId: string,
-  planPerms: {
-    groupId: string;
-    permissionId: string;
-    totalOperation: number | null;
-    permission: {
-      id: string;
-      name: string;
-      description: string | null;
-      action: string;
-      subject: string;
-    };
-  }[],
-): {
-  userId: string;
-  action: string;
-  subject: string;
-  granted: number | null;
-  remaining: number | null;
-  extra: number;
-}[] {
-  return planPerms.map((perm) => {
-    // const amount = parseQuotaValue(perm.totalOperation);
-
-    return {
-      userId,
-      action: perm.permission.action,
-      subject: perm.permission.subject,
-      granted: perm.totalOperation,
-      remaining: perm.totalOperation,
-      extra: 0,
-    };
-  });
 }
 
 @Injectable()
@@ -90,11 +52,11 @@ export class AuthService {
   ) {}
 
   private async resolveSignupDefaults() {
-    const [freePlan, planErr] = await tryit(
+    const [freePackage, pkgErr] = await tryit(
       this.db
         .select()
-        .from(groupTable)
-        .where(eq(groupTable.slug, FREE_PLAN_SLUG))
+        .from(packageTable)
+        .where(eq(packageTable.slug, FREE_PACKAGE_SLUG))
         .limit(1)
         .then((res) => res[0]),
     );
@@ -102,47 +64,23 @@ export class AuthService {
     const [tenantRole, roleErr] = await tryit(
       this.db
         .select()
-        .from(groupTable)
-        .where(eq(groupTable.slug, TENANT_ROLE_SLUG))
+        .from(roleTable)
+        .where(eq(roleTable.slug, TENANT_ROLE_SLUG))
         .limit(1)
         .then((res) => res[0]),
     );
 
-    if (planErr || roleErr) {
+    if (pkgErr || roleErr) {
       throw new InternalServerErrorException('An unexpected error occurred');
     }
 
-    if (!freePlan || !tenantRole) {
+    if (!freePackage || !tenantRole) {
       throw new InternalServerErrorException(
-        'Default plan or role is missing — run the database seed',
+        'Default package or role is missing — run the database seed',
       );
     }
 
-    const [planPerms, permsErr] = await tryit(
-      this.db.query.groupPermissionTable.findMany({
-        // where: eq(groupPermissionTable.groupId, freePlan.id),
-        where: or(
-          eq(groupPermissionTable.groupId, freePlan.id),
-          eq(groupPermissionTable.groupId, tenantRole.id),
-        ),
-        with: {
-          permission: true,
-        },
-      }),
-    );
-
-    // const [planPerms, permsErr] = await tryit(
-    //   this.db
-    //     .select()
-    //     .from(groupPermissionTable)
-    //     .where(eq(groupPermissionTable.groupId, freePlan.id)),
-    // );
-
-    if (permsErr || !planPerms) {
-      throw new InternalServerErrorException('An unexpected error occurred');
-    }
-
-    return { freePlan, tenantRole, planPerms };
+    return { freePackage, tenantRole };
   }
 
   private async createUserWithFreePlan(
@@ -154,25 +92,28 @@ export class AuthService {
     },
     defaults: Awaited<ReturnType<AuthService['resolveSignupDefaults']>>,
   ) {
-    const { freePlan, tenantRole, planPerms } = defaults;
+    const { freePackage, tenantRole } = defaults;
 
     const [user, txErr] = await tryit(
       this.db.transaction(async (tx) => {
         const created = await tx
           .insert(userTable)
-          .values({ ...values, plan: freePlan.title })
+          .values(values)
           .returning()
           .then((res) => res[0]);
 
         await tx
-          .insert(userGroupTable)
-          .values({ userId: created.id, groupId: tenantRole.id });
+          .insert(userRoleTable)
+          .values({ userId: created.id, roleId: tenantRole.id });
 
-        const quotaRows = buildQuotaRows(created.id, planPerms);
-
-        if (quotaRows.length > 0) {
-          await tx.insert(userPlanSnapshotTable).values(quotaRows);
-        }
+        await tx.insert(subscriptionTable).values({
+          userId: created.id,
+          packageId: freePackage.id,
+          startDate: new Date(),
+          endDate: null,
+          paymentMethod: 'manual',
+          amount: '0',
+        });
 
         return created;
       }),
@@ -199,7 +140,6 @@ export class AuthService {
       throw new InternalServerErrorException('An unexpected error occurred');
     }
 
-    // let user: typeof userTable.$inferSelect;
     let user = existing;
 
     if (!user) {
@@ -210,10 +150,8 @@ export class AuthService {
       );
     }
 
-    // user = existing;
-
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email),
+      this.generateTokens(user.id, user.email, user.parentId),
     );
 
     if (tokensErr || !tokens) {
@@ -228,7 +166,6 @@ export class AuthService {
   }
 
   async registerUser(dto: RegisterUserDto) {
-    // Reject a duplicate email up front for a clean 409.
     const [existing, existingErr] = await tryit(
       this.db
         .select({ id: userTable.id })
@@ -260,7 +197,7 @@ export class AuthService {
     );
 
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email),
+      this.generateTokens(user.id, user.email, user.parentId),
     );
 
     if (tokensErr || !tokens) {
@@ -305,7 +242,7 @@ export class AuthService {
     }
 
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email),
+      this.generateTokens(user.id, user.email, user.parentId),
     );
 
     if (tokensErr || !tokens) {
@@ -333,8 +270,6 @@ export class AuthService {
       throw new InternalServerErrorException('An unexpected error occurred');
     }
 
-    // No such account, or an OAuth-only user with no password to reset — stop
-    // silently so the response can't be used to probe for registered emails.
     if (!user || !user.password) {
       return;
     }
@@ -441,65 +376,48 @@ export class AuthService {
   async getAccessContext(userId: string): Promise<{
     roles: string[];
     permissions: PermissionTuple[];
-    // quotas: (typeof userPlanSnapshotTable.$inferSelect)[];
-    quotas: Omit<typeof userPlanSnapshotTable.$inferSelect, 'userId'>[];
   }> {
-    const [rolePerms, rolePermsErr] = await tryit(
+    const [rows, err] = await tryit(
       this.db
         .select({
-          roleId: groupTable.id,
-          roleSlug: groupTable.slug,
-          roleTitle: groupTable.title,
-
+          roleSlug: roleTable.slug,
+          roleTitle: roleTable.title,
           action: permissionsTable.action,
           subject: permissionsTable.subject,
-          totalOperation: groupPermissionTable.totalOperation,
         })
-        .from(userGroupTable)
-        .innerJoin(groupTable, eq(userGroupTable.groupId, groupTable.id))
+        .from(userRoleTable)
+        .innerJoin(roleTable, eq(userRoleTable.roleId, roleTable.id))
         .innerJoin(
-          groupPermissionTable,
-          eq(userGroupTable.groupId, groupPermissionTable.groupId),
+          rolePermissionTable,
+          eq(roleTable.id, rolePermissionTable.roleId),
         )
         .innerJoin(
           permissionsTable,
-          eq(groupPermissionTable.permissionId, permissionsTable.id),
+          eq(rolePermissionTable.permissionId, permissionsTable.id),
         )
-        .where(eq(userGroupTable.userId, userId)),
+        .where(eq(userRoleTable.userId, userId)),
     );
 
-    // Directly map the database response into two flat arrays
-    const rolesList = rolePerms ? rolePerms.map((row) => row.roleTitle) : [];
+    if (err) {
+      throw new InternalServerErrorException('An unexpected error occurred');
+    }
 
-    const permissionsList = rolePerms
-      ? rolePerms.map((row) => ({
+    const rolesList = [...new Set(rows?.map((r) => r.roleTitle) ?? [])];
+
+    const deduped = new Map<string, PermissionTuple>();
+    for (const row of rows ?? []) {
+      const key = `${row.action}:${row.subject}`;
+      if (!deduped.has(key)) {
+        deduped.set(key, {
           action: row.action as Action,
           subject: row.subject as Subjects,
-        }))
-      : [];
-
-    const [snapshotRows, snapshotErr] = await tryit(
-      this.db
-        .select({
-          id: userPlanSnapshotTable.id,
-          action: userPlanSnapshotTable.action,
-          subject: userPlanSnapshotTable.subject,
-          granted: userPlanSnapshotTable.granted,
-          remaining: userPlanSnapshotTable.remaining,
-          extra: userPlanSnapshotTable.extra,
-        })
-        .from(userPlanSnapshotTable)
-        .where(eq(userPlanSnapshotTable.userId, userId)),
-    );
-
-    if (rolePermsErr || snapshotErr) {
-      throw new InternalServerErrorException('An unexpected error occurred');
+        });
+      }
     }
 
     return {
       roles: rolesList,
-      permissions: permissionsList,
-      quotas: snapshotRows,
+      permissions: [...deduped.values()],
     };
   }
 
@@ -535,7 +453,7 @@ export class AuthService {
     }
 
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email),
+      this.generateTokens(user.id, user.email, user.parentId),
     );
 
     if (tokensErr || !tokens) {
@@ -548,8 +466,8 @@ export class AuthService {
     };
   }
 
-  async generateTokens(id: string, email: string): Promise<AuthTokens> {
-    const payload = { id, email };
+  async generateTokens(id: string, email: string, parentId: string | null): Promise<AuthTokens> {
+    const payload: JwtPayload = { id, email, parentId };
 
     const accessToken = await this.jwtService.signAsync(payload);
 

@@ -5,7 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from '@/auth/auth.module';
 import { DrizzleModule } from '@/drizzle/drizzle.module';
 import { RoleModule } from '@/roles/role.module';
-import { PlanModule } from '@/plans/plan.module';
+import { PackageModule } from '@/packages/package.module';
 import { BoardModule } from '@/boards/board.module';
 import { InventoryModule } from '@/inventory/inventory.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
@@ -19,7 +19,7 @@ import { OrderModule } from '@/orders/order.module';
     DrizzleModule,
     AuthModule,
     RoleModule,
-    PlanModule,
+    PackageModule,
     BoardModule,
     InventoryModule,
     SubscriptionModule,

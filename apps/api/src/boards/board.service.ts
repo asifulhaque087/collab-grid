@@ -7,7 +7,7 @@ import {
 import { and, eq } from 'drizzle-orm';
 import { tryit } from '@collab-grid/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
-import { boardTable, userTable } from '@/schemas';
+import { boardTable } from '@/schemas';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 
@@ -23,25 +23,6 @@ function toSlug(name: string): string {
 export class BoardService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
-  // Boards belong to the tenant. For tenant sub-users (parentId set), the
-  // board ownership rolls up to the parent tenant.
-  private async resolveTenantId(userId: string): Promise<string> {
-    const [rows, err] = await tryit(
-      this.db
-        .select({ parentId: userTable.parentId })
-        .from(userTable)
-        .where(eq(userTable.id, userId)),
-    );
-
-    if (err || !rows?.length) {
-      throw new InternalServerErrorException('Failed to resolve user record.');
-    }
-
-    return rows[0].parentId ?? userId;
-  }
-
-  // Generates a slug from the name, appending a short suffix on collision so
-  // shareable board URLs stay unique.
   private async uniqueSlug(name: string): Promise<string> {
     const base = toSlug(name) || 'board';
     let slug = base;
@@ -54,7 +35,8 @@ export class BoardService {
           .where(eq(boardTable.slug, slug)),
       );
 
-      if (err) throw new InternalServerErrorException('An unexpected error occurred');
+      if (err)
+        throw new InternalServerErrorException('An unexpected error occurred');
       if (!existing?.length) return slug;
 
       slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
@@ -63,31 +45,33 @@ export class BoardService {
     return `${base}-${Date.now().toString(36)}`;
   }
 
-  async findAll(userId: string) {
-    const tenantId = await this.resolveTenantId(userId);
+  async findAll(userId: string, parentId: string | null) {
+    const primaryUserId = parentId ?? userId;
 
     const [boards, err] = await tryit(
       this.db.query.boardTable.findMany({
-        where: eq(boardTable.tenantId, tenantId),
+        where: eq(boardTable.primaryUserId, primaryUserId),
         with: { smartWidgets: { columns: { id: true } } },
         orderBy: (b, { desc }) => [desc(b.createdAt)],
       }),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
 
     return (boards ?? []).map((b) => this.serialize(b));
   }
 
-  async create(dto: CreateBoardDto, userId: string) {
-    const tenantId = await this.resolveTenantId(userId);
+  async create(dto: CreateBoardDto, userId: string, parentId: string | null) {
+    const primaryUserId = parentId ?? userId;
     const slug = await this.uniqueSlug(dto.name);
 
     const [board, err] = await tryit(
       this.db
         .insert(boardTable)
         .values({
-          tenantId,
+          primaryUserId,
+          secondaryUserId: userId,
           name: dto.name,
           slug,
           access: dto.access,
@@ -97,13 +81,20 @@ export class BoardService {
         .returning(),
     );
 
-    if (err || !board?.[0]) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err || !board?.[0])
+      throw new InternalServerErrorException('An unexpected error occurred');
 
-    return this.findById(board[0].id, userId);
+    return this.findById(board[0].id, primaryUserId);
   }
 
-  async update(id: string, dto: UpdateBoardDto, userId: string) {
-    await this.findById(id, userId);
+  async update(
+    id: string,
+    dto: UpdateBoardDto,
+    userId: string,
+    parentId: string | null,
+  ) {
+    const primaryUserId = parentId ?? userId;
+    await this.findById(id, primaryUserId);
 
     const [, err] = await tryit(
       this.db
@@ -118,42 +109,44 @@ export class BoardService {
         .where(eq(boardTable.id, id)),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
 
-    return this.findById(id, userId);
+    return this.findById(id, primaryUserId);
   }
 
-  async remove(id: string, userId: string) {
-    await this.findById(id, userId);
+  async remove(id: string, userId: string, parentId: string | null) {
+    const primaryUserId = parentId ?? userId;
+    await this.findById(id, primaryUserId);
 
     const [, err] = await tryit(
       this.db.delete(boardTable).where(eq(boardTable.id, id)),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
   }
 
-  // Resolves a board by its shareable slug. The canvas editor loads a board by
-  // slug (the URL), so it needs the board id to scope inventory + new widgets.
-  async findBySlug(slug: string, userId: string) {
-    const tenantId = await this.resolveTenantId(userId);
+  async findBySlug(slug: string, userId: string, parentId: string | null) {
+    const primaryUserId = parentId ?? userId;
 
     const [board, err] = await tryit(
       this.db.query.boardTable.findFirst({
-        where: and(eq(boardTable.slug, slug), eq(boardTable.tenantId, tenantId)),
+        where: and(
+          eq(boardTable.slug, slug),
+          eq(boardTable.primaryUserId, primaryUserId),
+        ),
         with: { smartWidgets: { columns: { id: true } } },
       }),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
     if (!board) throw new NotFoundException('Board not found');
 
     return this.serialize(board);
   }
 
-  // Resolves a board for the public end-user route. No auth/tenant scope — only
-  // published (access: 'public') boards are returned; everything else 404s so a
-  // restricted board's slug can't be opened anonymously.
   async findPublicBySlug(slug: string) {
     const [board, err] = await tryit(
       this.db.query.boardTable.findFirst({
@@ -162,7 +155,8 @@ export class BoardService {
       }),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
     if (!board || board.access !== 'public') {
       throw new NotFoundException('Board not found or not published');
     }
@@ -170,17 +164,19 @@ export class BoardService {
     return this.serialize(board);
   }
 
-  private async findById(id: string, userId: string) {
-    const tenantId = await this.resolveTenantId(userId);
-
+  private async findById(id: string, primaryUserId: string) {
     const [board, err] = await tryit(
       this.db.query.boardTable.findFirst({
-        where: and(eq(boardTable.id, id), eq(boardTable.tenantId, tenantId)),
+        where: and(
+          eq(boardTable.id, id),
+          eq(boardTable.primaryUserId, primaryUserId),
+        ),
         with: { smartWidgets: { columns: { id: true } } },
       }),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
     if (!board) throw new NotFoundException('Board not found');
 
     return this.serialize(board);

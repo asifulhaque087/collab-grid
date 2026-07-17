@@ -12,8 +12,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
-import { PermissionsGuard } from '@/auth/guards/permissions.guard';
-import { QuotaGuard } from '@/auth/guards/quota.guard';
+import { RoleGuard } from '@/auth/guards/role.guard';
+import { LimitGuard } from '@/auth/guards/limit.guard';
+import { LimitUpdaterGuard } from '@/auth/guards/limit-updater.guard';
 import { RequirePermission } from '@/auth/decorators/require-permission.decorator';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { Action, Subjects } from '@/auth/permissions';
@@ -23,7 +24,7 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
 @Controller('roles')
-@UseGuards(AccessTokenGuard, PermissionsGuard, QuotaGuard)
+@UseGuards(AccessTokenGuard, RoleGuard, LimitGuard, LimitUpdaterGuard)
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
@@ -51,18 +52,14 @@ export class RoleController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateRoleDto,
-    @GetUser() user: AuthUser,
   ) {
-    return this.roleService.update(id, dto, user.userId);
+    return this.roleService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission({ action: Action.Delete, subject: Subjects.Group })
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @GetUser() user: AuthUser,
-  ) {
-    return this.roleService.remove(id, user.userId);
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.roleService.remove(id);
   }
 }

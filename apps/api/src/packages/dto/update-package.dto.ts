@@ -6,9 +6,9 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { PlanPermissionQuotaDto } from './create-plan.dto';
+import { PackagePermissionLimitDto } from './create-package.dto';
 
-export class UpdatePlanDto {
+export class UpdatePackageDto {
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -17,6 +17,6 @@ export class UpdatePlanDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PlanPermissionQuotaDto)
-  permissions?: PlanPermissionQuotaDto[];
+  @Type(() => PackagePermissionLimitDto)
+  permissions?: PackagePermissionLimitDto[];
 }

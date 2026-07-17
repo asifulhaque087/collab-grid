@@ -21,10 +21,7 @@ import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
 import { AuthTokens, AuthUser } from '@/auth/auth.types';
 import type { PermissionTuple } from '@/auth/permissions';
-import { userPlanSnapshotTable } from '@/schemas';
 
-// Generic response for the forgot-password endpoint — deliberately identical
-// whether or not the email maps to an account (no enumeration).
 const FORGOT_PASSWORD_MESSAGE =
   'If an account exists for that email, a password reset link has been sent.';
 
@@ -35,13 +32,10 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  // Email/password registration. Creates the user (free plan + doctor role +
-  // quota snapshot) and returns the auth token pair + safe user fields. The
-  // client stores the tokens (no httpOnly cookies are set).
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterUserDto): Promise<{
-    user: { id: string; name: string; email: string; plan: string };
+    user: { id: string; name: string; email: string };
     accessToken: string;
     refreshToken: string;
   }> {
@@ -52,19 +46,16 @@ export class AuthController {
         id: user.id,
         name: user.name,
         email: user.email,
-        plan: user.plan,
       },
       accessToken: user.accessToken,
       refreshToken: user.refreshToken,
     };
   }
 
-  // Email/password login. Verifies credentials and returns the auth token pair
-  // + safe user fields (same shape as register). The client stores the tokens.
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginUserDto): Promise<{
-    user: { id: string; name: string; email: string; plan: string };
+    user: { id: string; name: string; email: string };
     accessToken: string;
     refreshToken: string;
   }> {
@@ -75,16 +66,12 @@ export class AuthController {
         id: user.id,
         name: user.name,
         email: user.email,
-        plan: user.plan,
       },
       accessToken: user.accessToken,
       refreshToken: user.refreshToken,
     };
   }
 
-  // Starts the password-reset flow: emails a reset link if the account exists.
-  // Always returns the same generic message so the response can't be used to
-  // tell whether an email is registered.
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(
@@ -94,8 +81,6 @@ export class AuthController {
     return { message: FORGOT_PASSWORD_MESSAGE };
   }
 
-  // Completes the password-reset flow: validates the token and sets the new
-  // password. A missing/expired token yields a 400 from the service.
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(
@@ -105,40 +90,29 @@ export class AuthController {
     return { message: 'Your password has been reset. You can now log in.' };
   }
 
-  // Returns the authenticated user's safe profile. The guard verifies (and, if
-  // needed, silently rotates) the access-token cookie and attaches `req.user`.
   @Get('me')
   @UseGuards(AccessTokenGuard)
   async me(@GetUser() authUser: AuthUser): Promise<{
     id: string;
     name: string;
     email: string;
-    plan: string;
     roles: string[];
     permissions: PermissionTuple[];
-    quotas: Omit<typeof userPlanSnapshotTable.$inferSelect, 'userId'>[];
   }> {
     const [user, access] = await Promise.all([
       this.authService.getMe(authUser.userId),
       this.authService.getAccessContext(authUser.userId),
     ]);
 
-    // Same allowlist as register/login — never leak the password hash or tokens.
-    // `roles`/`permissions` let the web gate admin menus/pages.
     return {
       id: user.id,
       name: user.name,
       email: user.email,
-      plan: user.plan,
       roles: access.roles,
       permissions: access.permissions,
-      quotas: access.quotas,
     };
   }
 
-  // Signs the user out: clears the server-side refresh token. The client is
-  // responsible for discarding the stored access/refresh tokens. The guard
-  // ensures only an authenticated caller reaches here.
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
@@ -148,9 +122,6 @@ export class AuthController {
     return { message: 'Signed out successfully.' };
   }
 
-  // Explicit token rotation. The client calls this with its stored refresh
-  // token to mint a fresh access/refresh pair — this is the single,
-  // centralized place rotation happens (the guard no longer rotates).
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -162,15 +133,10 @@ export class AuthController {
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
-  // Kicks off the Google OAuth redirect; the guard handles the rest.
   @Get('google')
   @UseGuards(AuthGuard('google'))
   googleAuth(): void {}
 
-  // Google redirects here after consent. `req.user` is the token pair returned
-  // by GoogleStrategy.validate(); we hand the tokens back to the client as
-  // query params on the client URL (no httpOnly cookies are set, so the SPA
-  // stores them directly).
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   googleAuthRedirect(

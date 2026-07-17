@@ -130,7 +130,7 @@ export class RealtimeGateway
     // }
 
     data.boardId = board.id;
-    data.canMove = await this.socketAuth.canManageWidgets(authUserId, board.id);
+    data.canMove = await this.socketAuth.canManageWidgets(authUserId);
 
     return this.doJoin(client, board, payload.viewport);
   }
