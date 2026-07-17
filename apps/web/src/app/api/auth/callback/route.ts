@@ -16,7 +16,7 @@ export function GET(request: NextRequest): NextResponse {
   const accessToken = request.nextUrl.searchParams.get("accessToken");
   const refreshToken = request.nextUrl.searchParams.get("refreshToken");
 
-  const response = NextResponse.redirect(new URL("/dashboard", request.url));
+  const response = NextResponse.redirect(new URL("/dashboard/boards", request.url));
   if (accessToken) {
     response.cookies.set("accessToken", accessToken, {
       ...AUTH_COOKIE_OPTS,

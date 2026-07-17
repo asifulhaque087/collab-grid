@@ -49,15 +49,15 @@ const ROUTE_PERMISSIONS: Array<{
   prefix: string;
   requirement: PermissionRequirement;
 }> = [
-  // Boards/Inventory/Orders/Billing are tenant-business features — hidden from
-  // the super-admin even though manage:all satisfies their permission gates.
-  { prefix: "/dashboard/boards", requirement: { action: Action.Read, subject: Subjects.Board, tenantOnly: true } },
-  { prefix: "/dashboard/inventory", requirement: { action: Action.Read, subject: Subjects.SmartWidget, tenantOnly: true } },
+  // Billing is a tenant-self-service feature — hidden from the super-admin even
+  // though manage:all satisfies its permission gate.
+  { prefix: "/dashboard/boards", requirement: { action: Action.Read, subject: Subjects.Board } },
+  { prefix: "/dashboard/inventory", requirement: { action: Action.Read, subject: Subjects.SmartWidget } },
   { prefix: "/dashboard/users", requirement: { action: Action.Read, subject: Subjects.User } },
   { prefix: "/dashboard/roles", requirement: { action: Action.Read, subject: Subjects.Group } },
   // Plans is super-admin-only — tenants subscribe via Billing, not manage plans.
   { prefix: "/dashboard/plans", requirement: SUPER_ADMIN_REQUIREMENT },
-  { prefix: "/dashboard/orders", requirement: { action: Action.Read, subject: Subjects.PaymentHistory, tenantOnly: true } },
+  { prefix: "/dashboard/orders", requirement: { action: Action.Read, subject: Subjects.PaymentHistory } },
   // Transactions is super-admin-only — tenants get Orders instead.
   { prefix: "/dashboard/transactions", requirement: SUPER_ADMIN_REQUIREMENT },
   // Billing is tenant self-service (subscribe/upgrade) — not a super-admin menu.
