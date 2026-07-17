@@ -1,21 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SearchBar } from "@/components/dashboard/search-bar";
-import { AddUserModal } from "./add-user-modal";
-
+// UsersActions is superseded by UsersView which manages modal state centrally.
+// Kept as an empty export to avoid breaking any unused imports during the transition.
 export function UsersActions() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <SearchBar placeholder="Search by name or role…" />
-      <Button onClick={() => setOpen(true)}>
-        <Plus />
-        Add User
-      </Button>
-      <AddUserModal open={open} onOpenChange={setOpen} />
-    </>
-  );
+  return null;
 }

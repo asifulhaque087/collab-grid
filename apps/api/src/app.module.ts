@@ -11,6 +11,7 @@ import { InventoryModule } from '@/inventory/inventory.module';
 import { SubscriptionModule } from '@/subscription/subscription.module';
 import { RealtimeModule } from '@/realtime/realtime.module';
 import { OrderModule } from '@/orders/order.module';
+import { UserModule } from '@/users/user.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { OrderModule } from '@/orders/order.module';
     DrizzleModule,
     AuthModule,
     RoleModule,
+    UserModule,
     PackageModule,
     BoardModule,
     InventoryModule,

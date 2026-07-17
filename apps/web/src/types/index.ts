@@ -79,6 +79,14 @@ export interface User {
   joined: string;
 }
 
+export interface ApiUser {
+  id: string;
+  name: string;
+  email: string;
+  provider: string | null;
+  roles: { id: string; title: string; slug: string }[];
+}
+
 export interface Role {
   id: string;
   name: string;
