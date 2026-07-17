@@ -7,11 +7,12 @@ import {
 import { eq } from 'drizzle-orm';
 import { tryit } from '@collab-grid/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
+import { Action, Subjects } from '@/auth/permissions';
 import {
   roleTable,
   rolePermissionTable,
+  userRoleTable,
   permissionsTable,
-  userTable,
 } from '@/schemas';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -28,37 +29,164 @@ function toSlug(name: string): string {
 export class RoleService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
 
-  async listPermissions() {
-    const [perms, err] = await tryit(
-      this.db
-        .select({
-          id: permissionsTable.id,
-          name: permissionsTable.name,
-          action: permissionsTable.action,
-          subject: permissionsTable.subject,
-          description: permissionsTable.description,
-        })
-        .from(permissionsTable)
-        .orderBy(permissionsTable.subject, permissionsTable.action),
+  // async listPermissions(userId: string) {
+  //   const [userRoles, err] = await tryit(
+  //     this.db.query.userRoleTable.findMany({
+  //       where: eq(userRoleTable.userId, userId),
+  //       with: {
+  //         role: {
+  //           with: {
+  //             rolePermissions: {
+  //               with: {
+  //                 permission: true,
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     }),
+  //   );
+
+  //   if (err)
+  //     throw new InternalServerErrorException('An unexpected error occurred');
+
+  //   const permissions = (userRoles ?? []).flatMap(
+  //     (ur) => ur.role.rolePermissions,
+  //   );
+
+  //   const hasWildcard = permissions.some(
+  //     (rp) =>
+  //       rp.permission.action === Action.Manage &&
+  //       rp.permission.subject === Subjects.All,
+  //   );
+
+  //   if (hasWildcard) {
+  //     return PERMISSION_CATALOG.filter(
+  //       (p) => !(p.action === Action.Manage && p.subject === Subjects.All),
+  //     )
+  //       .map((p) => ({
+  //         id: `${p.name} ${p.action}`,
+  //         name: p.name,
+  //         action: p.action,
+  //         subject: p.subject,
+  //         description: p.description,
+  //       }))
+  //       .sort(
+  //         (a, b) =>
+  //           a.subject.localeCompare(b.subject) ||
+  //           a.action.localeCompare(b.action),
+  //       );
+  //   }
+
+  //   const seen = new Set<string>();
+  //   return permissions
+  //     .filter((rp) => {
+  //       if (seen.has(rp.permission.id)) return false;
+  //       seen.add(rp.permission.id);
+  //       return true;
+  //     })
+  //     .map((rp) => ({
+  //       id: rp.permission.id,
+  //       name: rp.permission.name,
+  //       action: rp.permission.action,
+  //       subject: rp.permission.subject,
+  //       description: rp.permission.description ?? undefined,
+  //     }))
+  //     .sort(
+  //       (a, b) =>
+  //         a.subject.localeCompare(b.subject) ||
+  //         a.action.localeCompare(b.action),
+  //     );
+  // }
+
+  async listPermissions(userId: string) {
+    const [userRoles, err] = await tryit(
+      this.db.query.userRoleTable.findMany({
+        where: eq(userRoleTable.userId, userId),
+        with: {
+          role: {
+            with: {
+              rolePermissions: {
+                with: {
+                  permission: true,
+                },
+              },
+            },
+          },
+        },
+      }),
     );
 
     if (err)
       throw new InternalServerErrorException('An unexpected error occurred');
-    return perms ?? [];
+
+    const permissions = (userRoles ?? []).flatMap(
+      (ur) => ur.role.rolePermissions,
+    );
+
+    const hasWildcard = permissions.some(
+      (rp) =>
+        rp.permission.action === Action.Manage &&
+        rp.permission.subject === Subjects.All,
+    );
+
+    if (hasWildcard) {
+      const [allPerms, permErr] = await tryit(
+        this.db
+          .select({
+            id: permissionsTable.id,
+            name: permissionsTable.name,
+            action: permissionsTable.action,
+            subject: permissionsTable.subject,
+            description: permissionsTable.description,
+          })
+          .from(permissionsTable)
+          .orderBy(permissionsTable.subject, permissionsTable.action),
+      );
+
+      if (permErr)
+        throw new InternalServerErrorException('An unexpected error occurred');
+
+      return (allPerms ?? [])
+        .filter(
+          (p) => !(p.action === Action.Manage && p.subject === Subjects.All),
+        )
+        .map((p) => ({
+          id: p.id, // Valid ID
+          name: p.name,
+          action: p.action,
+          subject: p.subject,
+          description: p.description ?? undefined, // Unified null/undefined handling
+        }));
+
+      // return (allPerms ?? []).filter(
+      //   (p) => !(p.action === Action.Manage && p.subject === Subjects.All),
+      // );
+    }
+
+    const seen = new Set<string>();
+    return permissions
+      .filter((rp) => {
+        if (seen.has(rp.permission.id)) return false;
+        seen.add(rp.permission.id);
+        return true;
+      })
+      .map((rp) => ({
+        id: rp.permission.id,
+        name: rp.permission.name,
+        action: rp.permission.action,
+        subject: rp.permission.subject,
+        description: rp.permission.description ?? undefined,
+      }))
+      .sort(
+        (a, b) =>
+          a.subject.localeCompare(b.subject) ||
+          a.action.localeCompare(b.action),
+      );
   }
 
-  async findAll(userId: string) {
-    const [userRow, userErr] = await tryit(
-      this.db
-        .select({ parentId: userTable.parentId })
-        .from(userTable)
-        .where(eq(userTable.id, userId))
-        .limit(1)
-        .then((res) => res[0]),
-    );
-    if (userErr)
-      throw new InternalServerErrorException('An unexpected error occurred');
-    const scopeUserId = userRow?.parentId ?? userId;
+  async findAll(userId: string, parentId: string | null) {
+    const scopeUserId = parentId ?? userId;
 
     const [roles, err] = await tryit(
       this.db.query.roleTable.findMany({
@@ -88,18 +216,10 @@ export class RoleService {
     }));
   }
 
-  async create(dto: CreateRoleDto, userId: string) {
+  async create(dto: CreateRoleDto, userId: string, parentId: string | null) {
     const slug = toSlug(dto.name);
 
-    const [userRow, userErr] = await tryit(
-      this.db
-        .select({ parentId: userTable.parentId })
-        .from(userTable)
-        .where(eq(userTable.id, userId)),
-    );
-    if (userErr)
-      throw new InternalServerErrorException('An unexpected error occurred');
-    const primaryUserId = userRow?.[0]?.parentId ?? userId;
+    const primaryUserId = parentId ?? userId;
 
     const [role, txErr] = await tryit(
       this.db.transaction(async (tx) => {

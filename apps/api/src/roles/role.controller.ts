@@ -29,21 +29,21 @@ export class RoleController {
 
   @Get('permissions')
   @RequirePermission({ action: Action.Read, subject: Subjects.Permission })
-  listPermissions() {
-    return this.roleService.listPermissions();
+  listPermissions(@GetUser() user: AuthUser) {
+    return this.roleService.listPermissions(user.userId);
   }
 
   @Get()
   @RequirePermission({ action: Action.Read, subject: Subjects.Group })
   findAll(@GetUser() user: AuthUser) {
-    return this.roleService.findAll(user.userId);
+    return this.roleService.findAll(user.userId, user.parentId);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission({ action: Action.Create, subject: Subjects.Group })
   create(@Body() dto: CreateRoleDto, @GetUser() user: AuthUser) {
-    return this.roleService.create(dto, user.userId);
+    return this.roleService.create(dto, user.userId, user.parentId);
   }
 
   @Patch(':id')
