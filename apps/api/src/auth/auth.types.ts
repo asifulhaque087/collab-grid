@@ -5,14 +5,16 @@
 export interface JwtPayload {
   id: string;
   email: string;
-  parentId: string | null;
+  primaryUserId: string | null;
+  secondaryUserId: string | null;
 }
 
 // Shape attached to `req.user` by JwtStrategy.validate().
 export interface AuthUser {
   userId: string;
   email: string;
-  parentId: string | null;
+  primaryUserId: string | null;
+  secondaryUserId: string | null;
 }
 
 // A freshly minted access/refresh token pair.

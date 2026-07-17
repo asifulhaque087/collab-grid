@@ -151,7 +151,12 @@ export class AuthService {
     }
 
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email, user.parentId),
+      this.generateTokens(
+        user.id,
+        user.email,
+        user.primaryUserId,
+        user.secondaryUserId,
+      ),
     );
 
     if (tokensErr || !tokens) {
@@ -197,7 +202,12 @@ export class AuthService {
     );
 
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email, user.parentId),
+      this.generateTokens(
+        user.id,
+        user.email,
+        user.primaryUserId,
+        user.secondaryUserId,
+      ),
     );
 
     if (tokensErr || !tokens) {
@@ -242,7 +252,12 @@ export class AuthService {
     }
 
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email, user.parentId),
+      this.generateTokens(
+        user.id,
+        user.email,
+        user.primaryUserId,
+        user.secondaryUserId,
+      ),
     );
 
     if (tokensErr || !tokens) {
@@ -453,7 +468,12 @@ export class AuthService {
     }
 
     const [tokens, tokensErr] = await tryit(
-      this.generateTokens(user.id, user.email, user.parentId),
+      this.generateTokens(
+        user.id,
+        user.email,
+        user.primaryUserId,
+        user.secondaryUserId,
+      ),
     );
 
     if (tokensErr || !tokens) {
@@ -466,8 +486,13 @@ export class AuthService {
     };
   }
 
-  async generateTokens(id: string, email: string, parentId: string | null): Promise<AuthTokens> {
-    const payload: JwtPayload = { id, email, parentId };
+  async generateTokens(
+    id: string,
+    email: string,
+    primaryUserId: string | null,
+    secondaryUserId: string | null,
+  ): Promise<AuthTokens> {
+    const payload: JwtPayload = { id, email, primaryUserId, secondaryUserId };
 
     const accessToken = await this.jwtService.signAsync(payload);
 

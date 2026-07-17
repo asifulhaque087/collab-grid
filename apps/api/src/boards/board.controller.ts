@@ -30,20 +30,20 @@ export class BoardController {
   @Get()
   @RequirePermission({ action: Action.Read, subject: Subjects.Board })
   findAll(@GetUser() user: AuthUser) {
-    return this.boardService.findAll(user.userId, user.parentId);
+    return this.boardService.findAll(user.userId, user.primaryUserId);
   }
 
   @Get('by-slug/:slug')
   @RequirePermission({ action: Action.Read, subject: Subjects.Board })
   findBySlug(@Param('slug') slug: string, @GetUser() user: AuthUser) {
-    return this.boardService.findBySlug(slug, user.userId, user.parentId);
+    return this.boardService.findBySlug(slug, user.userId, user.primaryUserId);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission({ action: Action.Create, subject: Subjects.Board })
   create(@Body() dto: CreateBoardDto, @GetUser() user: AuthUser) {
-    return this.boardService.create(dto, user.userId, user.parentId);
+    return this.boardService.create(dto, user.userId, user.primaryUserId);
   }
 
   @Patch(':id')
@@ -53,13 +53,13 @@ export class BoardController {
     @Body() dto: UpdateBoardDto,
     @GetUser() user: AuthUser,
   ) {
-    return this.boardService.update(id, dto, user.userId, user.parentId);
+    return this.boardService.update(id, dto, user.userId, user.primaryUserId);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission({ action: Action.Delete, subject: Subjects.Board })
   remove(@Param('id', ParseUUIDPipe) id: string, @GetUser() user: AuthUser) {
-    return this.boardService.remove(id, user.userId, user.parentId);
+    return this.boardService.remove(id, user.userId, user.primaryUserId);
   }
 }

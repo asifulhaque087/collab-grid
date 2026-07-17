@@ -42,14 +42,14 @@ export class InventoryController {
   @Get()
   @RequirePermission({ action: Action.Read, subject: Subjects.SmartWidget })
   findAll(@GetUser() user: AuthUser, @Query('boardId') boardId?: string) {
-    return this.inventoryService.findAll(user.userId, boardId, user.parentId);
+    return this.inventoryService.findAll(user.userId, boardId, user.primaryUserId);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission({ action: Action.Create, subject: Subjects.SmartWidget })
   create(@Body() dto: CreateInventoryDto, @GetUser() user: AuthUser) {
-    return this.inventoryService.create(dto, user.userId, user.parentId);
+    return this.inventoryService.create(dto, user.userId, user.primaryUserId);
   }
 
   @Post('import')
@@ -65,7 +65,7 @@ export class InventoryController {
     return this.inventoryService.importCsv(
       file.buffer,
       user.userId,
-      user.parentId,
+      user.primaryUserId,
       boardId,
     );
   }
@@ -77,13 +77,13 @@ export class InventoryController {
     @Body() dto: UpdateInventoryDto,
     @GetUser() user: AuthUser,
   ) {
-    return this.inventoryService.update(id, dto, user.userId, user.parentId);
+    return this.inventoryService.update(id, dto, user.userId, user.primaryUserId);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermission({ action: Action.Delete, subject: Subjects.SmartWidget })
   remove(@Param('id', ParseUUIDPipe) id: string, @GetUser() user: AuthUser) {
-    return this.inventoryService.remove(id, user.userId, user.parentId);
+    return this.inventoryService.remove(id, user.userId, user.primaryUserId);
   }
 }

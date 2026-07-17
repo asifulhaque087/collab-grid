@@ -25,14 +25,20 @@ export const userTable = pgTable(
     resetPasswordToken: text('reset_password_token'),
     resetPasswordExpiresAt: timestamp('reset_password_expires_at'),
 
-    parentId: uuid('parent_id'),
+    primaryUserId: uuid('primary_user_id'),
+    secondaryUserId: uuid('secondary_user_id'),
   },
   (table) => [
     foreignKey({
-      columns: [table.parentId],
+      columns: [table.primaryUserId],
       foreignColumns: [table.id],
-      name: 'user_parent_fk',
-    }),
+      name: 'user_primary_user_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.secondaryUserId],
+      foreignColumns: [table.id],
+      name: 'user_secondary_user_fk',
+    }).onDelete('set null'),
   ],
 );
 
@@ -266,13 +272,15 @@ export const orderItemTable = pgTable('order_item', {
 // ==========================================
 
 export const userTableRelations = relations(userTable, ({ one, many }) => ({
-  parent: one(userTable, {
-    fields: [userTable.parentId],
+  primaryUser: one(userTable, {
+    fields: [userTable.primaryUserId],
     references: [userTable.id],
-    relationName: 'user_hierarchy',
+    relationName: 'user_primary_user',
   }),
-  children: many(userTable, {
-    relationName: 'user_hierarchy',
+  secondaryUser: one(userTable, {
+    fields: [userTable.secondaryUserId],
+    references: [userTable.id],
+    relationName: 'user_secondary_user',
   }),
   boards: many(boardTable),
   smartWidgets: many(smartWidgetTable),

@@ -46,7 +46,7 @@ export class LimitGuard implements CanActivate {
     if (await this.isBackofficeUser(user.userId)) return true;
 
     // const tenantId = await this.resolveTenantId(user.userId);
-    const tenantId = user.parentId ?? user.userId;
+    const tenantId = user.primaryUserId ?? user.userId;
 
     const activeSubs = await this.getActiveSubscriptions(tenantId);
     if (!activeSubs || activeSubs.length === 0) return true;

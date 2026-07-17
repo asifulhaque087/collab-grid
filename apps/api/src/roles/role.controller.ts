@@ -36,14 +36,14 @@ export class RoleController {
   @Get()
   @RequirePermission({ action: Action.Read, subject: Subjects.Group })
   findAll(@GetUser() user: AuthUser) {
-    return this.roleService.findAll(user.userId, user.parentId);
+    return this.roleService.findAll(user.userId, user.primaryUserId);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RequirePermission({ action: Action.Create, subject: Subjects.Group })
   create(@Body() dto: CreateRoleDto, @GetUser() user: AuthUser) {
-    return this.roleService.create(dto, user.userId, user.parentId);
+    return this.roleService.create(dto, user.userId, user.primaryUserId);
   }
 
   @Patch(':id')
