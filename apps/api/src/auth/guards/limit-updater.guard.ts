@@ -7,14 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import {
-  and,
-  eq,
-  gt,
-  isNull,
-  or,
-  sql,
-} from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { tryit } from '@collab-grid/common';
 import type { Request } from 'express';
 import { REQUIRE_PERMISSION_KEY } from '@/auth/decorators/require-permission.decorator';
@@ -27,7 +20,6 @@ import {
   permissionsTable,
   limitUsageTable,
   userLimitUsageTable,
-  userTable,
 } from '@/schemas';
 
 @Injectable()
@@ -53,7 +45,8 @@ export class LimitUpdaterGuard implements CanActivate {
 
     if (await this.isBackofficeUser(user.userId)) return true;
 
-    const tenantId = await this.resolveTenantId(user.userId);
+    // const tenantId = await this.resolveTenantId(user.userId);
+    const tenantId = user.parentId ?? user.userId;
 
     const activeSubs = await this.getActiveSubscriptions(tenantId);
     if (!activeSubs || activeSubs.length === 0) return true;
@@ -74,21 +67,6 @@ export class LimitUpdaterGuard implements CanActivate {
     );
 
     return !rows || rows[0].count === 0;
-  }
-
-  private async resolveTenantId(userId: string): Promise<string> {
-    const [rows, err] = await tryit(
-      this.db
-        .select({ parentId: userTable.parentId })
-        .from(userTable)
-        .where(eq(userTable.id, userId)),
-    );
-
-    if (err || !rows?.length) {
-      throw new InternalServerErrorException('Failed to resolve user record.');
-    }
-
-    return rows[0].parentId ?? userId;
   }
 
   private async getActiveSubscriptions(tenantId: string) {
@@ -132,12 +110,7 @@ export class LimitUpdaterGuard implements CanActivate {
         this.db
           .select({ id: limitUsageTable.id, used: limitUsageTable.used })
           .from(limitUsageTable)
-          .where(
-            eq(
-              limitUsageTable.packagePermissionLimitId,
-              limitRow.id,
-            ),
-          )
+          .where(eq(limitUsageTable.packagePermissionLimitId, limitRow.id))
           .limit(1),
       );
 
@@ -190,10 +163,7 @@ export class LimitUpdaterGuard implements CanActivate {
     }
   }
 
-  private async findLimit(
-    packageId: string,
-    permission: PermissionTuple,
-  ) {
+  private async findLimit(packageId: string, permission: PermissionTuple) {
     const [rows, err] = await tryit(
       this.db
         .select({
@@ -203,10 +173,7 @@ export class LimitUpdaterGuard implements CanActivate {
         .from(packagePermissionLimitTable)
         .innerJoin(
           permissionsTable,
-          eq(
-            packagePermissionLimitTable.permissionId,
-            permissionsTable.id,
-          ),
+          eq(packagePermissionLimitTable.permissionId, permissionsTable.id),
         )
         .where(
           and(
@@ -236,9 +203,7 @@ export class LimitUpdaterGuard implements CanActivate {
     );
 
     if (err) {
-      throw new InternalServerErrorException(
-        'Failed to link sub-user usage.',
-      );
+      throw new InternalServerErrorException('Failed to link sub-user usage.');
     }
   }
 }

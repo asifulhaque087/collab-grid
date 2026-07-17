@@ -64,6 +64,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
     depends_on:
+      - db
       - redis
       - rabbitmq
     restart: unless-stopped
@@ -91,6 +92,15 @@ services:
           path: ./packages/common/package.json
         - action: rebuild
           path: ./pnpm-lock.yaml
+
+  db:
+    container_name: postgres_container
+    image: postgres:13-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=demo
+      - POSTGRES_PASSWORD=demo
+      - POSTGRES_DB=demo
 
   redis:
     image: redis:7-alpine

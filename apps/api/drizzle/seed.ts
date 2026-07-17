@@ -13,6 +13,7 @@ import {
   TENANT_ROLE_SLUG,
   SUPER_ADMIN_ROLE_SLUG,
 } from '../src/auth/rbac.constants';
+import { sql } from 'drizzle-orm';
 
 const {
   permissionsTable,
@@ -79,21 +80,52 @@ async function main() {
   console.log('Seeding database...');
 
   // 0. Clear all tables in dependency order (leaf tables first).
-  console.log('  Clearing tables...');
-  await db.delete(orderItemTable);
-  await db.delete(orderTable);
-  await db.delete(smartWidgetTable);
-  await db.delete(boardTable);
-  await db.delete(subscriptionTable);
-  await db.delete(packagePermissionLimitTable);
-  await db.delete(packageTable);
-  await db.delete(userRoleTable);
-  await db.delete(rolePermissionTable);
-  await db.delete(roleTable);
-  await db.delete(userTable);
-  await db.delete(permissionsTable);
+  // console.log('  Clearing tables...');
+  // await db.delete(orderItemTable);
+  // await db.delete(orderTable);
+  // await db.delete(smartWidgetTable);
+  // await db.delete(boardTable);
+  // await db.delete(subscriptionTable);
+  // await db.delete(packagePermissionLimitTable);
+  // await db.delete(packageTable);
+  // await db.delete(userRoleTable);
+  // await db.delete(rolePermissionTable);
+  // await db.delete(roleTable);
+  // await db.delete(userTable);
+  // await db.delete(permissionsTable);
 
-  // 1. Seed permissions — derived entirely from PERMISSION_CATALOG.
+  console.log('  Clearing tables...');
+
+  const clearTableIfExists = async (table: any, tableName: string) => {
+    const result = await db.execute<{ exists: boolean }>(sql`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = ${tableName}
+    );
+  `);
+
+    // pg driver returns rows inside a .rows array
+    if (result.rows && result.rows[0]?.exists) {
+      await db.delete(table);
+    }
+  };
+  // Execute deletes in dependency order (leaf tables first)
+  await clearTableIfExists(orderItemTable, 'order_item');
+  await clearTableIfExists(orderTable, 'order');
+  await clearTableIfExists(smartWidgetTable, 'smart_widget');
+  await clearTableIfExists(boardTable, 'board');
+  await clearTableIfExists(subscriptionTable, 'subscription');
+  await clearTableIfExists(
+    packagePermissionLimitTable,
+    'package_permission_limit',
+  );
+  await clearTableIfExists(packageTable, 'package');
+  await clearTableIfExists(userRoleTable, 'user_role');
+  await clearTableIfExists(rolePermissionTable, 'role_permission');
+  await clearTableIfExists(roleTable, 'role');
+  await clearTableIfExists(userTable, 'user');
+  await clearTableIfExists(permissionsTable, 'permissions'); // 1. Seed permissions — derived entirely from PERMISSION_CATALOG.
   console.log('  Seeding permissions...');
   const permissionIds: Record<string, string> = {};
 

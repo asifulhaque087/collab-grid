@@ -20,7 +20,6 @@ import {
   packagePermissionLimitTable,
   permissionsTable,
   limitUsageTable,
-  userTable,
 } from '@/schemas';
 
 @Injectable()
@@ -43,7 +42,8 @@ export class LimitGuard implements CanActivate {
 
     if (await this.isBackofficeUser(user.userId)) return true;
 
-    const tenantId = await this.resolveTenantId(user.userId);
+    // const tenantId = await this.resolveTenantId(user.userId);
+    const tenantId = user.parentId ?? user.userId;
 
     const activeSubs = await this.getActiveSubscriptions(tenantId);
 
@@ -72,21 +72,6 @@ export class LimitGuard implements CanActivate {
     );
 
     return !rows || rows[0].count === 0;
-  }
-
-  private async resolveTenantId(userId: string): Promise<string> {
-    const [rows, err] = await tryit(
-      this.db
-        .select({ parentId: userTable.parentId })
-        .from(userTable)
-        .where(eq(userTable.id, userId)),
-    );
-
-    if (err || !rows?.length) {
-      throw new InternalServerErrorException('Failed to resolve user record.');
-    }
-
-    return rows[0].parentId ?? userId;
   }
 
   private async getActiveSubscriptions(tenantId: string) {
@@ -127,10 +112,7 @@ export class LimitGuard implements CanActivate {
         .from(packagePermissionLimitTable)
         .innerJoin(
           permissionsTable,
-          eq(
-            packagePermissionLimitTable.permissionId,
-            permissionsTable.id,
-          ),
+          eq(packagePermissionLimitTable.permissionId, permissionsTable.id),
         )
         .where(
           and(
@@ -156,9 +138,7 @@ export class LimitGuard implements CanActivate {
         this.db
           .select({ totalUsed: sql<number>`coalesce(sum(used), 0)::int` })
           .from(limitUsageTable)
-          .where(
-            eq(limitUsageTable.packagePermissionLimitId, limitRow.id),
-          ),
+          .where(eq(limitUsageTable.packagePermissionLimitId, limitRow.id)),
       );
 
       const totalUsed = usageRows?.[0]?.totalUsed ?? 0;
