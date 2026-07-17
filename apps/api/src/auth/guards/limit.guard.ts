@@ -43,10 +43,9 @@ export class LimitGuard implements CanActivate {
     const user = request.user as AuthUser | undefined;
     if (!user?.userId) throw new UnauthorizedException('User context missing.');
 
-    if (await this.isBackofficeUser(user.userId)) return true;
-
-    // const tenantId = await this.resolveTenantId(user.userId);
     const tenantId = user.primaryUserId ?? user.userId;
+
+    if (await this.isBackofficeUser(tenantId)) return true;
 
     const activeSubs = await this.getActiveSubscriptions(tenantId);
     if (!activeSubs || activeSubs.length === 0) return true;
