@@ -43,6 +43,13 @@
       "when": 1782562309819,
       "tag": "0005_big_wrecking_crew",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784718093962,
+      "tag": "0006_nappy_blue_shield",
+      "breakpoints": true
     }
   ]
 }
