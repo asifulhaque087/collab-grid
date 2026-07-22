@@ -1,0 +1,34 @@
+name: Deploy Ingress Routes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'charts/ingress-routes/**'
+      - '.github/workflows/deploy-ingress.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'charts/ingress-routes/**'
+      - '.github/workflows/deploy-ingress.yml'
+
+jobs:
+  deploy-ingress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Set up Kubeconfig
+        uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Deploy Ingress to Kubernetes
+        run: |
+          helm upgrade --install collabgrid-ingress ./charts/ingress-routes \
+            --namespace collab-grid --create-namespace \
+            --wait
