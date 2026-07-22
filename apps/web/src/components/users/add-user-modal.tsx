@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -78,7 +78,7 @@ export function AddUserModal({
               }),
           ),
     [isEditing],
-  );
+  ) as Resolver<FormValues>;
 
   const {
     register,
