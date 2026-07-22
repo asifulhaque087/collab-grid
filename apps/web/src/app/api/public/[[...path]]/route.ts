@@ -57,9 +57,7 @@ function applyAuthCookies(response: NextResponse, body: Record<string, unknown> 
 async function proxy(request: NextRequest): Promise<NextResponse> {
   const path = upstreamPath(request.nextUrl.pathname);
 
-  // const target = `${vars.API_GATEWAY_URL}${path}${request.nextUrl.search}`;
-
-  const target = `${"http://api:3001"}${path}${request.nextUrl.search}`;
+  const target = `${vars.API_GATEWAY_URL}${path}${request.nextUrl.search}`;
 
   // const headers = upstreamHeaders(request);
 

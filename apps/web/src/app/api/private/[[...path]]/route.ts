@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { vars } from "@/vars";
 import { ACCESS_TOKEN_MAX_AGE, AUTH_COOKIE_OPTS, REFRESH_TOKEN_MAX_AGE } from "@/lib/auth-cookies";
 
 // Node runtime: we do a server-side fetch to the NestJS backend.
@@ -62,9 +63,7 @@ function applyAuthCookies(response: NextResponse, body: Record<string, unknown> 
 async function proxy(request: NextRequest): Promise<NextResponse> {
   const path = upstreamPath(request.nextUrl.pathname);
 
-  // const target = `${vars.API_GATEWAY_URL}${path}${request.nextUrl.search}`;
-
-  const target = `${"http://api:3001"}${path}${request.nextUrl.search}`;
+  const target = `${vars.API_GATEWAY_URL}${path}${request.nextUrl.search}`;
 
   // const headers = upstreamHeaders(request);
 

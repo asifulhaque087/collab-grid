@@ -5,9 +5,11 @@ import { jwtVerify } from "jose"; // Assuming jose is the package you are using
 import { vars } from "@/vars";
 import { ACCESS_TOKEN_MAX_AGE, AUTH_COOKIE_OPTS, REFRESH_TOKEN_MAX_AGE } from "@/lib/auth-cookies";
 
+import { env } from "@/env";
+
 // --- CONFIGURATION & SECRETS ---
-const accessSecret = new TextEncoder().encode(process.env.ACCESS_TOKEN_SECRET ?? "");
-const refreshSecret = new TextEncoder().encode(process.env.REFRESH_TOKEN_SECRET ?? "");
+const accessSecret = new TextEncoder().encode(env.ACCESS_TOKEN_SECRET);
+const refreshSecret = new TextEncoder().encode(env.REFRESH_TOKEN_SECRET);
 
 // --- HELPERS ---
 async function isTokenValid(token: string, secret: Uint8Array): Promise<boolean> {
@@ -23,8 +25,7 @@ async function isTokenValid(token: string, secret: Uint8Array): Promise<boolean>
 async function rotateTokens(refreshToken: string): Promise<{ accessToken: string; refreshToken: string } | null> {
   try {
     // Using your vars configuration layout here
-    // const res = await fetch(`${vars.API_GATEWAY_URL}/auth/refresh`, {
-    const res = await fetch(`http://api:3001/auth/refresh`, {
+    const res = await fetch(`${vars.API_GATEWAY_URL}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: refreshToken }),
