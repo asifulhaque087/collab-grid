@@ -1,91 +1,42 @@
-# syntax=docker/dockerfile:1
+FROM node:alpine AS development
 
-# Multi-stage build for the NestJS API (apps/api) in a pnpm/turborepo monorepo.
-# Build context is the REPO ROOT so the workspace + @collab-grid/common resolve.
-#   docker build -f apps/api/Dockerfile --target production -t collabgrid-api .
+WORKDIR /usr/src/app
 
-############################
-# Base — pnpm via corepack #
-############################
-FROM node:22-alpine AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
-WORKDIR /app
+RUN npm install -g pnpm
 
-##############################################
-# Dependencies — full install (api + common) #
-##############################################
-FROM base AS deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY apps/api/package.json ./apps/api/
-COPY apps/web/package.json ./apps/web/
-COPY packages/common/package.json ./packages/common/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter api...
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/common/package.json packages/common/package.json
+COPY apps/api/package.json apps/api/package.json
 
-#######################################################
-# Production deps — prod-only install for a lean image #
-#######################################################
-FROM base AS prod-deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY apps/api/package.json ./apps/api/
-COPY apps/web/package.json ./apps/web/
-COPY packages/common/package.json ./packages/common/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --prod --filter api...
+RUN pnpm install
 
-#################################################
-# Development — hot-reload target for compose   #
-#################################################
-FROM base AS development
-ENV NODE_ENV=development
-COPY --from=deps /app/ ./
-COPY . .
-EXPOSE 3001
-# common must be compiled before nest watch resolves its types/dist.
-CMD ["sh", "-c", "pnpm --filter @collab-grid/common build && pnpm --filter api dev"]
+COPY packages/common packages/common
+COPY apps/api apps/api
 
-#################################################
-# Build — compile common + api to dist          #
-#################################################
-FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=deps /app/packages/common/node_modules ./packages/common/node_modules
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY apps/api/package.json ./apps/api/
-COPY packages/common/package.json ./packages/common/
-COPY packages/common ./packages/common
-COPY apps/api ./apps/api
-RUN pnpm --filter @collab-grid/common build \
- && pnpm --filter api build
+RUN pnpm --filter "api..." run build
 
-#################################################
-# Production — minimal runtime image            #
-#################################################
-FROM node:22-alpine AS production
-ENV NODE_ENV=production
-WORKDIR /app
-RUN addgroup -S nodejs && adduser -S nestjs -G nodejs
+RUN pnpm --filter "api" run build:migrate
 
-# Prod-only node_modules (pnpm symlinks preserved by matching the layout).
-COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=prod-deps --chown=nestjs:nodejs /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=prod-deps --chown=nestjs:nodejs /app/package.json ./package.json
-COPY --from=prod-deps --chown=nestjs:nodejs /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
-# Built workspace dependency (api resolves @collab-grid/common via its symlink).
-COPY --from=build --chown=nestjs:nodejs /app/packages/common/package.json ./packages/common/package.json
-COPY --from=build --chown=nestjs:nodejs /app/packages/common/dist ./packages/common/dist
+FROM node:alpine AS production
 
-# Compiled API (dist/main + copied .ejs mail templates).
-COPY --from=build --chown=nestjs:nodejs /app/apps/api/package.json ./apps/api/package.json
-COPY --from=build --chown=nestjs:nodejs /app/apps/api/dist ./apps/api/dist
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
 
-USER nestjs
-WORKDIR /app/apps/api
-EXPOSE 3001
-# Entry is dist/src/main.js — drizzle.config.ts at the app root widens tsc's
-# rootDir, so nest build nests the compiled sources one level under dist/.
-CMD ["node", "dist/src/main.js"]
+WORKDIR /usr/src/app
+
+RUN npm install -g pnpm
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/common/package.json packages/common/package.json
+COPY apps/api/package.json apps/api/package.json
+
+RUN pnpm install --prod --filter "api..."
+
+COPY --from=development /usr/src/app/apps/api/dist ./apps/api/dist
+COPY --from=development /usr/src/app/packages/common/dist ./packages/common/dist
+
+COPY --from=development /usr/src/app/apps/api/dist-migration ./apps/api/dist-migration
+COPY --from=development /usr/src/app/apps/api/drizzle/migrations ./apps/api/drizzle/migrations
+
+CMD ["node", "apps/api/dist/main"]

@@ -7,6 +7,7 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
+    "db:migrate": "pnpm --filter api run db:migrate:prod",
     "clean": "rm -rf .turbo apps/web/.next apps/web/.turbo apps/api/.turbo apps/api/dist packages/common/dist && find . -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete",
     "clean:all": "pnpm clean && rm -rf node_modules apps/*/node_modules packages/*/node_modules"
   },

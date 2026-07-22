@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate",
-    "db:migrate:prod": "tsx --env-file .env drizzle/migrate.ts",
+    "build:migrate": "tsc drizzle/migrate.ts --outDir dist-migration --rootDir . --module commonjs --target es2021 --skipLibCheck",
+    "db:migrate:prod": "node dist-migration/drizzle/migrate",
     "db:seed": "tsx drizzle/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
