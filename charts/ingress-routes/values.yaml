@@ -1,0 +1,42 @@
+ingress:
+  enabled: true
+  name: collabgrid-ingress
+  ingressClassName: nginx
+
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+  tls:
+    - secretName: collabgrid-ssl-secret
+      hosts:
+        - collabgrid.asif-haque.com
+        - www.collabgrid.asif-haque.com
+        - collabgrid-api.asif-haque.com
+        - www.collabgrid-api.asif-haque.com
+
+  hosts:
+    - host: collabgrid.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: collabgrid-web
+          servicePort: 3000
+    - host: www.collabgrid.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: collabgrid-web
+          servicePort: 3000
+    - host: collabgrid-api.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: collabgrid-api
+          servicePort: 3001
+    - host: www.collabgrid-api.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: collabgrid-api
+          servicePort: 3001
