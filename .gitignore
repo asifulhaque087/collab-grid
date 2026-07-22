@@ -29,6 +29,7 @@ out/
 build
 dist
 dist-migration
+*.tsbuildinfo
 
 
 # Debug
