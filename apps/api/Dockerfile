@@ -16,6 +16,7 @@ COPY apps/api apps/api
 RUN pnpm --filter "api..." run build
 
 RUN pnpm --filter "api" run build:migrate
+RUN pnpm --filter "api" run build:seed
 
 
 FROM node:alpine AS production

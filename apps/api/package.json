@@ -12,8 +12,11 @@
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate",
     "build:migrate": "tsc drizzle/migrate.ts --outDir dist-migration --rootDir . --module commonjs --target es2021 --skipLibCheck",
+    "build:seed": "tsc drizzle/seed.ts --outDir dist-migration --rootDir . --module commonjs --target es2021 --skipLibCheck --esModuleInterop",
     "db:migrate:prod": "node dist-migration/drizzle/migrate",
     "db:seed": "tsx drizzle/seed.ts",
+    "db:seed:prod": "node dist-migration/drizzle/seed",
+    "db:migrate-and-seed": "node dist-migration/drizzle/migrate && node dist-migration/drizzle/seed",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
