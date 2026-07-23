@@ -33,8 +33,7 @@ const UNLIMITED_QUOTA = -1;
 
 const QUOTA_FEATURE_TEXT: Record<string, string> = {
   Board: 'boards',
-  SmartWidget: 'widgets per board',
-  Package: 'subscription plans',
+  SmartWidget: 'products',
   Role: 'custom roles',
 };
 

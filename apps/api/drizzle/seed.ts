@@ -10,6 +10,7 @@ import {
 } from '../src/auth/permissions';
 import {
   FREE_PACKAGE_SLUG,
+  PRO_PACKAGE_SLUG,
   TENANT_ROLE_SLUG,
   SUPER_ADMIN_ROLE_SLUG,
 } from '../src/auth/rbac.constants';
@@ -47,19 +48,28 @@ const TENANT_PERMISSION_KEYS = new Set(
 
 // ─── Package quotas ────────────────────────────────────────────────────────────
 
-const PACKAGE_QUOTAS: {
+interface PackageQuota {
   action: Action;
   subject: Subjects;
-  free: number;
-}[] = [
-  { action: Action.Create, subject: Subjects.Board, free: 2 },
-  { action: Action.Create, subject: Subjects.SmartWidget, free: 25 },
-  { action: Action.Create, subject: Subjects.Package, free: 3 },
-  { action: Action.Create, subject: Subjects.Role, free: 5 },
+  limit: number;
+}
+
+const FREE_PACKAGE_QUOTAS: PackageQuota[] = [
+  { action: Action.Create, subject: Subjects.Board, limit: 2 },
+  { action: Action.Create, subject: Subjects.SmartWidget, limit: 25 },
+  { action: Action.Create, subject: Subjects.Role, limit: 3 },
 ];
 
+const PRO_PACKAGE_QUOTAS: PackageQuota[] = [
+  { action: Action.Create, subject: Subjects.Board, limit: 10 },
+  { action: Action.Create, subject: Subjects.SmartWidget, limit: 100 },
+  { action: Action.Create, subject: Subjects.Role, limit: 10 },
+];
+
+const ALL_PACKAGE_QUOTAS = [...FREE_PACKAGE_QUOTAS, ...PRO_PACKAGE_QUOTAS];
+
 function assertQuotaSubsetOfTenant() {
-  const violations = PACKAGE_QUOTAS.filter(
+  const violations = ALL_PACKAGE_QUOTAS.filter(
     (q) => !TENANT_PERMISSION_KEYS.has(permissionKey(q.action, q.subject)),
   );
   if (violations.length > 0) {
@@ -186,7 +196,7 @@ async function main() {
     })
     .returning();
 
-  // 5. Seed free package (owned by super admin).
+  // 5. Seed packages (owned by super admin).
   console.log('  Seeding packages...');
 
   const [freePackage] = await db
@@ -194,6 +204,18 @@ async function main() {
     .values({
       slug: FREE_PACKAGE_SLUG,
       title: 'Free',
+      price: '0',
+      primaryUserId: superAdminUser.id,
+      secondaryUserId: superAdminUser.id,
+    })
+    .returning();
+
+  const [proPackage] = await db
+    .insert(packageTable)
+    .values({
+      slug: PRO_PACKAGE_SLUG,
+      title: 'Pro',
+      price: '9',
       primaryUserId: superAdminUser.id,
       secondaryUserId: superAdminUser.id,
     })
@@ -219,12 +241,21 @@ async function main() {
   // 7. Seed package permission limits.
   console.log('  Seeding package permission limits...');
 
-  for (const quota of PACKAGE_QUOTAS) {
+  for (const quota of FREE_PACKAGE_QUOTAS) {
     const key = permissionKey(quota.action, quota.subject);
     await db.insert(packagePermissionLimitTable).values({
       packageId: freePackage.id,
       permissionId: permissionIds[key],
-      limit: quota.free,
+      limit: quota.limit,
+    });
+  }
+
+  for (const quota of PRO_PACKAGE_QUOTAS) {
+    const key = permissionKey(quota.action, quota.subject);
+    await db.insert(packagePermissionLimitTable).values({
+      packageId: proPackage.id,
+      permissionId: permissionIds[key],
+      limit: quota.limit,
     });
   }
 
