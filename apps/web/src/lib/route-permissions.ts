@@ -16,7 +16,7 @@ export interface PermissionRequirement {
   subject?: Subjects;
   // Tenant-business feature: deny the super-admin (manage:all holder) even
   // though manage:all would otherwise satisfy any permission. The SaaS operator
-  // manages the platform (Users/Roles/Plans/Transactions), not a tenant's
+  // manages the platform (Users/Roles/Packages/Transactions), not a tenant's
   // boards, inventory, orders, or billing.
   tenantOnly?: boolean;
 }
@@ -55,8 +55,8 @@ const ROUTE_PERMISSIONS: Array<{
   { prefix: "/dashboard/inventory", requirement: { action: Action.Read, subject: Subjects.SmartWidget } },
   { prefix: "/dashboard/users", requirement: { action: Action.Read, subject: Subjects.User } },
   { prefix: "/dashboard/roles", requirement: { action: Action.Read, subject: Subjects.Role } },
-  // Plans is super-admin-only — tenants subscribe via Billing, not manage plans.
-  { prefix: "/dashboard/plans", requirement: SUPER_ADMIN_REQUIREMENT },
+  // Packages is super-admin-only — tenants subscribe via Billing, not manage packages.
+  { prefix: "/dashboard/packages", requirement: SUPER_ADMIN_REQUIREMENT },
   { prefix: "/dashboard/orders", requirement: { action: Action.Read, subject: Subjects.PaymentHistory } },
   // Transactions is super-admin-only — tenants get Orders instead.
   { prefix: "/dashboard/transactions", requirement: SUPER_ADMIN_REQUIREMENT },

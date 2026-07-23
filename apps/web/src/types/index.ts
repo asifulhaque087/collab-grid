@@ -1,6 +1,3 @@
-// Shared domain types for the dashboard. These mirror the eventual API
-// responses from `@apps/api`; for now they back the mock loaders in `lib/mock`.
-
 export type BoardAccess = "public" | "restricted";
 
 export interface BoardUserAvatar {
@@ -51,7 +48,6 @@ export interface InventoryItem {
   createdAt: string;
 }
 
-// Mirrors the InventoryService.serialize() shape from @apps/api.
 export interface ApiInventory {
   id: string;
   sku: string;
@@ -129,11 +125,11 @@ export interface Plan {
   highlighted: boolean;
 }
 
-export interface ApiPlanPermission extends ApiPermission {
+export interface ApiPackagePermission extends ApiPermission {
   limit: number | null;
 }
 
-export interface ApiPlan {
+export interface ApiPackage {
   id: string;
   slug: string;
   title: string;
@@ -143,7 +139,7 @@ export interface ApiPlan {
   createdAt: string | null;
   isSystem: boolean;
   subscriberCount: number;
-  permissions: ApiPlanPermission[];
+  permissions: ApiPackagePermission[];
 }
 
 export type OrderStatus = "paid" | "pending" | "expired";

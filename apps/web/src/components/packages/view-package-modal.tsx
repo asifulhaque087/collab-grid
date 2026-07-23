@@ -12,12 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { PermGrid, PermItem } from "@/components/dashboard/perm-item";
 import { StatusBadge, TypePill } from "@/components/dashboard/status-badge";
-import type { ApiPlan, ApiPlanPermission } from "@/types";
+import type { ApiPackage, ApiPackagePermission } from "@/types";
 
-interface ViewPlanModalProps {
+interface ViewPackageModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  plan: ApiPlan | null;
+  pkg: ApiPackage | null;
 }
 
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -29,7 +29,7 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-function QuotaPill({ perm }: { perm: ApiPlanPermission }) {
+function QuotaPill({ perm }: { perm: ApiPackagePermission }) {
   if (perm.limit === null) {
     return <StatusBadge variant="active">Granted</StatusBadge>;
   }
@@ -42,33 +42,33 @@ function QuotaPill({ perm }: { perm: ApiPlanPermission }) {
   );
 }
 
-export function ViewPlanModal({ open, onOpenChange, plan }: ViewPlanModalProps) {
+export function ViewPackageModal({ open, onOpenChange, pkg }: ViewPackageModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[540px]">
         <DialogHeader>
-          <DialogTitle>{plan?.title ?? "Plan"}</DialogTitle>
-          <DialogDescription>Read-only view of this plan and its quotas.</DialogDescription>
+          <DialogTitle>{pkg?.title ?? "Package"}</DialogTitle>
+          <DialogDescription>Read-only view of this package and its quotas.</DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div className="divide-y divide-border-subtle rounded-md border border-border bg-bg px-4">
             <MetaRow label="Monthly price">
-              <span>{plan?.price ? `$${plan.price}` : "Free"}</span>
+              <span>{pkg?.price ? `$${pkg.price}` : "Free"}</span>
             </MetaRow>
             <MetaRow label="Subscribers">
-              <span className="font-mono">{plan?.subscriberCount ?? 0}</span>
+              <span className="font-mono">{pkg?.subscriberCount ?? 0}</span>
             </MetaRow>
             <MetaRow label="Permissions">
-              <span className="font-mono">{plan?.permissions.length ?? 0}</span>
+              <span className="font-mono">{pkg?.permissions.length ?? 0}</span>
             </MetaRow>
           </div>
 
           <div className="mb-2 mt-5 text-[0.82rem] font-semibold text-text-dim">
             Permissions &amp; quotas
           </div>
-          {plan && plan.permissions.length > 0 ? (
+          {pkg && pkg.permissions.length > 0 ? (
             <PermGrid>
-              {plan.permissions.map((perm) => (
+              {pkg.permissions.map((perm) => (
                 <PermItem
                   key={perm.id}
                   name={perm.name}

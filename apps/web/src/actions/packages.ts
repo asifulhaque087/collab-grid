@@ -5,12 +5,12 @@ import { jsonHeaders, privateApi } from "@/lib/api";
 
 type ApiError = { message?: string };
 
-export interface PlanPermissionQuota {
+export interface PackagePermissionQuota {
   permissionId: string;
   limit: number;
 }
 
-export async function createPlan(data: { name: string; price: string; permissions: PlanPermissionQuota[] }) {
+export async function createPackage(data: { name: string; price: string; permissions: PackagePermissionQuota[] }) {
   const res = await privateApi("/packages", {
     method: "POST",
     headers: await jsonHeaders(),
@@ -19,14 +19,14 @@ export async function createPlan(data: { name: string; price: string; permission
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
-    throw new Error(body?.message ?? "Failed to create plan");
+    throw new Error(body?.message ?? "Failed to create package");
   }
 
-  revalidatePath("/dashboard/plans");
+  revalidatePath("/dashboard/packages");
   return res.json();
 }
 
-export async function updatePlan(id: string, data: { name?: string; price?: string; permissions?: PlanPermissionQuota[] }) {
+export async function updatePackage(id: string, data: { name?: string; price?: string; permissions?: PackagePermissionQuota[] }) {
   const res = await privateApi(`/packages/${id}`, {
     method: "PATCH",
     headers: await jsonHeaders(),
@@ -35,14 +35,14 @@ export async function updatePlan(id: string, data: { name?: string; price?: stri
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
-    throw new Error(body?.message ?? "Failed to update plan");
+    throw new Error(body?.message ?? "Failed to update package");
   }
 
-  revalidatePath("/dashboard/plans");
+  revalidatePath("/dashboard/packages");
   return res.json();
 }
 
-export async function deletePlan(id: string) {
+export async function deletePackage(id: string) {
   const res = await privateApi(`/packages/${id}`, {
     method: "DELETE",
     headers: await jsonHeaders(),
@@ -50,8 +50,8 @@ export async function deletePlan(id: string) {
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as ApiError;
-    throw new Error(body?.message ?? "Failed to delete plan");
+    throw new Error(body?.message ?? "Failed to delete package");
   }
 
-  revalidatePath("/dashboard/plans");
+  revalidatePath("/dashboard/packages");
 }

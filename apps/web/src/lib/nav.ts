@@ -37,7 +37,7 @@ export const navSections: NavSection[] = [
     items: [
       { label: "Users", href: "/dashboard/users", icon: Users },
       { label: "Roles", href: "/dashboard/roles", icon: Shield },
-      { label: "Plans", href: "/dashboard/plans", icon: CreditCard },
+      { label: "Packages", href: "/dashboard/packages", icon: CreditCard },
       { label: "Orders", href: "/dashboard/orders", icon: ShoppingBag, badge: "18" },
       { label: "Transactions", href: "/dashboard/transactions", icon: LineChart },
     ],

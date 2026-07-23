@@ -19,20 +19,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { PermGrid, PermItem } from "@/components/dashboard/perm-item";
-import { createPlan, updatePlan, type PlanPermissionQuota } from "@/actions/plans";
-import type { ApiPermission, ApiPlan } from "@/types";
+import { createPackage, updatePackage, type PackagePermissionQuota } from "@/actions/packages";
+import type { ApiPermission, ApiPackage } from "@/types";
 
 const schema = z.object({
-  name: z.string().min(1, "Plan name is required"),
+  name: z.string().min(1, "Package name is required"),
   price: z.string().min(1, "Price is required"),
   quotas: z.record(z.string(), z.string()),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-// A polished quota stepper: − / + buttons flank a centered numeric field with
-// the native browser spinners hidden. Blank = permission excluded; stepping
-// below 0 lands on -1, shown as ∞ (unlimited).
 function QuotaField({
   control,
   name,
@@ -48,8 +45,8 @@ function QuotaField({
   const set = (v: number | null) => field.onChange(v === null ? "" : String(v));
 
   const dec = () => {
-    if (num === null || Number.isNaN(num)) return; // blank: nothing to step
-    set(Math.max(-1, num - 1)); // floors at -1 (= unlimited)
+    if (num === null || Number.isNaN(num)) return;
+    set(Math.max(-1, num - 1));
   };
   const inc = () => {
     if (num === null || Number.isNaN(num) || isUnlimited) return set(0);
@@ -100,20 +97,20 @@ function QuotaField({
   );
 }
 
-interface AddPlanModalProps {
+interface AddPackageModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   permissions: ApiPermission[];
-  editingPlan?: ApiPlan | null;
+  editingPackage?: ApiPackage | null;
 }
 
-export function AddPlanModal({
+export function AddPackageModal({
   open,
   onOpenChange,
   permissions,
-  editingPlan,
-}: AddPlanModalProps) {
-  const isEditing = Boolean(editingPlan);
+  editingPackage,
+}: AddPackageModalProps) {
+  const isEditing = Boolean(editingPackage);
 
   const {
     register,
@@ -128,12 +125,12 @@ export function AddPlanModal({
 
   useEffect(() => {
     if (open) {
-      if (editingPlan) {
+      if (editingPackage) {
         reset({
-          name: editingPlan.title,
-          price: editingPlan.price,
+          name: editingPackage.title,
+          price: editingPackage.price,
           quotas: Object.fromEntries(
-            editingPlan.permissions.map((p) => [
+            editingPackage.permissions.map((p) => [
               p.id,
               p.limit == null ? "" : String(p.limit),
             ])
@@ -143,11 +140,10 @@ export function AddPlanModal({
         reset({ name: "", price: "", quotas: {} });
       }
     }
-  }, [open, editingPlan, reset]);
+  }, [open, editingPackage, reset]);
 
   const onSubmit = async (values: FormValues) => {
-    // Empty inputs are excluded; everything else must be a whole number >= -1.
-    const planPermissions: PlanPermissionQuota[] = [];
+    const packagePermissions: PackagePermissionQuota[] = [];
     for (const [permissionId, raw] of Object.entries(values.quotas)) {
       const trimmed = raw.trim();
       if (trimmed === "") continue;
@@ -156,24 +152,24 @@ export function AddPlanModal({
         toast.error("Quotas must be whole numbers (use -1 for unlimited)");
         return;
       }
-      planPermissions.push({ permissionId, limit });
+      packagePermissions.push({ permissionId, limit });
     }
 
     try {
-      if (isEditing && editingPlan) {
-        await updatePlan(editingPlan.id, {
+      if (isEditing && editingPackage) {
+        await updatePackage(editingPackage.id, {
           name: values.name,
           price: values.price,
-          permissions: planPermissions,
+          permissions: packagePermissions,
         });
-        toast.success("Plan updated");
+        toast.success("Package updated");
       } else {
-        await createPlan({
+        await createPackage({
           name: values.name,
           price: values.price,
-          permissions: planPermissions,
+          permissions: packagePermissions,
         });
-        toast.success("Plan created");
+        toast.success("Package created");
       }
       onOpenChange(false);
       reset();
@@ -187,15 +183,15 @@ export function AddPlanModal({
       <DialogContent className="max-w-135">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>{isEditing ? "Edit plan" : "New plan"}</DialogTitle>
+            <DialogTitle>{isEditing ? "Edit package" : "New package"}</DialogTitle>
             <DialogDescription>
               {isEditing
-                ? "Update the plan name and the quota each permission grants."
-                : "Name the plan and set the quota each permission grants."}
+                ? "Update the package name and the quota each permission grants."
+                : "Name the package and set the quota each permission grants."}
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <FormField label="Plan Name" error={errors.name?.message}>
+            <FormField label="Package Name" error={errors.name?.message}>
               <Input placeholder="e.g. Pro" {...register("name")} />
             </FormField>
             <FormField label="Monthly Price" error={errors.price?.message}>
@@ -233,8 +229,8 @@ export function AddPlanModal({
                   ? "Saving…"
                   : "Creating…"
                 : isEditing
-                  ? "Update plan"
-                  : "Create plan"}
+                  ? "Update package"
+                  : "Create package"}
             </Button>
           </DialogFooter>
         </form>
