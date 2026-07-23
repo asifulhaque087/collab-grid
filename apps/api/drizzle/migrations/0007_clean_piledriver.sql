@@ -1,1 +1,0 @@
-ALTER TABLE "package" ADD COLUMN "price" text DEFAULT '0' NOT NULL;
