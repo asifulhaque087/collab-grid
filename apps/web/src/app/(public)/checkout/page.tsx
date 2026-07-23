@@ -125,7 +125,7 @@ export default function CheckoutPage() {
             Order <span className="font-mono">{orderId}</span>
           </p>
         </div>
-        <a href={`/api/orders/${orderId}/invoice`} target="_blank" rel="noreferrer">
+        <a href={`/api/public/orders/${orderId}/invoice`} target="_blank" rel="noreferrer">
           <Button>
             <Download />
             Download PDF invoice

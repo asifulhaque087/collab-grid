@@ -6,9 +6,17 @@ import {
   ParseUUIDPipe,
   Post,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import PDFDocument from 'pdfkit';
+import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
+import { RoleGuard } from '@/auth/guards/role.guard';
+import { LimitGuard } from '@/auth/guards/limit.guard';
+import { RequirePermission } from '@/auth/decorators/require-permission.decorator';
+import { GetUser } from '@/auth/decorators/get-user.decorator';
+import { Action, Subjects } from '@/auth/permissions';
+import type { AuthUser } from '@/auth/auth.types';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 
@@ -21,6 +29,14 @@ export class OrderController {
   @Post()
   create(@Body() dto: CreateOrderDto) {
     return this.orderService.create(dto);
+  }
+
+  // Tenant-scoped order listing — requires authentication and read:PaymentHistory.
+  @Get()
+  @UseGuards(AccessTokenGuard, RoleGuard, LimitGuard)
+  @RequirePermission({ action: Action.Read, subject: Subjects.PaymentHistory })
+  findAll(@GetUser() user: AuthUser) {
+    return this.orderService.findAll(user.userId, user.primaryUserId);
   }
 
   @Get(':id/invoice')

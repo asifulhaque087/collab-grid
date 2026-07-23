@@ -1,4 +1,4 @@
-import { getOrders } from "@/lib/mock/commerce";
+import { getOrders } from "@/actions/orders";
 import { PageHeader } from "@/components/dashboard/page-header";
 import {
   DataTable,
@@ -42,14 +42,14 @@ export default async function OrdersPage() {
         }
         footer={
           <TableFooter
-            info={`Showing ${orders.length} of 18 orders`}
-            pages={["1", "2", "3", "→"]}
+            info={`Showing ${orders.length} order${orders.length === 1 ? "" : "s"}`}
+            pages={["1", "→"]}
           />
         }
       >
         {orders.map((order) => (
           <Tr key={order.id}>
-            <Td variant="mono">{order.id}</Td>
+            <Td variant="mono">{order.id.slice(0, 8)}…</Td>
             <Td variant="primary">{order.customer}</Td>
             <Td>{order.widget}</Td>
             <Td>{order.board}</Td>
@@ -58,8 +58,8 @@ export default async function OrdersPage() {
             </Td>
             <Td>{order.payment}</Td>
             <Td>
-              <StatusBadge variant={statusBadge[order.status].variant}>
-                {statusBadge[order.status].label}
+              <StatusBadge variant={statusBadge[order.status]?.variant ?? "expired"}>
+                {statusBadge[order.status]?.label ?? order.status}
               </StatusBadge>
             </Td>
             <Td variant="mono">{order.date}</Td>

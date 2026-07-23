@@ -5,7 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { tryit } from '@collab-grid/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
@@ -25,6 +25,78 @@ export class OrderService {
     private readonly realtime: RealtimeService,
     private readonly gateway: RealtimeGateway,
   ) {}
+
+  async findAll(userId: string, parentId: string | null) {
+    const primaryUserId = parentId ?? userId;
+
+    const [orders, err] = await tryit(
+      this.db
+        .select({
+          id: orderTable.id,
+          buyerName: orderTable.buyerName,
+          email: orderTable.email,
+          amountTotal: orderTable.amountTotal,
+          paymentMethod: orderTable.paymentMethod,
+          cardLast4: orderTable.cardLast4,
+          status: orderTable.status,
+          createdAt: orderTable.createdAt,
+          boardId: orderTable.boardId,
+          boardName: boardTable.name,
+          items: {
+            id: orderItemTable.id,
+            name: orderItemTable.name,
+            sku: orderItemTable.sku,
+            price: orderItemTable.price,
+            quantity: orderItemTable.quantity,
+          },
+        })
+        .from(orderTable)
+        .innerJoin(boardTable, eq(orderTable.boardId, boardTable.id))
+        .innerJoin(orderItemTable, eq(orderItemTable.orderId, orderTable.id))
+        .where(eq(boardTable.primaryUserId, primaryUserId))
+        .orderBy(desc(orderTable.createdAt)),
+    );
+
+    if (err) {
+      throw new InternalServerErrorException('Failed to fetch orders.');
+    }
+
+    // Group items per order
+    const grouped = new Map<string, {
+      id: string;
+      buyerName: string | null;
+      email: string | null;
+      amountTotal: string;
+      paymentMethod: string;
+      cardLast4: string | null;
+      status: 'paid';
+      createdAt: Date;
+      boardId: string | null;
+      boardName: string | null;
+      items: { id: string; name: string; sku: string; price: string; quantity: number }[];
+    }>();
+
+    for (const row of orders) {
+      if (!grouped.has(row.id)) {
+        grouped.set(row.id, {
+          id: row.id,
+          buyerName: row.buyerName,
+          email: row.email,
+          amountTotal: row.amountTotal,
+          paymentMethod: row.paymentMethod,
+          cardLast4: row.cardLast4,
+          status: row.status,
+          createdAt: row.createdAt,
+          boardId: row.boardId,
+          boardName: row.boardName,
+          items: [],
+        });
+      }
+      grouped.get(row.id)!.items.push(row.items);
+    }
+
+    return Array.from(grouped.values());
+  }
 
   async create(dto: CreateOrderDto): Promise<{ orderId: string; duplicate: boolean }> {
     // Idempotency: a repeated submit with the same key returns the original
