@@ -35,6 +35,7 @@ COPY apps/api/package.json apps/api/package.json
 RUN pnpm install --prod --filter "api..."
 
 COPY --from=development /app/apps/api/dist ./apps/api/dist
+COPY --from=development /app/apps/api/fonts ./apps/api/fonts
 COPY --from=development /app/packages/common/dist ./packages/common/dist
 
 COPY --from=development /app/apps/api/dist-migration ./apps/api/dist-migration
