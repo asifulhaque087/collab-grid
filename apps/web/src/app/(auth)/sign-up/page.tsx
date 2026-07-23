@@ -12,5 +12,5 @@ export default async function RegisterPage({
   searchParams: Promise<{ plan?: string }>;
 }) {
   const { plan } = await searchParams;
-  return <RegisterForm googleAuthUrl={googleAuthUrl()} plan={plan} />;
+  return <RegisterForm googleAuthUrl={googleAuthUrl(plan)} plan={plan} />;
 }

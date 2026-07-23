@@ -15,8 +15,12 @@ export const runtime = "nodejs";
 export function GET(request: NextRequest): NextResponse {
   const accessToken = request.nextUrl.searchParams.get("accessToken");
   const refreshToken = request.nextUrl.searchParams.get("refreshToken");
+  const plan = request.nextUrl.searchParams.get("plan");
 
-  const response = NextResponse.redirect(new URL("/dashboard/boards", request.url));
+  const destination = plan
+    ? `/subscription/checkout?plan=${encodeURIComponent(plan)}`
+    : "/dashboard/boards";
+  const response = NextResponse.redirect(new URL(destination, request.url));
   if (accessToken) {
     response.cookies.set("accessToken", accessToken, {
       ...AUTH_COOKIE_OPTS,

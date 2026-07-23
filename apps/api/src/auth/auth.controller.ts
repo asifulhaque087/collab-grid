@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { ResetPasswordDto } from '@/auth/dto/reset-password.dto';
 import { RefreshAccessTokenDto } from '@/auth/dto/refresh-access-token.dto';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
+import { GoogleAuthGuard } from '@/auth/guards/google-auth.guard';
 import { AuthTokens, AuthUser } from '@/auth/auth.types';
 import type { PermissionTuple } from '@/auth/permissions';
 
@@ -134,19 +136,21 @@ export class AuthController {
   }
 
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   googleAuth(): void {}
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   googleAuthRedirect(
     @GetUser() tokens: AuthTokens,
+    @Query('state') state: string | undefined,
     @Res() res: Response,
   ): void {
     const clientUrl = this.configService.getOrThrow<string>('CLIENT_URL');
+    const plan = state || undefined;
     const redirect = `${clientUrl}/api/auth/callback?accessToken=${encodeURIComponent(
       tokens.accessToken,
-    )}&refreshToken=${encodeURIComponent(tokens.refreshToken)}`;
+    )}&refreshToken=${encodeURIComponent(tokens.refreshToken)}${plan ? `&plan=${encodeURIComponent(plan)}` : ''}`;
     res.redirect(redirect);
   }
 }

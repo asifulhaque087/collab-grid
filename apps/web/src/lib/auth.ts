@@ -7,8 +7,10 @@ import { vars } from "@/vars";
 // Browser-facing API origin for the Google OAuth full-page redirect. Computed
 // in server components and threaded down to the (client) Google button so the
 // callback's cookies land directly on the browser.
-export function googleAuthUrl(): string {
-  return `${vars.PUBLIC_API_GATEWAY_URL}/auth/google`;
+export function googleAuthUrl(plan?: string): string {
+  const url = `${vars.PUBLIC_API_GATEWAY_URL}/auth/google`;
+  if (!plan) return url;
+  return `${url}?plan=${encodeURIComponent(plan)}`;
 }
 
 export interface CurrentUser {
