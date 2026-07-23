@@ -10,7 +10,7 @@ export interface PlanPermissionQuota {
   limit: number;
 }
 
-export async function createPlan(data: { name: string; permissions: PlanPermissionQuota[] }) {
+export async function createPlan(data: { name: string; price: string; permissions: PlanPermissionQuota[] }) {
   const res = await privateApi("/packages", {
     method: "POST",
     headers: await jsonHeaders(),
@@ -26,7 +26,7 @@ export async function createPlan(data: { name: string; permissions: PlanPermissi
   return res.json();
 }
 
-export async function updatePlan(id: string, data: { name?: string; permissions?: PlanPermissionQuota[] }) {
+export async function updatePlan(id: string, data: { name?: string; price?: string; permissions?: PlanPermissionQuota[] }) {
   const res = await privateApi(`/packages/${id}`, {
     method: "PATCH",
     headers: await jsonHeaders(),

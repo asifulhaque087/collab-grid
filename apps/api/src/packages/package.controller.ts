@@ -28,26 +28,26 @@ export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
   @Get('permissions')
-  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
+  @RequirePermission({ action: Action.Read, subject: Subjects.Permission })
   listPermissions() {
     return this.packageService.listPermissions();
   }
 
   @Get()
-  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
+  @RequirePermission({ action: Action.Read, subject: Subjects.Package })
   findAll() {
     return this.packageService.findAll();
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
+  @RequirePermission({ action: Action.Create, subject: Subjects.Package })
   create(@Body() dto: CreatePackageDto, @GetUser() user: AuthUser) {
     return this.packageService.create(dto, user.userId);
   }
 
   @Patch(':id')
-  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
+  @RequirePermission({ action: Action.Update, subject: Subjects.Package })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePackageDto,
@@ -57,7 +57,7 @@ export class PackageController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermission({ action: Action.Manage, subject: Subjects.All })
+  @RequirePermission({ action: Action.Delete, subject: Subjects.Package })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.packageService.remove(id);
   }

@@ -137,6 +137,7 @@ export interface ApiPlan {
   id: string;
   slug: string;
   title: string;
+  price: string;
   createdBy: "constant" | "admin" | "tenant";
   createdByUserId: string | null;
   createdAt: string | null;

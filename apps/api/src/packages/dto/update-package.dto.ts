@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsNumberString,
   IsOptional,
   IsString,
   MinLength,
@@ -13,6 +14,10 @@ export class UpdatePackageDto {
   @IsString()
   @MinLength(1)
   name?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  price?: string;
 
   @IsOptional()
   @IsArray()

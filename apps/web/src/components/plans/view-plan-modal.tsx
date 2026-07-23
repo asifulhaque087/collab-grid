@@ -52,6 +52,9 @@ export function ViewPlanModal({ open, onOpenChange, plan }: ViewPlanModalProps) 
         </DialogHeader>
         <DialogBody>
           <div className="divide-y divide-border-subtle rounded-md border border-border bg-bg px-4">
+            <MetaRow label="Monthly price">
+              <span>{plan?.price ? `$${plan.price}` : "Free"}</span>
+            </MetaRow>
             <MetaRow label="Subscribers">
               <span className="font-mono">{plan?.subscriberCount ?? 0}</span>
             </MetaRow>

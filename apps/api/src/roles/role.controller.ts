@@ -34,27 +34,27 @@ export class RoleController {
   }
 
   @Get()
-  @RequirePermission({ action: Action.Read, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Read, subject: Subjects.Role })
   findAll(@GetUser() user: AuthUser) {
     return this.roleService.findAll(user.userId, user.primaryUserId);
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @RequirePermission({ action: Action.Create, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Create, subject: Subjects.Role })
   create(@Body() dto: CreateRoleDto, @GetUser() user: AuthUser) {
     return this.roleService.create(dto, user.userId, user.primaryUserId);
   }
 
   @Patch(':id')
-  @RequirePermission({ action: Action.Update, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Update, subject: Subjects.Role })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRoleDto) {
     return this.roleService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermission({ action: Action.Delete, subject: Subjects.Group })
+  @RequirePermission({ action: Action.Delete, subject: Subjects.Role })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.roleService.remove(id);
   }

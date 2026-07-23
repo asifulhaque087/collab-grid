@@ -21,7 +21,8 @@ export enum Subjects {
   Board = 'Board',
   SmartWidget = 'SmartWidget',
   User = 'User',
-  Group = 'Group',
+  Role = 'Role',
+  Package = 'Package',
   Permission = 'Permission',
   PaymentHistory = 'PaymentHistory',
   UserPlanSnapshot = 'UserPlanSnapshot',
@@ -130,29 +131,55 @@ export const PERMISSION_CATALOG: PermissionDefinition[] = [
     description: 'Remove users from the workspace.',
   },
 
-  // Group (custom roles and plans)
+  // Package (subscription plans)
   {
     action: Action.Create,
-    subject: Subjects.Group,
-    name: 'Create Group',
+    subject: Subjects.Package,
+    name: 'Create Package',
+    description: 'Create new subscription plans.',
+  },
+  {
+    action: Action.Read,
+    subject: Subjects.Package,
+    name: 'Read Package',
+    description: 'View subscription plans and their quotas.',
+  },
+  {
+    action: Action.Update,
+    subject: Subjects.Package,
+    name: 'Update Package',
+    description: 'Edit subscription plan settings and quotas.',
+  },
+  {
+    action: Action.Delete,
+    subject: Subjects.Package,
+    name: 'Delete Package',
+    description: 'Delete subscription plans.',
+  },
+
+  // Role (custom roles)
+  {
+    action: Action.Create,
+    subject: Subjects.Role,
+    name: 'Create Role',
     description: 'Create custom roles for team members.',
   },
   {
     action: Action.Read,
-    subject: Subjects.Group,
-    name: 'Read Group',
-    description: 'View roles and subscription plans.',
+    subject: Subjects.Role,
+    name: 'Read Role',
+    description: 'View roles and their permission sets.',
   },
   {
     action: Action.Update,
-    subject: Subjects.Group,
-    name: 'Update Group',
+    subject: Subjects.Role,
+    name: 'Update Role',
     description: 'Edit roles and their permission sets.',
   },
   {
     action: Action.Delete,
-    subject: Subjects.Group,
-    name: 'Delete Group',
+    subject: Subjects.Role,
+    name: 'Delete Role',
     description: 'Delete custom roles.',
   },
 

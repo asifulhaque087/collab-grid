@@ -54,7 +54,7 @@ const ROUTE_PERMISSIONS: Array<{
   { prefix: "/dashboard/boards", requirement: { action: Action.Read, subject: Subjects.Board } },
   { prefix: "/dashboard/inventory", requirement: { action: Action.Read, subject: Subjects.SmartWidget } },
   { prefix: "/dashboard/users", requirement: { action: Action.Read, subject: Subjects.User } },
-  { prefix: "/dashboard/roles", requirement: { action: Action.Read, subject: Subjects.Group } },
+  { prefix: "/dashboard/roles", requirement: { action: Action.Read, subject: Subjects.Role } },
   // Plans is super-admin-only — tenants subscribe via Billing, not manage plans.
   { prefix: "/dashboard/plans", requirement: SUPER_ADMIN_REQUIREMENT },
   { prefix: "/dashboard/orders", requirement: { action: Action.Read, subject: Subjects.PaymentHistory } },

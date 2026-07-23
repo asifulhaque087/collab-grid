@@ -53,8 +53,9 @@ const PACKAGE_QUOTAS: {
   free: number;
 }[] = [
   { action: Action.Create, subject: Subjects.Board, free: 2 },
-  { action: Action.Create, subject: Subjects.Group, free: 3 },
   { action: Action.Create, subject: Subjects.SmartWidget, free: 25 },
+  { action: Action.Create, subject: Subjects.Package, free: 3 },
+  { action: Action.Create, subject: Subjects.Role, free: 5 },
 ];
 
 function assertQuotaSubsetOfTenant() {

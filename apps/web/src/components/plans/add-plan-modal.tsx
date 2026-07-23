@@ -24,7 +24,7 @@ import type { ApiPermission, ApiPlan } from "@/types";
 
 const schema = z.object({
   name: z.string().min(1, "Plan name is required"),
-  // permissionId -> raw quota input. "" means the permission is excluded.
+  price: z.string().min(1, "Price is required"),
   quotas: z.record(z.string(), z.string()),
 });
 
@@ -123,7 +123,7 @@ export function AddPlanModal({
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", quotas: {} },
+    defaultValues: { name: "", price: "", quotas: {} },
   });
 
   useEffect(() => {
@@ -131,6 +131,7 @@ export function AddPlanModal({
       if (editingPlan) {
         reset({
           name: editingPlan.title,
+          price: editingPlan.price,
           quotas: Object.fromEntries(
             editingPlan.permissions.map((p) => [
               p.id,
@@ -139,7 +140,7 @@ export function AddPlanModal({
           ),
         });
       } else {
-        reset({ name: "", quotas: {} });
+        reset({ name: "", price: "", quotas: {} });
       }
     }
   }, [open, editingPlan, reset]);
@@ -162,12 +163,14 @@ export function AddPlanModal({
       if (isEditing && editingPlan) {
         await updatePlan(editingPlan.id, {
           name: values.name,
+          price: values.price,
           permissions: planPermissions,
         });
         toast.success("Plan updated");
       } else {
         await createPlan({
           name: values.name,
+          price: values.price,
           permissions: planPermissions,
         });
         toast.success("Plan created");
@@ -194,6 +197,9 @@ export function AddPlanModal({
           <DialogBody>
             <FormField label="Plan Name" error={errors.name?.message}>
               <Input placeholder="e.g. Pro" {...register("name")} />
+            </FormField>
+            <FormField label="Monthly Price" error={errors.price?.message}>
+              <Input placeholder="e.g. 9.99" {...register("price")} />
             </FormField>
             <FormField label="Quotas">
               <p className="mb-2 text-[0.72rem] text-text-muted">

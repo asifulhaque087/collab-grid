@@ -29,17 +29,16 @@ function toSlug(name: string): string {
 
 const UNLIMITED_QUOTA = -1;
 
-const PACKAGE_MONTHLY_PRICE: Record<string, number> = {
-  free: 0,
-};
+
 
 const QUOTA_FEATURE_TEXT: Record<string, string> = {
   Board: 'boards',
-  Group: 'custom roles per tenant',
   SmartWidget: 'widgets per board',
+  Package: 'subscription plans',
+  Role: 'custom roles',
 };
 
-const QUOTA_FEATURE_ORDER = ['Board', 'Group', 'SmartWidget'];
+const QUOTA_FEATURE_ORDER = ['Board', 'SmartWidget', 'Package', 'Role'];
 
 @Injectable()
 export class PackageService {
@@ -85,6 +84,7 @@ export class PackageService {
       id: p.id,
       slug: p.slug,
       title: p.title,
+      price: p.price,
       primaryUserId: p.primaryUserId,
       secondaryUserId: p.secondaryUserId,
       isSystem: !p.primaryUserId,
@@ -110,7 +110,7 @@ export class PackageService {
 
     return (packages ?? [])
       .map((p) => {
-        const monthlyPrice = PACKAGE_MONTHLY_PRICE[p.slug] ?? 0;
+        const monthlyPrice = Number(p.price) || 0;
 
         const features = p.packagePermissionLimits
           .filter(
@@ -135,6 +135,7 @@ export class PackageService {
           id: p.id,
           slug: p.slug,
           title: p.title,
+          price: p.price,
           monthlyPrice,
           featured: monthlyPrice > 0,
           features,
@@ -153,6 +154,7 @@ export class PackageService {
           .values({
             slug,
             title: dto.name,
+            price: dto.price,
             primaryUserId: userId,
             secondaryUserId: null,
           })
@@ -182,14 +184,25 @@ export class PackageService {
 
     const [, txErr] = await tryit(
       this.db.transaction(async (tx) => {
+        const updateData: Record<string, unknown> = {};
+
         if (dto.name) {
+          if (pkg.isSystem) {
+            updateData.title = dto.name;
+          } else {
+            updateData.slug = toSlug(dto.name);
+            updateData.title = dto.name;
+          }
+        }
+
+        if (dto.price !== undefined) {
+          updateData.price = dto.price;
+        }
+
+        if (Object.keys(updateData).length > 0) {
           await tx
             .update(packageTable)
-            .set(
-              pkg.isSystem
-                ? { title: dto.name }
-                : { slug: toSlug(dto.name), title: dto.name },
-            )
+            .set(updateData)
             .where(eq(packageTable.id, id));
         }
 
@@ -248,6 +261,7 @@ export class PackageService {
       id: pkg.id,
       slug: pkg.slug,
       title: pkg.title,
+      price: pkg.price,
       primaryUserId: pkg.primaryUserId,
       secondaryUserId: pkg.secondaryUserId,
       isSystem: !pkg.primaryUserId,

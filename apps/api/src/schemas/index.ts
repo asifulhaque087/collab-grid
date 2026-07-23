@@ -114,6 +114,7 @@ export const packageTable = pgTable('package', {
   id: uuid('id').primaryKey().defaultRandom(),
   title: text('title').notNull(),
   slug: text('slug').notNull(),
+  price: text('price').notNull().default('0'),
   primaryUserId: uuid('primary_user_id').references(() => userTable.id, {
     onDelete: 'cascade',
   }),

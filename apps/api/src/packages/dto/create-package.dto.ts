@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsInt,
+  IsNumberString,
   IsString,
   IsUUID,
   Min,
@@ -22,6 +23,9 @@ export class CreatePackageDto {
   @IsString()
   @MinLength(1)
   name!: string;
+
+  @IsNumberString()
+  price!: string;
 
   @IsArray()
   @ValidateNested({ each: true })
