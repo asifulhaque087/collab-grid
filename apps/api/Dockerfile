@@ -1,6 +1,6 @@
 FROM node:alpine AS development
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 RUN npm install -g pnpm
 
@@ -24,7 +24,7 @@ FROM node:alpine AS production
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 RUN npm install -g pnpm
 
@@ -34,10 +34,10 @@ COPY apps/api/package.json apps/api/package.json
 
 RUN pnpm install --prod --filter "api..."
 
-COPY --from=development /usr/src/app/apps/api/dist ./apps/api/dist
-COPY --from=development /usr/src/app/packages/common/dist ./packages/common/dist
+COPY --from=development /app/apps/api/dist ./apps/api/dist
+COPY --from=development /app/packages/common/dist ./packages/common/dist
 
-COPY --from=development /usr/src/app/apps/api/dist-migration ./apps/api/dist-migration
-COPY --from=development /usr/src/app/apps/api/drizzle/migrations ./apps/api/drizzle/migrations
+COPY --from=development /app/apps/api/dist-migration ./apps/api/dist-migration
+COPY --from=development /app/apps/api/drizzle/migrations ./apps/api/drizzle/migrations
 
 CMD ["node", "apps/api/dist/main"]
