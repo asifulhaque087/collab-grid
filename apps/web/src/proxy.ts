@@ -32,7 +32,7 @@ async function rotateTokens(refreshToken: string): Promise<{ accessToken: string
       cache: "no-store",
     });
 
-    console.log("++++++++++++++++++++++++++++++++++ from rotating ", res.ok);
+    // console.log("++++++++++++++++++++++++++++++++++ from rotating ", res.ok);
 
     if (!res.ok) return null;
 
@@ -93,7 +93,7 @@ export async function proxy(request: NextRequest) {
 
   // 3. Set Authorization Key Header
   // Sets 'Bearer <token>' if valid/rotated, otherwise sets an empty string
-  console.log("^^^^^^^^^^^^^^^^^^^^^^^^^ ", finalAccessToken);
+  // console.log("^^^^^^^^^^^^^^^^^^^^^^^^^ ", finalAccessToken);
   // if (finalAccessToken) {
   //   requestHeaders.set("authorization", `Bearer ${finalAccessToken}`);
   // } else {

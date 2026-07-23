@@ -23,7 +23,7 @@ function upstreamHeaders(request: NextRequest, bodyLength?: number): Headers {
   const value = request.headers.get("authorization") ?? "";
 
   // console.log("|||||||||||||||||||||||||||||||| ", request.headers.get("x-current-path"));
-  console.log("|||||||||||||||||||||||||||||||| ", request.headers);
+  // console.log("|||||||||||||||||||||||||||||||| ", request.headers);
   // console.log("|||||||||||||||||||||||||||||||| ", value);
 
   if (!value) throw new Error("Unauthorizationnnnnn");
@@ -90,7 +90,7 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
   const contentType = backendRes.headers.get("content-type") ?? "";
 
   const status = backendRes.status;
-  console.log("backend response is ", backendRes);
+  // console.log("backend response is ", backendRes);
 
   if (status === 204 || status === 304) {
     return new NextResponse(null, { status, headers: responseHeaders });

@@ -21,7 +21,7 @@ import { RefreshAccessTokenDto } from '@/auth/dto/refresh-access-token.dto';
 import { GetUser } from '@/auth/decorators/get-user.decorator';
 import { AccessTokenGuard } from '@/auth/guards/access-token.guard';
 import { GoogleAuthGuard } from '@/auth/guards/google-auth.guard';
-import { AuthTokens, AuthUser } from '@/auth/auth.types';
+import { AuthTokens, AuthUser, type Quota } from '@/auth/auth.types';
 import type { PermissionTuple } from '@/auth/permissions';
 
 const FORGOT_PASSWORD_MESSAGE =
@@ -100,11 +100,20 @@ export class AuthController {
     email: string;
     roles: string[];
     permissions: PermissionTuple[];
+    plan: string;
+    quotas: Quota[];
   }> {
-    const [user, access] = await Promise.all([
+    const tenantId = authUser.primaryUserId ?? authUser.userId;
+    
+		console.time('Promise.all me endpoint');
+		
+    const [user, access, planInfo] = await Promise.all([
       this.authService.getMe(authUser.userId),
       this.authService.getAccessContext(authUser.userId),
+      this.authService.getUserQuotas(tenantId),
     ]);
+    
+    console.timeEnd('Promise.all me endpoint');
 
     return {
       id: user.id,
@@ -112,6 +121,8 @@ export class AuthController {
       email: user.email,
       roles: access.roles,
       permissions: access.permissions,
+      plan: planInfo.plan,
+      quotas: planInfo.quotas,
     };
   }
 

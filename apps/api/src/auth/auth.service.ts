@@ -12,7 +12,8 @@ import { JwtService } from '@nestjs/jwt';
 import { tryit } from '@collab-grid/common';
 import bcrypt from 'bcryptjs';
 import ms from 'ms';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import Redis from 'ioredis';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
   permissionsTable,
@@ -20,7 +21,9 @@ import {
   rolePermissionTable,
   userRoleTable,
   packageTable,
+  packagePermissionLimitTable,
   subscriptionTable,
+  limitUsageTable,
   userTable,
 } from '@/schemas';
 import type { Action, PermissionTuple, Subjects } from '@/auth/permissions';
@@ -31,8 +34,9 @@ import { LoginUserDto } from '@/auth/dto/login-user.dto';
 import { ForgotPasswordDto } from '@/auth/dto/forgot-password.dto';
 import { ResetPasswordDto } from '@/auth/dto/reset-password.dto';
 import { FREE_PACKAGE_SLUG, TENANT_ROLE_SLUG } from '@/auth/rbac.constants';
-import { AuthTokens, JwtPayload } from '@/auth/auth.types';
+import { AuthTokens, JwtPayload, type Quota } from '@/auth/auth.types';
 import { MailService } from '@/mail/mail.service';
+import { REDIS } from '@/realtime/redis.module';
 
 const SALT_ROUNDS = 10;
 
@@ -49,6 +53,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
+    @Inject(REDIS) private readonly redis: Redis,
   ) {}
 
   private async resolveSignupDefaults() {
@@ -388,10 +393,73 @@ export class AuthService {
     return user;
   }
 
+  // async getAccessContext(userId: string): Promise<{
+  //   roles: string[];
+  //   permissions: PermissionTuple[];
+  // }> {
+  //   const [rows, err] = await tryit(
+  //     this.db
+  //       .select({
+  //         roleSlug: roleTable.slug,
+  //         roleTitle: roleTable.title,
+  //         action: permissionsTable.action,
+  //         subject: permissionsTable.subject,
+  //       })
+  //       .from(userRoleTable)
+  //       .innerJoin(roleTable, eq(userRoleTable.roleId, roleTable.id))
+  //       .innerJoin(
+  //         rolePermissionTable,
+  //         eq(roleTable.id, rolePermissionTable.roleId),
+  //       )
+  //       .innerJoin(
+  //         permissionsTable,
+  //         eq(rolePermissionTable.permissionId, permissionsTable.id),
+  //       )
+  //       .where(eq(userRoleTable.userId, userId)),
+  //   );
+
+  //   if (err) {
+  //     throw new InternalServerErrorException('An unexpected error occurred');
+  //   }
+
+  //   const rolesList = [...new Set(rows?.map((r) => r.roleTitle) ?? [])];
+
+  //   const deduped = new Map<string, PermissionTuple>();
+  //   for (const row of rows ?? []) {
+  //     const key = `${row.action}:${row.subject}`;
+  //     if (!deduped.has(key)) {
+  //       deduped.set(key, {
+  //         action: row.action as Action,
+  //         subject: row.subject as Subjects,
+  //       });
+  //     }
+  //   }
+
+  //   return {
+  //     roles: rolesList,
+  //     permissions: [...deduped.values()],
+  //   };
+  // }
+
   async getAccessContext(userId: string): Promise<{
     roles: string[];
     permissions: PermissionTuple[];
   }> {
+    const cacheKey = `user:access-context:${userId}`;
+    const TTL_SECONDS = 900; // 1 hour (adjust as needed)
+
+    // 1. Try to fetch from Redis
+    try {
+      const cachedData = await this.redis.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+    } catch (error) {
+      // Graceful degradation: log the error and continue to DB if Redis fails
+      console.error('Redis read error:', error);
+    }
+
+    // 2. Fetch from Database (Cache Miss)
     const [rows, err] = await tryit(
       this.db
         .select({
@@ -430,11 +498,256 @@ export class AuthService {
       }
     }
 
-    return {
+    const result = {
       roles: rolesList,
       permissions: [...deduped.values()],
     };
+
+    // 3. Save to Redis with Expiration (EX)
+    try {
+      await this.redis.set(cacheKey, JSON.stringify(result), 'EX', TTL_SECONDS);
+    } catch (error) {
+      console.error('Redis write error:', error);
+    }
+
+    return result;
   }
+
+
+  // async getUserQuotas(tenantId: string): Promise<{
+  //   quotas: Quota[];
+  //   plan: string;
+  // }> {
+  //   const [subs, subsErr] = await tryit(
+  //     this.db
+  //       .select({ packageId: subscriptionTable.packageId })
+  //       .from(subscriptionTable)
+  //       .where(
+  //         and(
+  //           eq(subscriptionTable.userId, tenantId),
+  //           or(
+  //             isNull(subscriptionTable.endDate),
+  //             gt(subscriptionTable.endDate, new Date()),
+  //           ),
+  //         ),
+  //       )
+  //       .orderBy(subscriptionTable.startDate),
+  //   );
+
+  //   if (subsErr) {
+  //     throw new InternalServerErrorException(
+  //       'Failed to resolve active subscriptions.',
+  //     );
+  //   }
+
+  //   if (!subs || subs.length === 0) {
+  //     return { quotas: [], plan: 'free' };
+  //   }
+
+  //   const packageIds = subs.map((s) => s.packageId);
+
+  //   const [limits, limitsErr] = await tryit(
+  //     this.db
+  //       .select({
+  //         limitId: packagePermissionLimitTable.id,
+  //         limit: packagePermissionLimitTable.limit,
+  //         action: permissionsTable.action,
+  //         subject: permissionsTable.subject,
+  //       })
+  //       .from(packagePermissionLimitTable)
+  //       .innerJoin(
+  //         permissionsTable,
+  //         eq(packagePermissionLimitTable.permissionId, permissionsTable.id),
+  //       )
+  //       .where(inArray(packagePermissionLimitTable.packageId, packageIds)),
+  //   );
+
+  //   if (limitsErr) {
+  //     throw new InternalServerErrorException(
+  //       'Failed to resolve permission limits.',
+  //     );
+  //   }
+
+  //   const limitIds = [...new Set((limits ?? []).map((l) => l.limitId))];
+
+  //   const [usages, usagesErr] = await tryit(
+  //     this.db
+  //       .select({
+  //         packagePermissionLimitId: limitUsageTable.packagePermissionLimitId,
+  //         used: limitUsageTable.used,
+  //       })
+  //       .from(limitUsageTable)
+  //       .where(
+  //         and(
+  //           eq(limitUsageTable.userId, tenantId),
+  //           inArray(limitUsageTable.packagePermissionLimitId, limitIds),
+  //         ),
+  //       ),
+  //   );
+
+  //   if (usagesErr) {
+  //     throw new InternalServerErrorException(
+  //       'Failed to resolve usage counters.',
+  //     );
+  //   }
+
+  //   const usageMap = new Map<string, number>();
+  //   for (const u of usages ?? []) {
+  //     usageMap.set(
+  //       u.packagePermissionLimitId,
+  //       (usageMap.get(u.packagePermissionLimitId) ?? 0) + u.used,
+  //     );
+  //   }
+
+  //   const aggMap = new Map<
+  //     string,
+  //     { action: string; subject: string; granted: number | null; totalUsed: number }
+  //   >();
+
+  //   for (const l of limits ?? []) {
+  //     const key = `${l.action}:${l.subject}`;
+  //     const existing = aggMap.get(key);
+  //     const used = usageMap.get(l.limitId) ?? 0;
+
+  //     if (!existing) {
+  //       aggMap.set(key, {
+  //         action: l.action,
+  //         subject: l.subject,
+  //         granted: l.limit,
+  //         totalUsed: used,
+  //       });
+  //     } else {
+  //       if (existing.granted === null || existing.granted === -1) {
+  //         existing.totalUsed += used;
+  //       } else if (l.limit === null || l.limit === -1) {
+  //         existing.granted = -1;
+  //         existing.totalUsed += used;
+  //       } else {
+  //         existing.granted! += l.limit;
+  //         existing.totalUsed += used;
+  //       }
+  //     }
+  //   }
+
+  //   const quotas: Quota[] = [];
+  //   for (const [, agg] of aggMap) {
+  //     const unlimited = agg.granted === null || agg.granted === -1;
+  //     quotas.push({
+  //       id: `${agg.action}:${agg.subject}`,
+  //       action: agg.action,
+  //       subject: agg.subject,
+  //       granted: unlimited ? -1 : agg.granted!,
+  //       remaining: unlimited ? -1 : Math.max(0, agg.granted! - agg.totalUsed),
+  //       extra: 0,
+  //     });
+  //   }
+
+  //   return { quotas, plan: 'active' };
+  // }
+
+  async getUserQuotas(tenantId: string): Promise<{
+    quotas: Quota[];
+    plan: string;
+  }> {
+    const [rows, err] = await tryit(
+      this.db
+        .select({
+          action: permissionsTable.action,
+          subject: permissionsTable.subject,
+          limit: packagePermissionLimitTable.limit,
+          // SUM up usage across matching rows, defaulting to 0 if null
+          totalUsed: sql<number>`COALESCE(SUM(${limitUsageTable.used}), 0)`.mapWith(Number),
+        })
+        .from(subscriptionTable)
+        .innerJoin(
+          packagePermissionLimitTable,
+          eq(subscriptionTable.packageId, packagePermissionLimitTable.packageId)
+        )
+        .innerJoin(
+          permissionsTable,
+          eq(packagePermissionLimitTable.permissionId, permissionsTable.id)
+        )
+        // LEFT JOIN so we still return limits even if 0 usage exists yet
+        .leftJoin(
+          limitUsageTable,
+          and(
+            eq(packagePermissionLimitTable.id, limitUsageTable.packagePermissionLimitId),
+            eq(limitUsageTable.userId, tenantId)
+          )
+        )
+        .where(
+          and(
+            eq(subscriptionTable.userId, tenantId),
+            or(
+              isNull(subscriptionTable.endDate),
+              gt(subscriptionTable.endDate, new Date())
+            )
+          )
+        )
+        .groupBy(
+          permissionsTable.action,
+          permissionsTable.subject,
+          packagePermissionLimitTable.limit
+        )
+    );
+
+    if (err) {
+      throw new InternalServerErrorException(
+        'Failed to resolve active subscriptions and quotas.'
+      );
+    }
+
+    if (!rows || rows.length === 0) {
+      return { quotas: [], plan: 'free' };
+    }
+
+    // Aggregate package limits if a user has multiple active plans
+    const aggMap = new Map<
+      string,
+      { action: string; subject: string; granted: number | null; totalUsed: number }
+    >();
+
+    for (const row of rows) {
+      const key = `${row.action}:${row.subject}`;
+      const existing = aggMap.get(key);
+
+      if (!existing) {
+        aggMap.set(key, {
+          action: row.action,
+          subject: row.subject,
+          granted: row.limit,
+          totalUsed: row.totalUsed,
+        });
+      } else {
+        // If any plan gives unlimited (-1 or null), mark unlimited
+        if (existing.granted === null || existing.granted === -1) {
+          existing.totalUsed += row.totalUsed;
+        } else if (row.limit === null || row.limit === -1) {
+          existing.granted = -1;
+          existing.totalUsed += row.totalUsed;
+        } else {
+          existing.granted! += row.limit;
+          existing.totalUsed += row.totalUsed;
+        }
+      }
+    }
+
+    const quotas: Quota[] = [];
+    for (const [, agg] of aggMap) {
+      const unlimited = agg.granted === null || agg.granted === -1;
+      quotas.push({
+        id: `${agg.action}:${agg.subject}`,
+        action: agg.action,
+        subject: agg.subject,
+        granted: unlimited ? -1 : agg.granted!,
+        remaining: unlimited ? -1 : Math.max(0, agg.granted! - agg.totalUsed),
+        extra: 0,
+      });
+    }
+
+    return { quotas, plan: 'active' };
+  }
+
 
   async logout(userId: string): Promise<void> {
     const [, updateErr] = await tryit(

@@ -1,12 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePermission } from "@/components/providers/permission-provider";
 import { cn } from "@/lib/utils";
+import type { Quota } from "@/lib/ability";
 
-// Friendly labels + display order for the numeric quotas surfaced in the
-// sidebar usage box. Subjects not listed here are still rendered using a
-// lowercased fallback label, sorted after the known ones.
 const QUOTA_LABELS: Record<string, string> = {
   Board: "boards",
   Group: "roles",
@@ -20,10 +19,29 @@ function labelFor(subject: string): string {
 }
 
 export function PlanUsageCard() {
-  const { quotas, plan } = usePermission();
+  const { quotas: initialQuotas } = usePermission();
+  const [quotas, setQuotas] = useState<Quota[]>(initialQuotas);
 
-  // Only numeric quotas (create-style grants) carry a `granted` cap; boolean
-  // capability rows have a null cap and aren't usage-tracked.
+  // Re-fetch when the window regains focus so the card catches up with any
+  // client-side mutations (e.g. creating a board in another tab)
+  useEffect(() => {
+    const refresh = async () => {
+      try {
+        const res = await fetch("/api/private/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setQuotas(data.quotas ?? []);
+        }
+      } catch {
+        // Keep showing stale data if the fetch fails
+      }
+    };
+
+    const onFocus = () => refresh();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
   const tracked = quotas
     .filter((q) => q.granted !== null)
     .sort((a, b) => {
@@ -32,13 +50,10 @@ export function PlanUsageCard() {
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     });
 
-  const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
-  const isFree = plan.toLowerCase() === "free";
-
   return (
     <div className="rounded-md border border-brand bg-[linear-gradient(135deg,rgba(30,58,138,0.4),rgba(13,148,136,0.15))] p-3.5">
       <div className="mb-2.5 text-[0.75rem] font-semibold text-text-dim">
-        {planLabel} Plan — Usage
+        Usage
       </div>
 
       {tracked.length === 0 ? (
@@ -88,14 +103,12 @@ export function PlanUsageCard() {
         </div>
       )}
 
-      {isFree && (
-        <Link
-          href="/dashboard/billing"
-          className="mt-3 block w-full rounded-sm border border-active/30 py-[7px] text-center text-[0.75rem] font-semibold text-active transition-all hover:border-active hover:bg-active-dim"
-        >
-          Upgrade to Pro
-        </Link>
-      )}
+      <Link
+        href="/dashboard/billing"
+        className="mt-3 block w-full rounded-sm border border-active/30 py-[7px] text-center text-[0.75rem] font-semibold text-active transition-all hover:border-active hover:bg-active-dim"
+      >
+        Buy Packages
+      </Link>
     </div>
   );
 }

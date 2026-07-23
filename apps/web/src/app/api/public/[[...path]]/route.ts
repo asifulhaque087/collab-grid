@@ -84,7 +84,7 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
   const contentType = backendRes.headers.get("content-type") ?? "";
 
   const status = backendRes.status;
-  console.log("backend response is ", backendRes);
+  // console.log("backend response is ", backendRes);
 
   // JSON responses: parse so we can extract + set auth cookies, then re-emit.
   if (contentType.includes("application/json")) {
