@@ -21,7 +21,7 @@ export async function subscribeAction(input: { plan: string; durationMonth: 1 | 
     res = await privateApi("/subscription", {
       method: "POST",
       headers: await jsonHeaders(),
-      body: JSON.stringify({ ...input, transactionId }),
+      body: JSON.stringify({ packageSlug: input.plan, durationMonth: input.durationMonth, transactionId }),
     });
   } catch {
     return { success: false, error: "Unable to reach the server. Try again." };
