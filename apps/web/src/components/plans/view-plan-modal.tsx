@@ -29,15 +29,14 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-// totalOperation: null = boolean capability, -1 = unlimited, >= 0 = capped quota.
 function QuotaPill({ perm }: { perm: ApiPlanPermission }) {
-  if (perm.totalOperation === null) {
+  if (perm.limit === null) {
     return <StatusBadge variant="active">Granted</StatusBadge>;
   }
   return (
     <TypePill>
       <span className="font-mono">
-        {perm.totalOperation === -1 ? "∞" : perm.totalOperation}
+        {perm.limit === -1 ? "∞" : perm.limit}
       </span>
     </TypePill>
   );
@@ -53,13 +52,6 @@ export function ViewPlanModal({ open, onOpenChange, plan }: ViewPlanModalProps) 
         </DialogHeader>
         <DialogBody>
           <div className="divide-y divide-border-subtle rounded-md border border-border bg-bg px-4">
-            <MetaRow label="Created by">
-              {plan?.isSystem ? (
-                <StatusBadge variant="active">System</StatusBadge>
-              ) : (
-                <TypePill>{plan?.createdBy}</TypePill>
-              )}
-            </MetaRow>
             <MetaRow label="Subscribers">
               <span className="font-mono">{plan?.subscriberCount ?? 0}</span>
             </MetaRow>

@@ -10,7 +10,7 @@ async function fetchJson<T>(path: string): Promise<T> {
 }
 
 export default async function PlansPage() {
-  const [plans, permissions] = await Promise.all([fetchJson<ApiPlan[]>("/plans"), fetchJson<ApiPermission[]>("/plans/permissions")]);
+  const [plans, permissions] = await Promise.all([fetchJson<ApiPlan[]>("/packages"), fetchJson<ApiPermission[]>("/packages/permissions")]);
 
   return (
     <>

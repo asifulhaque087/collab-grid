@@ -13,7 +13,7 @@ import {
   RowActions,
 } from "@/components/dashboard/data-table";
 import { RowActionButton } from "@/components/dashboard/row-action-button";
-import { StatusBadge, TypePill } from "@/components/dashboard/status-badge";
+
 import {
   AlertDialog,
   AlertDialogContent,
@@ -61,7 +61,6 @@ export function PlansTable({ plans, onEdit }: PlansTableProps) {
             <Th>Plan Name</Th>
             <Th>Subscribers</Th>
             <Th>Permissions</Th>
-            <Th>Created By</Th>
             <Th align="right">Actions</Th>
           </>
         }
@@ -72,13 +71,6 @@ export function PlansTable({ plans, onEdit }: PlansTableProps) {
             <Td variant="primary">{plan.title}</Td>
             <Td variant="mono">{plan.subscriberCount}</Td>
             <Td>{plan.permissions.length} permission{plan.permissions.length !== 1 ? "s" : ""}</Td>
-            <Td>
-              {plan.isSystem ? (
-                <StatusBadge variant="active">System</StatusBadge>
-              ) : (
-                <TypePill>{plan.createdBy}</TypePill>
-              )}
-            </Td>
             <Td align="right">
               <RowActions>
                 <RowActionButton title="View" onClick={() => setViewingPlan(plan)}>

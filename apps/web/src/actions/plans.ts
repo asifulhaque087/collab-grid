@@ -7,11 +7,11 @@ type ApiError = { message?: string };
 
 export interface PlanPermissionQuota {
   permissionId: string;
-  totalOperation: number;
+  limit: number;
 }
 
 export async function createPlan(data: { name: string; permissions: PlanPermissionQuota[] }) {
-  const res = await privateApi("/plans", {
+  const res = await privateApi("/packages", {
     method: "POST",
     headers: await jsonHeaders(),
     body: JSON.stringify(data),
@@ -27,7 +27,7 @@ export async function createPlan(data: { name: string; permissions: PlanPermissi
 }
 
 export async function updatePlan(id: string, data: { name?: string; permissions?: PlanPermissionQuota[] }) {
-  const res = await privateApi(`/plans/${id}`, {
+  const res = await privateApi(`/packages/${id}`, {
     method: "PATCH",
     headers: await jsonHeaders(),
     body: JSON.stringify(data),
@@ -43,7 +43,7 @@ export async function updatePlan(id: string, data: { name?: string; permissions?
 }
 
 export async function deletePlan(id: string) {
-  const res = await privateApi(`/plans/${id}`, {
+  const res = await privateApi(`/packages/${id}`, {
     method: "DELETE",
     headers: await jsonHeaders(),
   });

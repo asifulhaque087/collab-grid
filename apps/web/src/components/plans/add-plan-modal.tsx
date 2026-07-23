@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { PermGrid, PermItem } from "@/components/dashboard/perm-item";
-import { createPlan, updatePlan } from "@/actions/plans";
+import { createPlan, updatePlan, type PlanPermissionQuota } from "@/actions/plans";
 import type { ApiPermission, ApiPlan } from "@/types";
 
 const schema = z.object({
@@ -134,7 +134,7 @@ export function AddPlanModal({
           quotas: Object.fromEntries(
             editingPlan.permissions.map((p) => [
               p.id,
-              p.totalOperation == null ? "" : String(p.totalOperation),
+              p.limit == null ? "" : String(p.limit),
             ])
           ),
         });
@@ -146,16 +146,16 @@ export function AddPlanModal({
 
   const onSubmit = async (values: FormValues) => {
     // Empty inputs are excluded; everything else must be a whole number >= -1.
-    const planPermissions: { permissionId: string; totalOperation: number }[] = [];
+    const planPermissions: PlanPermissionQuota[] = [];
     for (const [permissionId, raw] of Object.entries(values.quotas)) {
       const trimmed = raw.trim();
       if (trimmed === "") continue;
-      const totalOperation = Number(trimmed);
-      if (!Number.isInteger(totalOperation) || totalOperation < -1) {
+      const limit = Number(trimmed);
+      if (!Number.isInteger(limit) || limit < -1) {
         toast.error("Quotas must be whole numbers (use -1 for unlimited)");
         return;
       }
-      planPermissions.push({ permissionId, totalOperation });
+      planPermissions.push({ permissionId, limit });
     }
 
     try {
