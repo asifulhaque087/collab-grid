@@ -12,7 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { tryit } from '@collab-grid/common';
 import bcrypt from 'bcryptjs';
 import ms from 'ms';
-import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import Redis from 'ioredis';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
@@ -512,138 +512,6 @@ export class AuthService {
 
     return result;
   }
-
-
-  // async getUserQuotas(tenantId: string): Promise<{
-  //   quotas: Quota[];
-  //   plan: string;
-  // }> {
-  //   const [subs, subsErr] = await tryit(
-  //     this.db
-  //       .select({ packageId: subscriptionTable.packageId })
-  //       .from(subscriptionTable)
-  //       .where(
-  //         and(
-  //           eq(subscriptionTable.userId, tenantId),
-  //           or(
-  //             isNull(subscriptionTable.endDate),
-  //             gt(subscriptionTable.endDate, new Date()),
-  //           ),
-  //         ),
-  //       )
-  //       .orderBy(subscriptionTable.startDate),
-  //   );
-
-  //   if (subsErr) {
-  //     throw new InternalServerErrorException(
-  //       'Failed to resolve active subscriptions.',
-  //     );
-  //   }
-
-  //   if (!subs || subs.length === 0) {
-  //     return { quotas: [], plan: 'free' };
-  //   }
-
-  //   const packageIds = subs.map((s) => s.packageId);
-
-  //   const [limits, limitsErr] = await tryit(
-  //     this.db
-  //       .select({
-  //         limitId: packagePermissionLimitTable.id,
-  //         limit: packagePermissionLimitTable.limit,
-  //         action: permissionsTable.action,
-  //         subject: permissionsTable.subject,
-  //       })
-  //       .from(packagePermissionLimitTable)
-  //       .innerJoin(
-  //         permissionsTable,
-  //         eq(packagePermissionLimitTable.permissionId, permissionsTable.id),
-  //       )
-  //       .where(inArray(packagePermissionLimitTable.packageId, packageIds)),
-  //   );
-
-  //   if (limitsErr) {
-  //     throw new InternalServerErrorException(
-  //       'Failed to resolve permission limits.',
-  //     );
-  //   }
-
-  //   const limitIds = [...new Set((limits ?? []).map((l) => l.limitId))];
-
-  //   const [usages, usagesErr] = await tryit(
-  //     this.db
-  //       .select({
-  //         packagePermissionLimitId: limitUsageTable.packagePermissionLimitId,
-  //         used: limitUsageTable.used,
-  //       })
-  //       .from(limitUsageTable)
-  //       .where(
-  //         and(
-  //           eq(limitUsageTable.userId, tenantId),
-  //           inArray(limitUsageTable.packagePermissionLimitId, limitIds),
-  //         ),
-  //       ),
-  //   );
-
-  //   if (usagesErr) {
-  //     throw new InternalServerErrorException(
-  //       'Failed to resolve usage counters.',
-  //     );
-  //   }
-
-  //   const usageMap = new Map<string, number>();
-  //   for (const u of usages ?? []) {
-  //     usageMap.set(
-  //       u.packagePermissionLimitId,
-  //       (usageMap.get(u.packagePermissionLimitId) ?? 0) + u.used,
-  //     );
-  //   }
-
-  //   const aggMap = new Map<
-  //     string,
-  //     { action: string; subject: string; granted: number | null; totalUsed: number }
-  //   >();
-
-  //   for (const l of limits ?? []) {
-  //     const key = `${l.action}:${l.subject}`;
-  //     const existing = aggMap.get(key);
-  //     const used = usageMap.get(l.limitId) ?? 0;
-
-  //     if (!existing) {
-  //       aggMap.set(key, {
-  //         action: l.action,
-  //         subject: l.subject,
-  //         granted: l.limit,
-  //         totalUsed: used,
-  //       });
-  //     } else {
-  //       if (existing.granted === null || existing.granted === -1) {
-  //         existing.totalUsed += used;
-  //       } else if (l.limit === null || l.limit === -1) {
-  //         existing.granted = -1;
-  //         existing.totalUsed += used;
-  //       } else {
-  //         existing.granted! += l.limit;
-  //         existing.totalUsed += used;
-  //       }
-  //     }
-  //   }
-
-  //   const quotas: Quota[] = [];
-  //   for (const [, agg] of aggMap) {
-  //     const unlimited = agg.granted === null || agg.granted === -1;
-  //     quotas.push({
-  //       id: `${agg.action}:${agg.subject}`,
-  //       action: agg.action,
-  //       subject: agg.subject,
-  //       granted: unlimited ? -1 : agg.granted!,
-  //       remaining: unlimited ? -1 : Math.max(0, agg.granted! - agg.totalUsed),
-  //       extra: 0,
-  //     });
-  //   }
-
-  //   return { quotas, plan: 'active' };
-  // }
 
   async getUserQuotas(tenantId: string): Promise<{
     quotas: Quota[];

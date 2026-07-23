@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePermission } from "@/components/providers/permission-provider";
 import { cn } from "@/lib/utils";
-import type { Quota } from "@/lib/ability";
 
 const QUOTA_LABELS: Record<string, string> = {
   Board: "boards",
@@ -19,28 +17,8 @@ function labelFor(subject: string): string {
 }
 
 export function PlanUsageCard() {
-  const { quotas: initialQuotas } = usePermission();
-  const [quotas, setQuotas] = useState<Quota[]>(initialQuotas);
-
-  // Re-fetch when the window regains focus so the card catches up with any
-  // client-side mutations (e.g. creating a board in another tab)
-  useEffect(() => {
-    const refresh = async () => {
-      try {
-        const res = await fetch("/api/private/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          setQuotas(data.quotas ?? []);
-        }
-      } catch {
-        // Keep showing stale data if the fetch fails
-      }
-    };
-
-    const onFocus = () => refresh();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, []);
+  // Reads quotas passed directly from DashboardLayout via PermissionProvider
+  const { quotas } = usePermission();
 
   const tracked = quotas
     .filter((q) => q.granted !== null)
@@ -79,7 +57,7 @@ export function PlanUsageCard() {
                   <div
                     className={cn(
                       "h-full rounded-[2px]",
-                      pct >= 100 ? "bg-soft-lock" : "bg-active",
+                      pct >= 100 ? "bg-soft-lock" : "bg-active"
                     )}
                     style={{ width: unlimited ? "100%" : `${pct}%` }}
                   />
