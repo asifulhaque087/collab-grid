@@ -1,16 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LoginForm } from "@/components/auth/login-form";
 import { CredentialsModal } from "@/components/auth/credentials-modal";
 
 export function SignInClient({ googleAuthUrl }: { googleAuthUrl: string }) {
   const [modalOpen, setModalOpen] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setModalOpen(true), 1000);
-    return () => clearTimeout(timer);
-  }, []);
   const [credentialPreset, setCredentialPreset] = useState<{
     email: string;
     password: string;
@@ -18,7 +13,11 @@ export function SignInClient({ googleAuthUrl }: { googleAuthUrl: string }) {
 
   return (
     <>
-      <LoginForm googleAuthUrl={googleAuthUrl} credentialPreset={credentialPreset} />
+      <LoginForm
+        googleAuthUrl={googleAuthUrl}
+        credentialPreset={credentialPreset}
+        onOpenModal={() => setModalOpen(true)}
+      />
       <CredentialsModal
         open={modalOpen}
         onOpenChange={setModalOpen}

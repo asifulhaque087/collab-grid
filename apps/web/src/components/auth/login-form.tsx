@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,9 +19,11 @@ import { loginSchema, type LoginValues } from "@/lib/auth-schemas";
 export function LoginForm({
   googleAuthUrl,
   credentialPreset,
+  onOpenModal,
 }: {
   googleAuthUrl: string;
   credentialPreset?: { email: string; password: string } | null;
+  onOpenModal?: () => void;
 }) {
   const router = useRouter();
   const {
@@ -73,6 +76,16 @@ export function LoginForm({
       <GoogleButton href={googleAuthUrl} label="Sign in with Google" />
       <AuthDivider />
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="mb-4 w-full bg-bg py-2.5"
+          onClick={onOpenModal}
+        >
+          <KeyRound className="size-4" />
+          Use login credentials
+        </Button>
         <FormField label="Email" htmlFor="email" error={errors.email?.message}>
           <Input id="email" type="email" autoComplete="email" placeholder="you@company.com" {...register("email")} />
         </FormField>
