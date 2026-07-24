@@ -1,25 +1,52 @@
-# Context Files
+# CollabGrid
 
-Read the following to get the full context of the project:
+**Monorepo** — Turborepo + pnpm. Workspaces: `apps/web` (Next.js 16), `apps/api` (NestJS), `packages/common` (shared types + `tryit()`).
 
-- @context/project-overview.md
-- @context/coding-standards.md
-- @context/ai-interaction.md
-- @context/current-feature.md
+## Dev workflow
 
-# Monorepo
+```bash
+docker compose up -d              # Redis + RabbitMQ (local dev infra)
+pnpm install && pnpm --filter @collab-grid/common build   # common must be built first
+pnpm dev                          # turbo fan-out: web :3000, api :3001
+```
 
-This is a **Turborepo** monorepo managed with **pnpm**. The Next.js frontend lives in `apps/web` (port 3000); the NestJS backend API lives in `apps/api` (port 3001). Shared code (types, utility) will live in `packages/common`. Run the commands below from the repo root — turbo fans them out to the workspaces.
+Verification: `pnpm build` (turbo cached). No test files exist in the repo.
 
-# Commands
+## Commands
 
-- **Dev server**: `pnpm dev` (web on http://localhost:3000, api on http://localhost:3001)
-- **Build**: `pnpm build`
-- **Production server**: `pnpm start`
-- **Lint**: `pnpm lint`
+| Command | Scope |
+|---|---|
+| `pnpm dev` / `build` / `lint` / `check-types` | turbo — all workspaces |
+| `pnpm format` | prettier across `**/*.{ts,tsx,md}` |
+| `pnpm --filter api test` | vitest (no tests written yet) |
+| `pnpm --filter web lint` | eslint `--max-warnings 0` |
+| `pnpm --filter api db:generate` | `drizzle-kit generate` (schema → migration) |
+| `pnpm db:migrate` | prod migrate runner (`dist-migration/drizzle/migrate`) |
+| `pnpm db:migrate-and-seed` | migrate + seed |
+| `pnpm clean` / `clean:all` | rm .turbo, dist, node_modules |
 
-Drizzle/CLI commands that aren't wired as turbo tasks run inside the api app, e.g. `pnpm --filter api db:generate` then `pnpm --filter api db:migrate` (or `cd apps/api` first).
+## Architecture
 
-# IMPORTANT
+Real-time collaborative canvas (reactive commerce). Key files at root: `ARCHITECTURE.md`, `BACKEND_ARCHITECTURE.md`. Living spec in `context/` dir.
 
-- Do not mention AI's in any commit messages.
+- **api** (port 3001) — NestJS, Drizzle ORM, socket.io, Redis locks, RabbitMQ debounced persistence
+- **web** (port 3000) — Next.js 16 App Router, Tailwind CSS v4 (CSS `@theme` — **never** `tailwind.config.js`), ShadCN, Zustand, RHF+Zod
+- **common** — `tryit()` error helper (used everywhere instead of try/catch)
+- **Deploy**: Docker multi-stage → Helm → Kubernetes via GitHub Actions (3 workflows: api, web, ingress)
+
+## Conventions
+
+- **Error handling**: use `tryit()` from `@collab-grid/common`, returns `{ success, data, error }`
+- **Validation**: Zod everywhere
+- **Permissions**: CASL `AppAbility` shared across backend guards + frontend UI gating
+- **DB**: Drizzle ORM, migrations committed at `apps/api/drizzle/migrations/`
+- **Auth**: JWT bearer tokens (not cookies), WebSocket uses short-lived WS token via `POST /realtime/token-exchange`
+- **WebSocket**: socket.io `/canvas` namespace, 10×10 zone grid, Redis pub/sub adapter for multi-instance
+
+## Style
+
+- `apps/web/src/components/[feature]/kebab-case.tsx`
+- Server components by default; `'use client'` only for interactivity
+- No inline styles, dark-mode first
+- Conventional commits (`feat:`, `fix:`, `chore:`) — no AI names in messages
+- Ask before committing; feature/fix branches merged to `dev`
