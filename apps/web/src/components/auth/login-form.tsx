@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -14,16 +15,30 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { extractErrorMessage } from "@/lib/errors";
 import { loginSchema, type LoginValues } from "@/lib/auth-schemas";
 
-export function LoginForm({ googleAuthUrl }: { googleAuthUrl: string }) {
+export function LoginForm({
+  googleAuthUrl,
+  credentialPreset,
+}: {
+  googleAuthUrl: string;
+  credentialPreset?: { email: string; password: string } | null;
+}) {
   const router = useRouter();
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
+
+  useEffect(() => {
+    if (credentialPreset) {
+      setValue("email", credentialPreset.email);
+      setValue("password", credentialPreset.password);
+    }
+  }, [credentialPreset, setValue]);
 
   const onSubmit = async (values: LoginValues) => {
     // console.log("@@@@@@@@@@@@@@@@@@ 1")

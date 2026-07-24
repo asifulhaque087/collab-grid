@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LoginForm } from "@/components/auth/login-form";
+import { SignInClient } from "@/components/auth/sign-in-client";
 import { googleAuthUrl } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
-  return <LoginForm googleAuthUrl={googleAuthUrl()} />;
+  return <SignInClient googleAuthUrl={googleAuthUrl()} />;
 }
