@@ -1,14 +1,12 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    queries: "queries"    # Directory containing your raw SQL queries
-    schema: "migrations"  # Point sqlc directly to Goose migration files
+    queries: "./internal/adapters/postgresql/queries"
+    schema: "./internal/adapters/postgresql/migrations"
     gen:
       go:
-        package: "database"
-        out: "internal/database"
-        # sql_package: "pgx/v5" # Recommended for Postgres (or "database/sql")
-        # emit_json_tags: true
-        # emit_prepared_queries: false
-        # emit_interface: true
-        # emit_exact_table_names: false
+        package: "repo"
+        out: "./internal/adapters/postgresql/sqlc"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_interface: true
