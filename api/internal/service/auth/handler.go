@@ -30,7 +30,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	result, err := h.svc.RegisterUser(ctx, body)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, ErrEmailAlreadyRegistered) {
+		if errors.Is(err, ErrEmailConflict) {
 			status = http.StatusConflict
 		}
 		http.Error(w, err.Error(), status)

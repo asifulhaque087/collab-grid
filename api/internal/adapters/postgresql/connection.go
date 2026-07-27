@@ -3,18 +3,15 @@ package postgresql
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const defaultDBURL = "postgres://demo:demo@localhost:5432/demo?sslmode=disable"
-
-// NewPool accepts the parent context from main and enforces a startup timeout.
-func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
-	dbURL := os.Getenv("GOOSE_DBSTRING")
+// NewPool accepts the parent context and database URL from the app config.
+func NewPool(ctx context.Context, dbURL string) (*pgxpool.Pool, error) {
 	if dbURL == "" {
-		dbURL = defaultDBURL
+		return nil, fmt.Errorf("database URL cannot be empty")
 	}
 
 	// 1. Enforce a hard startup timeout (e.g., 5 seconds)

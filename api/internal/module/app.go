@@ -1,39 +1,37 @@
 package module
 
 import (
-	"context"
-	"log"
+	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql"
-	repo "github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql/sqlc"
+	"github.com/asifulhaque087/collab-grid/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/api/internal/service/auth"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type App struct{}
+type App struct {
+	logger *slog.Logger
+	cfg    *config.Config
+	pool   *pgxpool.Pool
+}
 
-func NewApp() *App {
-	return &App{}
+func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool) *App {
+	return &App{
+		logger: logger,
+		cfg:    cfg,
+		pool:   pool,
+	}
 }
 
 func (t *App) RegisterRoute(mux *http.ServeMux) {
+	// 1. Initialize Store instead of bare repo.Queries
+	store := postgresql.NewStore(t.pool)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	pool, err := postgresql.NewPool(ctx)
-	if err != nil {
-		log.Fatalf("Database connection failed: %v", err)
-	}
-	defer pool.Close()
-
-	queries := repo.New(pool)
-
-	// Auth
-	authService := auth.NewService(queries)
+	// 2. Pass store directly into NewService
+	// Since *Store implements GetUserByEmail, CreateUser, and ExecTx,
+	// it automatically satisfies the auth.AuthRepo interface!
+	authService := auth.NewService(store, t.logger, t.cfg)
 
 	handler := auth.NewHandler(authService)
 

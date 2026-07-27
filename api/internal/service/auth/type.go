@@ -1,8 +1,17 @@
 package auth
 
-import "errors"
+import (
+	"errors"
 
-var ErrEmailAlreadyRegistered = errors.New("email already registered")
+	"github.com/golang-jwt/jwt/v5"
+
+	repo "github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql/sqlc"
+)
+
+var (
+	ErrEmailConflict  = errors.New("email already registered")
+	ErrInternalServer = errors.New("an unexpected error occurred")
+)
 
 type RegisterUserDto struct {
 	Name     string `json:"name"`
@@ -16,4 +25,29 @@ type RegisterResponse struct {
 	Email        string `json:"email"`
 	AccessToken  string `json:"accessToken,omitempty"`
 	RefreshToken string `json:"refreshToken,omitempty"`
+}
+
+type SignupDefaults struct {
+	FreePackage repo.Package
+	TenantRole  repo.Role
+}
+
+type AuthTokens struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type JwtPayload struct {
+	ID              string  `json:"id"`
+	Email           string  `json:"email"`
+	PrimaryUserID   *string `json:"primary_user_id,omitempty"`
+	SecondaryUserID *string `json:"secondary_user_id,omitempty"`
+	jwt.RegisteredClaims
+}
+
+type CreateUserParams struct {
+	Name     string
+	Email    string
+	Password string
+	Provider string
 }

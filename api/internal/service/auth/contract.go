@@ -33,6 +33,7 @@ type AuthRepo interface {
 	SetResetPasswordToken(ctx context.Context, arg repo.SetResetPasswordTokenParams) error
 	UpdatePasswordAndClearTokens(ctx context.Context, arg repo.UpdatePasswordAndClearTokensParams) error
 	UpdateRefreshToken(ctx context.Context, arg repo.UpdateRefreshTokenParams) error
+	ExecTx(ctx context.Context, fn func(*repo.Queries) error) error
 }
 
 type AuthService interface {
