@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -33,12 +34,13 @@ func (s *Server) standardMiddleware() {
 
 }
 
-func (s *Server) Start() {
+func (s *Server) Start(Port int) {
 
 	mux := s.Init()
 
 	server := &http.Server{
-		Addr:    ":4000",
+		// Addr:    ":4000",
+		Addr:    fmt.Sprintf(":%d", Port),
 		Handler: mux,
 	}
 

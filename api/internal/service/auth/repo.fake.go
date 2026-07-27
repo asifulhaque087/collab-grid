@@ -138,3 +138,7 @@ func (f *FakeRepo) UpdatePasswordAndClearTokens(ctx context.Context, arg repo.Up
 func (f *FakeRepo) UpdateRefreshToken(ctx context.Context, arg repo.UpdateRefreshTokenParams) error {
 	return nil
 }
+
+func (f *FakeRepo) ExecTx(ctx context.Context, fn func(*repo.Queries) error) error {
+	return fn(&repo.Queries{})
+}

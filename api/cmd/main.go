@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql"
+	"github.com/asifulhaque087/collab-grid/api/internal/app"
 	"github.com/asifulhaque087/collab-grid/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/api/internal/module"
 )
@@ -40,7 +41,9 @@ func main() {
 
 	// 3. Inject pool into application module
 	appModule := module.NewApp(logger, cfg, pool)
-	appModule.RegisterRoute(mux)
+	// appModule.RegisterRoute(mux)
 
-	// ... Start HTTP server using context
+	server := app.NewServer(mux, appModule)
+	server.Start(cfg.Port)
+
 }

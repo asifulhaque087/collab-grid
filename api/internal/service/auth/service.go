@@ -35,17 +35,16 @@ func (s *Service) RegisterUser(ctx context.Context, dto RegisterUserDto) (*Regis
 
 	// Check for user
 
-	existing, err := s.authRepo.GetUserByEmail(ctx, dto.Email)
+	_, err := s.authRepo.GetUserByEmail(ctx, dto.Email)
 
-	if err != nil {
-		s.logger.Error("failed to query user by email",
-			"email", dto.Email,
-			"error", err,
-		)
+	// 1. Real DB failure (anything other than "not found")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) { // or pgx.ErrNoRows
+		s.logger.Error("failed to query user by email", "email", dto.Email, "error", err)
 		return nil, ErrInternalServer
 	}
 
-	if existing.ID.Valid {
+	// 2. User was found (no error at all means record exists)
+	if err == nil {
 		s.logger.Info("registration blocked: email already exists", "email", dto.Email)
 		return nil, ErrEmailConflict
 	}
