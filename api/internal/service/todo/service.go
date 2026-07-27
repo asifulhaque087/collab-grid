@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	repo "github.com/asifulhaque087/todo-go-lang/internal/adapters/sqlc"
+	// repo "github.com/asifulhaque087/todo-go-lang/internal/adapters/sqlc"
 )
 
 type Service struct {
-	// todoRepo TodoRepo
-	todoRepo repo.Querier
+	todoRepo TodoRepo
+	// todoRepo repo.Querier
 	// repo repo.Querier
 }
 
-func NewService(todoRepo repo.Querier) *Service {
+func NewService(todoRepo TodoRepo) *Service {
+	// func NewService(todoRepo repo.Querier) *Service {
 	return &Service{
 		todoRepo: todoRepo,
 	}
@@ -21,8 +22,8 @@ func NewService(todoRepo repo.Querier) *Service {
 
 func (s *Service) Create(ctx context.Context, title string) (*Todo, error) {
 
-	todo, err := s.todoRepo.Create(ctx, title)
-	// todo, err := s.repo.AssignUserRole()
+	// todo, err := s.todoRepo.Create(ctx, title)
+	// todo, err := s.todoRepo.ClearRefreshToken(ctx, )
 
 	if err != nil {
 		// return nil, fmt.Errorf("Failed to create todo: %w", err)
