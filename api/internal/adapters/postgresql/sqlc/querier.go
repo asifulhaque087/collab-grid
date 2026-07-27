@@ -32,10 +32,18 @@ type Querier interface {
 	GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (User, error)
 	GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (User, error)
 	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]GetUserQuotasRow, error)
+	GrantRolePermission(ctx context.Context, arg GrantRolePermissionParams) error
+	InsertPackage(ctx context.Context, arg InsertPackageParams) (pgtype.UUID, error)
+	InsertPackagePermissionLimit(ctx context.Context, arg InsertPackagePermissionLimitParams) error
+	InsertPermission(ctx context.Context, arg InsertPermissionParams) (InsertPermissionRow, error)
+	InsertRole(ctx context.Context, arg InsertRoleParams) (pgtype.UUID, error)
+	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) error
+	InsertUser(ctx context.Context, arg InsertUserParams) (pgtype.UUID, error)
 	// ============================================================================
 	// 3. Password & Session Management Updates
 	// ============================================================================
 	SetResetPasswordToken(ctx context.Context, arg SetResetPasswordTokenParams) error
+	TruncateAllTables(ctx context.Context) error
 	UpdatePasswordAndClearTokens(ctx context.Context, arg UpdatePasswordAndClearTokensParams) error
 	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) error
 }
