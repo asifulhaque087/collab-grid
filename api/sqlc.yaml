@@ -1,7 +1,8 @@
 version: "2"
 sql:
-  - schema: "db/migrations"  # Point sqlc directly to Goose migration files
+  - engine: "postgresql"
     queries: "db/queries"    # Directory containing your raw SQL queries
+    schema: "db/migrations"  # Point sqlc directly to Goose migration files
     gen:
       go:
         package: "database"
