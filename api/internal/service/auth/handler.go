@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/util"
@@ -16,11 +17,9 @@ func NewHandler(svc AuthService) *Handler {
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
-
-	var body CreateUserBody
+	var body RegisterUserDto
 
 	err := json.NewDecoder(r.Body).Decode(&body)
-
 	if err != nil {
 		http.Error(w, "failed to parse JSON data", http.StatusBadRequest)
 		return
@@ -28,67 +27,15 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	user, err := h.svc.Create(ctx, body.Title)
-
+	result, err := h.svc.RegisterUser(ctx, body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrEmailAlreadyRegistered) {
+			status = http.StatusConflict
+		}
+		http.Error(w, err.Error(), status)
 		return
 	}
 
-	util.WriteJson(w, http.StatusCreated, user)
-
+	util.WriteJson(w, http.StatusCreated, result)
 }
-
-// func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-
-// 	ctx := r.Context()
-
-// 	users, err := h.svc.FindAll(ctx)
-
-// 	if err != nil {
-// 		http.Error(w, "failed to get users", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	util.WriteJson(w, http.StatusAccepted, users)
-
-// }
-
-// func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
-
-// 	userId := r.PathValue("id")
-
-// 	ctx := r.Context()
-
-// 	user, err := h.svc.FindById(ctx, userId)
-
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	util.WriteJson(w, http.StatusCreated, user)
-// }
-
-// func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-
-// 	userId := r.PathValue("id")
-
-// 	ctx := r.Context()
-
-// 	user, err := h.svc.FindById(ctx, userId)
-
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	util.WriteJson(w, http.StatusCreated, user)
-// }
-
-// func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-
-// }
-
-// func (h *Handler) Logout(w http.ResponseWriter, r *http.Request)  {}
-// func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {}

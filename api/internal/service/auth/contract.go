@@ -11,7 +11,7 @@ type AuthRepo interface {
 	AssignUserRole(ctx context.Context, arg repo.AssignUserRoleParams) error
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
 	CreateSubscription(ctx context.Context, arg repo.CreateSubscriptionParams) error
-	CreateUser(ctx context.Context, arg repo.CreateUserParams) (User, error)
+	CreateUser(ctx context.Context, arg repo.CreateUserParams) (repo.User, error)
 
 	GetAccessContextByUserId(ctx context.Context, userID pgtype.UUID) ([]repo.GetAccessContextByUserIdRow, error)
 	// ============================================================================
@@ -22,10 +22,10 @@ type AuthRepo interface {
 	// ============================================================================
 	// 2. User & Signup Queries
 	// ============================================================================
-	GetUserByEmail(ctx context.Context, email string) (User, error)
-	GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
-	GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (User, error)
-	GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (repo.User, error)
+	GetUserById(ctx context.Context, id pgtype.UUID) (repo.User, error)
+	GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (repo.User, error)
+	GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (repo.User, error)
 	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]repo.GetUserQuotasRow, error)
 	// ============================================================================
 	// 3. Password & Session Management Updates
@@ -36,4 +36,5 @@ type AuthRepo interface {
 }
 
 type AuthService interface {
+	RegisterUser(ctx context.Context, dto RegisterUserDto) (*RegisterResponse, error)
 }

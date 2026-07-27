@@ -10,12 +10,9 @@ import (
 
 	"github.com/asifulhaque087/collab-grid/api/internal/app"
 	"github.com/asifulhaque087/collab-grid/api/internal/module"
-	"github.com/asifulhaque087/collab-grid/api/internal/util"
-	"github.com/asifulhaque087/collab-grid/api/internal/service/auth"
 )
 
-func TestAdd(t *testing.T) {
-
+func TestRegister(t *testing.T) {
 	m := http.NewServeMux()
 	testModule := module.NewTestModule()
 
@@ -25,8 +22,8 @@ func TestAdd(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
-	t.Run("Create user returns 201", func(t *testing.T) {
-		body := []byte(`{"title": "drink water"}`)
+	t.Run("Register user returns 201", func(t *testing.T) {
+		body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
 		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
@@ -35,94 +32,49 @@ func TestAdd(t *testing.T) {
 		if res.StatusCode != http.StatusCreated {
 			t.Errorf("expected 201, got %d", res.StatusCode)
 		}
-
-		testModule.AuthRepo.Reset()
-
 	})
 
-	t.Run("Create should response with appropriate data", func(t *testing.T) {
-
-		body := []byte(`{"title": "hola"}`)
+	t.Run("Register with duplicate email returns 409", func(t *testing.T) {
+		body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
 		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
+		}
+
+		if res.StatusCode != http.StatusConflict {
+			t.Errorf("expected 409, got %d", res.StatusCode)
 		}
 
 		respBody, _ := io.ReadAll(res.Body)
 		res.Body.Close()
-		if !bytes.Contains(respBody, []byte("hola")) {
-			t.Errorf("response body missing name: %s", string(respBody))
+		if !bytes.Contains(respBody, []byte("email already registered")) {
+			t.Errorf("expected conflict error, got: %s", string(respBody))
 		}
-
-		testModule.AuthRepo.Reset()
-
 	})
 
-}
-
-func TestFind(t *testing.T) {
-
-	m := http.NewServeMux()
-	testModule := module.NewTestModule()
-
-	server := app.NewServer(m, testModule)
-	mux := server.Init()
-
-	ts := httptest.NewServer(mux)
-	defer ts.Close()
-
-	t.Run("It should find the newly created User", func(t *testing.T) {
-
-		body := []byte(`{"title": "go for a walk"}`)
+	t.Run("Register response contains email", func(t *testing.T) {
+		body := []byte(`{"name": "Jane Doe", "email": "jane@test.com", "password": "secret456"}`)
 		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		currUser := testModule.AuthRepo.GetUsers()
-
-		if len(*currUser) != 1 {
-			t.Errorf("expected 1 user, got %d", len(*currUser))
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
 		}
+		res.Body.Close()
 
-		testModule.AuthRepo.Reset()
+		if resp["email"] != "jane@test.com" {
+			t.Errorf("expected email jane@test.com, got %v", resp["email"])
+		}
+		if resp["name"] != "Jane Doe" {
+			t.Errorf("expected name Jane Doe, got %v", resp["name"])
+		}
+		if resp["id"] == "" {
+			t.Error("expected non-empty id")
+		}
 	})
 
-	t.Run("It should find a single user", func(t *testing.T) {
-
-		body := []byte(`{"title": "go for a walk"}`)
-		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		respBody := util.ReadResponse(res.Body)
-
-		var data auth.User
-		if err := json.Unmarshal(respBody, &data); err != nil {
-			t.Fatalf("Failed to decode JSON: %v", err)
-		}
-
-		newRes, err := http.Get(ts.URL + "/users/" + data.Id.Hex())
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		newRespBody := util.ReadResponse(newRes.Body)
-
-		var newData auth.User
-
-		if err := json.Unmarshal(newRespBody, &newData); err != nil {
-			t.Fatalf("Failed to decode JSON: %v", err)
-		}
-
-		if data.Title != newData.Title {
-			t.Errorf("data is not same got %d", res.StatusCode)
-		}
-
-		testModule.AuthRepo.Reset()
-	})
-
+	testModule.AuthRepo.Reset()
 }

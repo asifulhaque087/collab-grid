@@ -30,15 +30,12 @@ func (t *App) RegisterRoute(mux *http.ServeMux) {
 	}
 	defer pool.Close()
 
-	queries:= repo.New(pool)
-	
-	
+	queries := repo.New(pool)
+
 	// Auth
 	authService := auth.NewService(queries)
 
 	handler := auth.NewHandler(authService)
 
-	mux.HandleFunc("GET /users", handler.GetUsers)
-	mux.HandleFunc("POST /users", handler.CreateUser)
-	mux.HandleFunc("GET /users/{id}", handler.GetUser)
+	mux.HandleFunc("POST /users", handler.Register)
 }

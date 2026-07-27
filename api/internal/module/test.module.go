@@ -22,7 +22,5 @@ func (t *TestModule) RegisterRoute(mux *http.ServeMux) {
 
 	handler := auth.NewHandler(svc)
 
-	mux.HandleFunc("GET /users", handler.GetUsers)
-	mux.HandleFunc("POST /users", handler.CreateUser)
-	mux.HandleFunc("GET /users/{id}", handler.GetUser)
+	mux.HandleFunc("POST /users", handler.Register)
 }
