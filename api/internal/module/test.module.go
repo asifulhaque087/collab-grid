@@ -3,31 +3,26 @@ package module
 import (
 	"net/http"
 
-	"github.com/asifulhaque087/todo-go-lang/internal/service/todo"
+	"github.com/asifulhaque087/collab-grid/api/internal/service/auth"
 )
 
 type TestModule struct {
-	TodoRepo *todo.FakeRepo
+	AuthRepo *auth.FakeRepo
 }
 
 func NewTestModule() *TestModule {
-	// return &TestModule{}
 	return &TestModule{
-		TodoRepo: todo.NewFakeRepo(),
+		AuthRepo: auth.NewFakeRepo(),
 	}
 }
 
 func (t *TestModule) RegisterRoute(mux *http.ServeMux) {
 
-	// service
-	todoService := todo.NewService(t.TodoRepo)
+	svc := auth.NewService(t.AuthRepo)
 
-	// create handlers
-	todoHandler := todo.NewHandler(todoService)
+	handler := auth.NewHandler(svc)
 
-	// create router
-	mux.HandleFunc("GET /todos", todoHandler.GetTodos)
-	mux.HandleFunc("POST /todos", todoHandler.CreateTodo)
-	mux.HandleFunc("GET /todos/{id}", todoHandler.GetTodo)
-	// mux.HandleFunc("GET /todos", todoHandler.GetTodos)
+	mux.HandleFunc("GET /users", handler.GetUsers)
+	mux.HandleFunc("POST /users", handler.CreateUser)
+	mux.HandleFunc("GET /users/{id}", handler.GetUser)
 }

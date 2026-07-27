@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/asifulhaque087/todo-go-lang/internal/app"
-	"github.com/asifulhaque087/todo-go-lang/internal/module"
+	"github.com/asifulhaque087/collab-grid/api/internal/app"
+	"github.com/asifulhaque087/collab-grid/api/internal/module"
 )
 
 func main() {

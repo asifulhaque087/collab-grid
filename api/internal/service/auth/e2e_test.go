@@ -1,4 +1,4 @@
-package todo_test
+package auth_test
 
 import (
 	"bytes"
@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/asifulhaque087/todo-go-lang/internal/app"
-	"github.com/asifulhaque087/todo-go-lang/internal/module"
-	"github.com/asifulhaque087/todo-go-lang/internal/service/todo"
-	"github.com/asifulhaque087/todo-go-lang/internal/util"
+	"github.com/asifulhaque087/collab-grid/api/internal/app"
+	"github.com/asifulhaque087/collab-grid/api/internal/module"
+	"github.com/asifulhaque087/collab-grid/api/internal/util"
+	"github.com/asifulhaque087/collab-grid/api/internal/service/auth"
 )
 
 func TestAdd(t *testing.T) {
@@ -25,9 +25,9 @@ func TestAdd(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
-	t.Run("Create todo returns 201", func(t *testing.T) {
+	t.Run("Create user returns 201", func(t *testing.T) {
 		body := []byte(`{"title": "drink water"}`)
-		res, err := http.Post(ts.URL+"/todos", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -36,26 +36,25 @@ func TestAdd(t *testing.T) {
 			t.Errorf("expected 201, got %d", res.StatusCode)
 		}
 
-		testModule.TodoRepo.Reset()
+		testModule.AuthRepo.Reset()
 
 	})
 
-	t.Run("Create should response with appropiate data", func(t *testing.T) {
+	t.Run("Create should response with appropriate data", func(t *testing.T) {
 
 		body := []byte(`{"title": "hola"}`)
-		res, err := http.Post(ts.URL+"/todos", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// Verify body response
 		respBody, _ := io.ReadAll(res.Body)
 		res.Body.Close()
 		if !bytes.Contains(respBody, []byte("hola")) {
 			t.Errorf("response body missing name: %s", string(respBody))
 		}
 
-		testModule.TodoRepo.Reset()
+		testModule.AuthRepo.Reset()
 
 	})
 
@@ -72,27 +71,27 @@ func TestFind(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
 
-	t.Run("It should find the newly created Todo", func(t *testing.T) {
+	t.Run("It should find the newly created User", func(t *testing.T) {
 
 		body := []byte(`{"title": "go for a walk"}`)
-		res, err := http.Post(ts.URL+"/todos", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		currTodo := testModule.TodoRepo.GetTodos()
+		currUser := testModule.AuthRepo.GetUsers()
 
-		if len(*currTodo) != 1 {
-			t.Errorf("expected 201, got %d", res.StatusCode)
+		if len(*currUser) != 1 {
+			t.Errorf("expected 1 user, got %d", len(*currUser))
 		}
 
-		testModule.TodoRepo.Reset()
+		testModule.AuthRepo.Reset()
 	})
 
-	t.Run("It should find a single todo", func(t *testing.T) {
+	t.Run("It should find a single user", func(t *testing.T) {
 
 		body := []byte(`{"title": "go for a walk"}`)
-		res, err := http.Post(ts.URL+"/todos", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
 
 		if err != nil {
 			t.Fatal(err)
@@ -100,12 +99,12 @@ func TestFind(t *testing.T) {
 
 		respBody := util.ReadResponse(res.Body)
 
-		var data todo.Todo
+		var data auth.User
 		if err := json.Unmarshal(respBody, &data); err != nil {
 			t.Fatalf("Failed to decode JSON: %v", err)
 		}
 
-		newRes, err := http.Get(ts.URL + "/todos/" + data.Id.Hex())
+		newRes, err := http.Get(ts.URL + "/users/" + data.Id.Hex())
 
 		if err != nil {
 			t.Fatal(err)
@@ -113,17 +112,17 @@ func TestFind(t *testing.T) {
 
 		newRespBody := util.ReadResponse(newRes.Body)
 
-		var newData todo.Todo
+		var newData auth.User
 
 		if err := json.Unmarshal(newRespBody, &newData); err != nil {
 			t.Fatalf("Failed to decode JSON: %v", err)
 		}
 
 		if data.Title != newData.Title {
-			t.Errorf("data is not same goten %d", res.StatusCode)
+			t.Errorf("data is not same got %d", res.StatusCode)
 		}
 
-		testModule.TodoRepo.Reset()
+		testModule.AuthRepo.Reset()
 	})
 
 }
