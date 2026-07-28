@@ -46,3 +46,4 @@ prototypes
 
 compose.prod.yml
 .env.goose
+tmp
