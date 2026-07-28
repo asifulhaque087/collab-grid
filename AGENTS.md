@@ -4,206 +4,142 @@
 
 **Full stack (from repo root):**
 ```bash
-docker compose watch          # full stack with hot reload (web:3000, api:3001, redis, rabbitmq, pg)
+docker compose watch    # web:3000, api:3001, redis, rabbitmq, pg
 ```
 
 **API (Go) — from `api/`:**
 ```bash
-make watch        # hot reload via Air (port 3001)
-make run          # run directly (port from .env)
-make build        # builds bin/api and bin/seed
-make seed         # run database seed CLI
+make watch   # hot reload via Air (port from .env)
+make run     # go run cmd/main.go
+make build   # builds bin/api and bin/seed
+make seed    # run database seed CLI
 ```
 
 **Web (Next.js) — from `web/`:**
 ```bash
-pnpm dev          # dev server on :3000
-pnpm build        # production build
-pnpm lint         # eslint --max-warnings 0
-pnpm check-types  # next typegen && tsc --noEmit
+pnpm dev              # dev server on :3000
+pnpm build            # production build
+pnpm lint             # eslint --max-warnings 0
+pnpm check-types      # next typegen && tsc --noEmit
 ```
 
-**Database (SQLC):**
+**Database (SQLC) — from `api/`:**
 ```bash
-# from api/ — regenerates sqlc-go code from SQL queries
-sqlc generate
+sqlc generate         # regenerates sqlc-go from SQL queries in queries/
 ```
 
----
+## Architecture
 
-## Architecture Overview
+**Stack:** Go 1.25 · Next.js 16 · PostgreSQL (pgx/v5) · Redis · RabbitMQ · socket.io-client
 
-**Stack:** Go 1.25 · Next.js 16 · PostgreSQL (pgx) · Redis (keyspace events) · RabbitMQ · socket.io
+```
+api/          # Go backend (pgx, sqlc, net/http, JWT)
+web/          # Next.js 16 app (app router, Tailwind v4, shadcn/ui)
+```
 
-**Key services (from compose.yml):**
-| Service | Port | Purpose |
-|---------|------|---------|
-| web | 3000 | Next.js app (app router) |
-| api | 3001 | Go HTTP + WebSocket server |
-| redis | 6379 | Atomic locks, presence, write-behind cache, keyspace expiry events (`notify-keyspace-events Ex`) |
-| rabbitmq | 5672/15672 | Debounced widget persistence queue + async checkout |
-| postgres | 5432 | System of record (boards, widgets, orders, users, plans) |
+**Current state:** API is early-stage. Auth (register, JWT, refresh) is wired. Redis/RabbitMQ configs are loaded but **no services use them yet** — the realtime canvas (socket.io, locks, zones, write-behind) exists as types/components on the web side only. See `web/src/types/realtime.ts` and `web/src/types/canvas.ts` for the planned contract.
 
-**Architecture is problem-first:** see `BACKEND_ARCHITECTURE.md` and `ARCHITECTURE.md` for the deep dive. Key patterns:
-- **Atomic Redis locks** (`SET NX PX`) for inventory — no DB row locks
-- **Write-behind cache + debounced RabbitMQ** → 60fps WebSocket writes → ~1 DB write/drag
-- **Idempotency keys + server-authoritative totals** → zero double-charge
-- **Redis keyspace expiry events** → auto-release locks + broadcast without polling
-- **10×10 spatial zone sharding** → viewport-scoped socket.io broadcasts
-- **CASL abilities + plan snapshots** → capability + quota RBAC
-- **Redis Pub/Sub adapter** → multi-node WebSocket scaling
-
----
-
-## API Module Layout (Go)
+## API Layout (Go)
 
 ```
 api/
 ├── cmd/
-│   ├── main.go       # entrypoint: config → pg pool → module → server
-│   └── seed/main.go  # database seeder
+│   ├── main.go               # entrypoint: config → pg pool → module → server
+│   └── seed/main.go          # database seeder
 ├── internal/
-│   ├── config/       # env loading (caarlos0/env)
-│   ├── module/       # wire-up: app.go (prod), test.module.go (tests)
-│   │   ├── app.go           # real modules (auth, boards, inventory, orders, ...)
-│   │   ├── contract.go      # Module interface (RegisterRoute)
-│   │   └── test.module.go   # fakes for testing
-│   ├── app/server.go        # HTTP mux + middleware + module routes
-│   ├── adapters/postgresql/ # pgx pool, sqlc-generated repo, migrations
-│   │   ├── sqlc/            # generated code (run `sqlc generate`)
-│   │   ├── queries/         # .sql files → sqlc
-│   │   └── migrations/      # numbered .sql files
-│   ├── service/auth/        # auth module (JWT, CASL, guards)
-│   └── util/util.go         # tryit() helper → [T, error] tuples
+│   ├── config/               # env loading (caarlos0/env, godotenv, validator)
+│   ├── module/               # wire-up: app.go (prod), test.module.go (tests)
+│   │   ├── app.go            # registers auth route (POST /users)
+│   │   ├── contract.go       # Module interface (RegisterRoute(*http.ServeMux))
+│   │   └── test.module.go    # in-memory fakes for testing
+│   ├── app/server.go         # HTTP server, middleware chain, Start()
+│   ├── adapters/postgresql/  # pgx pool, sqlc repo, migrations, UoW
+│   │   ├── sqlc/             # GENERATED — don't edit by hand
+│   │   ├── queries/          # .sql → sqlc input (auth.sql, seed.sql)
+│   │   └── migrations/       # numbered .sql (auto-applied: not yet)
+│   ├── domain/               # repo interfaces (AuthRepo), UnitOfWork
+│   ├── service/auth/         # handler, service, e2e_test, repo.fake, types
+│   └── util/                 # WriteJson, tryit helper
 ```
 
-**Key files to know:**
-- `cmd/main.go:34` — DB pool created at app root, passed to module
-- `internal/module/app.go` — wires all feature modules
-- `internal/module/contract.go` — `Module` interface (`RegisterRoute(*http.ServeMux)`)
+Key files:
+- `cmd/main.go:33` — DB pool created at root, `module.NewApp` wires all modules
+- `internal/module/app.go` — registers routes on `*http.ServeMux`
 - `internal/adapters/postgresql/queries/*.sql` — edit these, run `sqlc generate`
+- `internal/service/auth/e2e_test.go` — test pattern (uses `httptest.Server` + fakes)
 
----
-
-## Web App Structure (Next.js 16 App Router)
+## Web Layout (Next.js 16)
 
 ```
 web/src/
 ├── app/
-│   ├── (public)/           # landing, checkout, public board view
-│   ├── (auth)/             # sign-in, sign-up, reset-password
-│   ├── (private)/          # authenticated dashboard
-│   │   └── dashboard/(shell)/  # boards, inventory, orders, roles, settings...
+│   ├── (public)/             # landing, /b/[slug], /checkout
+│   ├── (auth)/               # sign-in, sign-up, forgot/reset-password
+│   ├── (private)/            # dashboard, subscription
 │   ├── api/
-│   │   ├── public/[[...path]]/route.ts   # proxies to Go API (public)
-│   │   └── private/[[...path]]/route.ts  # proxies to Go API (authed, cookies)
+│   │   ├── public/[[...path]]/route.ts   # BFF proxy to Go API (no auth)
+│   │   └── private/[[...path]]/route.ts  # BFF proxy (injects bearer token)
 │   └── layout.tsx
-├── components/             # UI components (Radix + Tailwind 4)
-├── hooks/                  # use-canvas-socket, useThrottle
-├── lib/
-│   ├── api.ts              # typed fetch wrapper to Go API
-│   ├── auth.ts             # server-side auth (cookies, JWT via jose)
-│   ├── ability.ts          # CASL ability factory (mirrors backend)
-│   ├── canvas-mappers.ts   # DTO ↔ UI transforms
-│   └── route-permissions.ts# route → permission map for guards
-├── types/                  # shared TS types (canvas, realtime, etc.)
-└── env.ts                  # @t3-oss/env-nextjs validation
+├── components/               # Radix UI + shadcn/ui components (17 feature dirs)
+├── actions/                  # Server Actions (auth, boards, inventory, orders, etc.)
+├── hooks/                    # use-canvas-socket, useThrottle
+├── lib/                      # api.ts, auth.ts, ability.ts, canvas-mappers.ts, etc.
+├── types/                    # canvas.ts, realtime.ts, home.ts
+├── proxy.ts                  # Middleware logic (JWT verify, token rotation) — NOT wired as Next.js middleware yet (no `middleware.ts`)
+├── env.ts                    # @t3-oss/env-nextjs validation
+└── vars.ts                   # runtime env accessor
 ```
 
-**Key conventions:**
-- Route groups: `(public)`, `(auth)`, `(private)` for layout/auth boundaries
-- API routes proxy to Go backend (`NEXT_PUBLIC_GATEWAY_URL`)
-- Server components default; `'use client'` for socket/hooks/forms
-- CASL abilities mirrored in `lib/ability.ts` for client-side guards
+Key conventions:
+- Route groups control auth boundaries: `(public)` / `(auth)` / `(private)` / `(utility)`
+- BFF proxy (`api/private/*`, `api/public/*`) rewrites `/api/private/foo` → Go API at `GATEWAY_URL/foo`
+- `proxy.ts` (middleware) validates JWT, rotates refresh tokens, injects `authorization` header
+- Server components default; `'use client'` only for interactivity/socket/hooks
+- Tailwind CSS v4 — **NO `tailwind.config.js`**; theme via `@theme` in `globals.css`
 
----
-
-## Development Workflow
+## Development
 
 **Database:**
-- Migrations in `api/internal/adapters/postgresql/migrations/` (numbered SQL files)
-- Run migrations: applied automatically on API boot (see `postgresql/connection.go`)
-- Seed data: `make seed` (runs `cmd/seed/main.go` → `sqlc/seed.sql.go`)
-
-**Code generation:**
-```bash
-# API: regenerate sqlc after editing .sql queries
-cd api && sqlc generate
-
-# Web: types generated via `pnpm check-types` (next typegen + tsc)
-```
+- Migrations in `api/internal/adapters/postgresql/migrations/` — NOT auto-applied on boot yet
+- Seed: `make seed` from `api/`
+- `sqlc generate` after editing `.sql` queries
 
 **Testing:**
-- API: `*_test.go` files alongside code (see `auth/e2e_test.go` pattern)
-- No test runner configured in web yet — add Vitest/Jest if needed
+- API: `go test -v -run TestName ./internal/service/auth/...` (uses fakes, no DB needed)
+- Web: no test runner configured yet
 
-**Lint/Typecheck order (CI):**
+**Lint/Typecheck (CI order):**
 ```bash
-# API (no linter configured yet — go vet / go build)
 cd api && go build ./... && go vet ./...
-
-# Web
 cd web && pnpm lint && pnpm check-types
 ```
 
----
+## Environment
 
-## Environment & Secrets
+Required env files (not committed):
 
-**Required env files (not committed):**
 | File | Required keys |
 |------|---------------|
-| `api/.env` | `DATABASE_URL`, `JWT_SECRET`, `REDIS_URL`, `RABBITMQ_URL`, `PORT` |
-| `web/.env` | `NEXT_PUBLIC_GATEWAY_URL`, `NEXT_PUBLIC_SOCKET_URL`, `NEXT_PUBLIC_APP_URL` |
+| `api/.env` | `DATABASE_URL`, `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `REDIS_URL`, `RABBITMQ_URL`, `PORT`, `CLIENT_URL`, `CORS_ORIGIN`, OAuth & SMTP fields |
+| `web/.env` | `GATEWAY_URL`, `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, `NEXT_PUBLIC_GATEWAY_URL`, `NEXT_PUBLIC_SOCKET_URL` |
 
-**Docker overrides (compose.yml):**
-- `REDIS_URL=redis://redis:6379`
-- `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672`
-
-**Production secrets:** stored in `.github/secrets/` (see `.github/secrets/README.md`)
-
----
-
-## Common Tasks
-
-**Add a new API endpoint:**
-1. Define SQL in `api/internal/adapters/postgresql/queries/`
-2. Run `cd api && sqlc generate`
-3. Add repo method in `store.go`
-4. Add handler in appropriate `service/` module
-5. Register route in module's `RegisterRoute(mux)`
-
-**Add a WebSocket event:**
-1. Gateway: `apps/api/internal/realtime/realtime.gateway.ts` — add `@SubscribeMessage`
-2. Service: `realtime.service.ts` — implement logic (locks, cache, broadcast)
-3. Client: `web/src/hooks/use-canvas-socket.ts` — add typed emit/listen
-
-**Add a DB migration:**
-1. Create `api/internal/adapters/postgresql/migrations/YYYYMMDDHHMMSS_name.sql`
-2. Restart API — migrations run on boot
-
-**Run single test (API):**
-```bash
-cd api && go test -v -run TestName ./internal/service/auth/...
-```
-
----
+Docker compose overrides: `REDIS_URL=redis://redis:6379`, `RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672`
 
 ## Gotchas & Conventions
 
 | Area | Note |
 |------|------|
-| **DB** | Uses `pgx/v5` pool; migrations auto-run on startup (`connection.go`) |
-| **SQLC** | Edit `.sql` files only; generated code in `sqlc/` — don't edit by hand |
-| **Redis** | Two clients: command + subscriber (keyspace events need subscriber mode) |
-| **RabbitMQ** | Debounced publisher (`rabbitmq.service.ts`) coalesces 60fps → ~2/sec |
-| **Auth** | JWT in httpOnly cookie; same cookie read by WS handshake (`socket-auth.service.ts`) |
-| **CASL** | Abilities built in `permissions.guard.ts`; mirrored in `web/lib/ability.ts` |
-| **WebSocket** | Namespace `/canvas`; rooms = `board:<id>`, `board:<id>:zone:<x>_<y>` |
-| **Zone grid** | Fixed 10,000×10,000 world → 10×10 zones (1000px each) — see `zone.service.ts` |
-| **Ports** | API=3001, Web=3000, Redis=6379, RabbitMQ=5672/15672, PG=5432 |
-
----
+| **README.md** | Describes old NestJS architecture (stale). Don't trust it. |
+| **compose.yml** | References old paths (`apps/api/`, `apps/web/`, `packages/common/`) — paths don't match current layout. Dockerfiles at `api/Dockerfile.dev` and `web/Dockerfile` also have stale paths. |
+| **SQLC** | Edit `.sql` files only; `sqlc/` is generated — don't edit by hand |
+| **API config** | Loads `.env` via godotenv; validates with go-playground/validator; requires 20+ vars including OAuth, SMTP, Redis, RabbitMQ |
+| **Auth** | JWT in httpOnly cookie set by BFF proxy; token rotation on expiry in `proxy.ts` |
+| **CASL** | Mirrored in `web/src/lib/ability.ts` — mirrors Go API permission model |
+| **Tailwind v4** | CSS-based config via `@theme` in `globals.css` — NO JS config file |
+| **Web API routes** | `api/private/*` requires `authorization` header or throws 401; `api/public/*` passes auth through if present |
+| **Routemux** | Go API uses `http.ServeMux` with method-based routing (`mux.HandleFunc("POST /path", handler)`) |
+| **UoW pattern** | `domain.UnitOfWork` + `postgresql.UoW` wraps pgx transactions; test module uses in-memory `memUoW` |
+| **Ports** | API=3001 (configurable via `PORT`), Web=3000, Redis=6379, RabbitMQ=5672/15672, PG=5432 |
 
 ## CI/CD (`.github/workflows/`)
 
@@ -215,11 +151,16 @@ cd api && go test -v -run TestName ./internal/service/auth/...
 
 Helm charts in `charts/` (api, web, ingress-routes).
 
----
+## Stale Artifacts to Ignore
+
+The following files describe the pre-migration NestJS architecture and will mislead:
+- `README.md` — entire content (describes NestJS/Drizzle/Redis locks/RabbitMQ that don't exist in Go API yet)
+- `compose.yml` — paths reference old monorepo structure
+- `web/Dockerfile` — references `apps/web/`, `apps/api/`, `packages/common/`, `pnpm-workspace.yaml` that don't exist
+- `context/coding-standards.md` — references both Prisma and Drizzle, `@packages/common`, `@apps/api`; mostly stale
 
 ## References
 
-- `BACKEND_ARCHITECTURE.md` — deep-dive on concurrency, locking, write-behind, RBAC
-- `ARCHITECTURE.md` — system overview, data flows
-- `context/features/*.spec.md` — feature specs (auth, canvas, locks, billing, etc.)
-- `context/coding-standards.md` — code style guidelines
+- `BACKEND_ARCHITECTURE.md` — old NestJS deep-dive on concurrency, locking, write-behind, RBAC (concepts still valid as planned architecture)
+- `ARCHITECTURE.md` — old system overview
+- `context/features/*.spec.md` — feature specs (may be partly aspirational)
