@@ -1,12 +1,17 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/util"
 )
+
+type AuthService interface {
+	RegisterUser(ctx context.Context, dto RegisterUserDto) (*RegisterResponse, error)
+}
 
 type Handler struct {
 	svc AuthService

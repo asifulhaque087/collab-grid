@@ -10,6 +10,7 @@ import (
 
 	repo "github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/api/internal/config"
+	"github.com/asifulhaque087/collab-grid/api/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
@@ -18,14 +19,16 @@ import (
 const saltRounds = 12
 
 type Service struct {
-	authRepo AuthRepo
+	authRepo domain.AuthRepo
+	uow      domain.UnitOfWork
 	logger   *slog.Logger
 	cfg      *config.Config
 }
 
-func NewService(authRepo AuthRepo, logger *slog.Logger, cfg *config.Config) *Service {
+func NewService(authRepo domain.AuthRepo, uow domain.UnitOfWork, logger *slog.Logger, cfg *config.Config) *Service {
 	return &Service{
 		authRepo: authRepo,
+		uow:      uow,
 		logger:   logger,
 		cfg:      cfg,
 	}
@@ -137,6 +140,7 @@ func (s *Service) ResolveSignupDefaults(ctx context.Context) (*SignupDefaults, e
 // func (s *Service) IsTokenExpired() () {}
 
 func (s *Service) GenerateTokens(
+
 	ctx context.Context,
 	id pgtype.UUID,
 	email string,
@@ -234,11 +238,13 @@ func (s *Service) CreateUserWithFreePlan(
 	}
 
 	// 2. Execute database transaction
-	err := s.authRepo.ExecTx(ctx, func(q *repo.Queries) error {
+
+	err := s.uow.RunInTx(ctx, func(tx domain.Stores) error {
+
 		var err error
 
 		// Insert User
-		user, err = q.CreateUser(ctx, repo.CreateUserParams{
+		user, err = tx.Auth.CreateUser(ctx, repo.CreateUserParams{
 			Name:     params.Name,
 			Email:    params.Email,
 			Password: pgtype.Text{String: params.Password, Valid: params.Password != ""},
@@ -249,7 +255,7 @@ func (s *Service) CreateUserWithFreePlan(
 		}
 
 		// Insert User Role
-		err = q.AssignUserRole(ctx, repo.AssignUserRoleParams{
+		err = tx.Auth.AssignUserRole(ctx, repo.AssignUserRoleParams{
 			UserID: user.ID,
 			RoleID: defaults.TenantRole.ID,
 		})
@@ -258,7 +264,7 @@ func (s *Service) CreateUserWithFreePlan(
 		}
 
 		// Insert Subscription
-		err = q.CreateSubscription(ctx, repo.CreateSubscriptionParams{
+		err = tx.Auth.CreateSubscription(ctx, repo.CreateSubscriptionParams{
 			UserID:        user.ID,
 			PackageID:     defaults.FreePackage.ID,
 			StartDate:     pgtype.Timestamp{Time: time.Now(), Valid: true}, // Fixed: pgtype.Timestamp

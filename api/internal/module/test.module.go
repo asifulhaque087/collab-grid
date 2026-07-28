@@ -1,23 +1,43 @@
 package module
 
 import (
-	"log"
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/config"
+	"github.com/asifulhaque087/collab-grid/api/internal/domain"
 	"github.com/asifulhaque087/collab-grid/api/internal/service/auth"
 )
 
 type TestModule struct {
 	AuthRepo *auth.FakeRepo
+	Cfg      *config.Config
 }
 
 func NewTestModule() *TestModule {
 	return &TestModule{
 		AuthRepo: auth.NewFakeRepo(),
+		Cfg: &config.Config{
+			Port:                   4000,
+			AccessTokenSecret:      "test-access-secret",
+			RefreshTokenSecret:     "test-refresh-secret",
+			AccessTokenExpiration:  15 * time.Minute,
+			RefreshTokenExpiration: 7 * 24 * time.Hour,
+			// Add any other config fields required by auth.NewService
+		},
 	}
+}
+
+type memUoW struct {
+	stores domain.Stores
+}
+
+func (m *memUoW) RunInTx(
+	_ context.Context, fn func(domain.Stores) error) error {
+	return fn(m.stores)
 }
 
 func (t *TestModule) RegisterRoute(mux *http.ServeMux) {
@@ -27,12 +47,15 @@ func (t *TestModule) RegisterRoute(mux *http.ServeMux) {
 	}))
 	slog.SetDefault(logger)
 
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+	stores := domain.Stores{
+		Auth: t.AuthRepo, // map your repo(s) here depending on domain.Stores definition
 	}
 
-	svc := auth.NewService(t.AuthRepo, logger, cfg)
+	// 2. Initialize your memory Unit of Work instance
+	uow := &memUoW{
+		stores: stores,
+	}
+	svc := auth.NewService(t.AuthRepo, uow, logger, t.Cfg)
 
 	handler := auth.NewHandler(svc)
 
