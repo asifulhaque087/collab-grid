@@ -51,3 +51,16 @@ type CreateUserParams struct {
 	Password string
 	Provider string
 }
+
+type GoogleUserInfo struct {
+	ID      string `json:"id"`
+	Email   string `json:"email"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+}
+
+type ValidateSocialUserDto struct {
+	Email    string
+	Name     string
+	Provider string
+}

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,23 +15,26 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
 )
 
 const saltRounds = 12
 
 type Service struct {
-	authRepo domain.AuthRepo
-	uow      domain.UnitOfWork
-	logger   *slog.Logger
-	cfg      *config.Config
+	authRepo     domain.AuthRepo
+	uow          domain.UnitOfWork
+	logger       *slog.Logger
+	cfg          *config.Config
+	googleConfig *oauth2.Config
 }
 
 func NewService(authRepo domain.AuthRepo, uow domain.UnitOfWork, logger *slog.Logger, cfg *config.Config) *Service {
 	return &Service{
-		authRepo: authRepo,
-		uow:      uow,
-		logger:   logger,
-		cfg:      cfg,
+		authRepo:     authRepo,
+		uow:          uow,
+		logger:       logger,
+		cfg:          cfg,
+		googleConfig: NewGoogleConfig(cfg),
 	}
 }
 
@@ -288,4 +292,93 @@ func (s *Service) CreateUserWithFreePlan(
 	}
 
 	return &user, nil
+}
+
+func (s *Service) GoogleLogin(ctx context.Context) string {
+	return s.googleConfig.AuthCodeURL("random_csrf_state_token")
+}
+
+func (s *Service) GoogleCallback(ctx context.Context, code string) (*RegisterResponse, error) {
+	token, err := s.googleConfig.Exchange(ctx, code)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "google code exchange failed", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("code exchange failed: %w", err)
+	}
+
+	client := s.googleConfig.Client(ctx, token)
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to fetch google user info", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("failed to get user info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var googleUser GoogleUserInfo
+	if err := json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
+		s.logger.ErrorContext(ctx, "failed to decode google user info", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("failed to decode user info: %w", err)
+	}
+
+	return s.ValidateSocialUser(ctx, ValidateSocialUserDto{
+		Email:    googleUser.Email,
+		Name:     googleUser.Name,
+		Provider: "google",
+	})
+}
+
+func (s *Service) ValidateSocialUser(ctx context.Context, dto ValidateSocialUserDto) (*RegisterResponse, error) {
+	existing, err := s.authRepo.GetUserByEmail(ctx, dto.Email)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		s.logger.ErrorContext(ctx, "failed to query social user by email",
+			slog.String("email", dto.Email),
+			slog.String("error", err.Error()),
+		)
+		return nil, ErrInternalServer
+	}
+
+	var user *repo.User
+
+	if errors.Is(err, sql.ErrNoRows) {
+		defaults, err := s.ResolveSignupDefaults(ctx)
+		if err != nil {
+			s.logger.ErrorContext(ctx, "failed to resolve signup defaults for social user",
+				slog.String("email", dto.Email),
+				slog.String("error", err.Error()),
+			)
+			return nil, fmt.Errorf("%w: %v", ErrInternalServer, err)
+		}
+
+		created, err := s.CreateUserWithFreePlan(ctx, CreateUserParams{
+			Name:     dto.Name,
+			Email:    dto.Email,
+			Provider: dto.Provider,
+		}, defaults)
+		if err != nil {
+			s.logger.ErrorContext(ctx, "failed to create social user",
+				slog.String("email", dto.Email),
+				slog.String("error", err.Error()),
+			)
+			return nil, fmt.Errorf("%w: %v", ErrInternalServer, err)
+		}
+		user = created
+	} else {
+		user = &existing
+	}
+
+	tokens, err := s.GenerateTokens(ctx, user.ID, user.Email, user.PrimaryUserID, user.SecondaryUserID)
+	if err != nil || tokens == nil {
+		s.logger.ErrorContext(ctx, "failed to generate tokens for social user",
+			slog.String("user_id", user.ID.String()),
+			slog.Any("error", err),
+		)
+		return nil, fmt.Errorf("%w: %v", ErrInternalServer, err)
+	}
+
+	return &RegisterResponse{
+		ID:           user.ID.String(),
+		Name:         user.Name,
+		Email:        user.Email,
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}, nil
 }

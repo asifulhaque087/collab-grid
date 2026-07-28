@@ -11,6 +11,8 @@ import (
 
 type AuthService interface {
 	RegisterUser(ctx context.Context, dto RegisterUserDto) (*RegisterResponse, error)
+	GoogleLogin(ctx context.Context) string
+	GoogleCallback(ctx context.Context, code string) (*RegisterResponse, error)
 }
 
 type Handler struct {
@@ -43,4 +45,31 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.WriteJson(w, http.StatusCreated, result)
+}
+
+func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+	url := h.svc.GoogleLogin(r.Context())
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+	state := r.URL.Query().Get("state")
+	if state != "random_csrf_state_token" {
+		http.Error(w, "Invalid state", http.StatusBadRequest)
+		return
+	}
+
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		http.Error(w, "Missing authorization code", http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.svc.GoogleCallback(r.Context(), code)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJson(w, http.StatusOK, result)
 }

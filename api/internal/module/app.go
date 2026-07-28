@@ -40,4 +40,6 @@ func (t *App) RegisterRoute(mux *http.ServeMux) {
 	handler := auth.NewHandler(authService)
 
 	mux.HandleFunc("POST /auth/register", handler.Register)
+	mux.HandleFunc("GET /auth/google", handler.HandleGoogleLogin)
+	mux.HandleFunc("GET /auth/google/callback", handler.HandleGoogleCallback)
 }
