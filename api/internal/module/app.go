@@ -39,5 +39,5 @@ func (t *App) RegisterRoute(mux *http.ServeMux) {
 
 	handler := auth.NewHandler(authService)
 
-	mux.HandleFunc("POST /users", handler.Register)
+	mux.HandleFunc("POST /auth/register", handler.Register)
 }
