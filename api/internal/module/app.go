@@ -2,12 +2,12 @@ package module
 
 import (
 	"log/slog"
-	"net/http"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql"
 	repo "github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/api/internal/service/auth"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,21 +25,17 @@ func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool) *App {
 	}
 }
 
-func (t *App) RegisterRoute(mux *http.ServeMux) {
-	// 1. Initialize Store instead of bare repo.Queries
-	// store := postgresql.NewStore(t.pool)
-
+func (t *App) RegisterRoute(r chi.Router) {
 	queries := repo.New(t.pool)
 	uow := postgresql.NewUoW(t.pool)
 
-	// 2. Pass store directly into NewService
-	// Since *Store implements GetUserByEmail, CreateUser, and ExecTx,
-	// it automatically satisfies the auth.AuthRepo interface!
 	authService := auth.NewService(queries, uow, t.logger, t.cfg)
-
 	handler := auth.NewHandler(authService)
 
-	mux.HandleFunc("POST /auth/register", handler.Register)
-	mux.HandleFunc("GET /auth/google", handler.HandleGoogleLogin)
-	mux.HandleFunc("GET /auth/google/callback", handler.HandleGoogleCallback)
+	// Grouping under /auth with Chi
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/register", handler.Register)
+		r.Get("/google", handler.HandleGoogleLogin)
+		r.Get("/google/callback", handler.HandleGoogleCallback)
+	})
 }

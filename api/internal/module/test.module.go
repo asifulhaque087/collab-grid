@@ -3,13 +3,13 @@ package module
 import (
 	"context"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/api/internal/domain"
 	"github.com/asifulhaque087/collab-grid/api/internal/service/auth"
+	"github.com/go-chi/chi/v5"
 )
 
 type TestModule struct {
@@ -40,7 +40,7 @@ func (m *memUoW) RunInTx(
 	return fn(m.stores)
 }
 
-func (t *TestModule) RegisterRoute(mux *http.ServeMux) {
+func (t *TestModule) RegisterRoute(r chi.Router) {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -59,5 +59,5 @@ func (t *TestModule) RegisterRoute(mux *http.ServeMux) {
 
 	handler := auth.NewHandler(svc)
 
-	mux.HandleFunc("POST /users", handler.Register)
+	r.Post("/users", handler.Register)
 }

@@ -1,7 +1,7 @@
 package module
 
-import "net/http"
+import "github.com/go-chi/chi/v5"
 
 type Module interface {
-	RegisterRoute(mux *http.ServeMux)
+	RegisterRoute(r chi.Router)
 }

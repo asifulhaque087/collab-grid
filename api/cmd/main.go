@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +12,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/api/internal/app"
 	"github.com/asifulhaque087/collab-grid/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/api/internal/module"
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -26,24 +26,20 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// 1. Root context bound to app lifecycle signals
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// 2. Database pool initialized at root level
 	pool, err := postgresql.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)
 	}
-	defer pool.Close() // Properly closes when the app shuts down!
+	defer pool.Close()
 
-	mux := http.NewServeMux()
+	// 1. Create Chi router instead of http.NewServeMux()
+	router := chi.NewRouter()
 
-	// 3. Inject pool into application module
 	appModule := module.NewApp(logger, cfg, pool)
-	// appModule.RegisterRoute(mux)
 
-	server := app.NewServer(mux, appModule)
+	server := app.NewServer(router, appModule)
 	server.Start(cfg.Port)
-
 }

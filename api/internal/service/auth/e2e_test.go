@@ -10,16 +10,17 @@ import (
 
 	"github.com/asifulhaque087/collab-grid/api/internal/app"
 	"github.com/asifulhaque087/collab-grid/api/internal/module"
+	"github.com/go-chi/chi/v5"
 )
 
 func TestRegister(t *testing.T) {
-	m := http.NewServeMux()
+	router := chi.NewRouter()
 	testModule := module.NewTestModule()
 
-	server := app.NewServer(m, testModule)
-	mux := server.Init()
+	server := app.NewServer(router, testModule)
+	r := server.Init()
 
-	ts := httptest.NewServer(mux)
+	ts := httptest.NewServer(r)
 	defer ts.Close()
 
 	t.Run("Register user returns 201", func(t *testing.T) {

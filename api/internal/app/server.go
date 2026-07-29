@@ -6,45 +6,44 @@ import (
 	"net/http"
 
 	"github.com/asifulhaque087/collab-grid/api/internal/module"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
-	mux    *http.ServeMux
+	router *chi.Mux
 	module module.Module
 }
 
-func NewServer(mux *http.ServeMux, module module.Module) *Server {
-
+func NewServer(router *chi.Mux, module module.Module) *Server {
 	return &Server{
-		mux:    mux,
+		router: router,
 		module: module,
 	}
-
 }
 
-func (s *Server) Init() *http.ServeMux {
-
+func (s *Server) Init() *chi.Mux {
 	s.standardMiddleware()
-	s.module.RegisterRoute(s.mux)
+	s.module.RegisterRoute(s.router)
 
-	return s.mux
+	return s.router
 }
 
 func (s *Server) standardMiddleware() {
-
+	// Standard Chi middlewares
+	s.router.Use(middleware.Logger)
+	s.router.Use(middleware.Recoverer)
 }
 
-func (s *Server) Start(Port int) {
-
-	mux := s.Init()
+func (s *Server) Start(port int) {
+	router := s.Init()
 
 	server := &http.Server{
-		// Addr:    ":4000",
-		Addr:    fmt.Sprintf(":%d", Port),
-		Handler: mux,
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: router,
 	}
 
-	if err := server.ListenAndServe(); err != nil {
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Printf("HTTP server error: %v", err)
 	}
 }
