@@ -40,8 +40,8 @@ type AuthTokens struct {
 type JwtPayload struct {
 	ID              string  `json:"id"`
 	Email           string  `json:"email"`
-	PrimaryUserID   *string `json:"primary_user_id,omitempty"`
-	SecondaryUserID *string `json:"secondary_user_id,omitempty"`
+	PrimaryUserID   string `json:"primary_user_id,omitempty"`
+	SecondaryUserID string `json:"secondary_user_id,omitempty"`
 	jwt.RegisteredClaims
 }
 

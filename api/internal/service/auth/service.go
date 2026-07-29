@@ -151,24 +151,15 @@ func (s *Service) GenerateTokens(
 	primaryUserID pgtype.UUID,
 	secondaryUserID pgtype.UUID,
 ) (*AuthTokens, error) {
-	// Helper to safely extract string pointer from optional pgtype.UUID
-	uuidToPtr := func(u pgtype.UUID) *string {
-		if !u.Valid {
-			return nil
-		}
-		str := fmt.Sprintf("%x-%x-%x-%x-%x", u.Bytes[0:4], u.Bytes[4:6], u.Bytes[6:8], u.Bytes[8:10], u.Bytes[10:16])
-		return &str
-	}
 
 	// Format primary ID string for JWT claims
-	idStr := fmt.Sprintf("%x-%x-%x-%x-%x", id.Bytes[0:4], id.Bytes[4:6], id.Bytes[6:8], id.Bytes[8:10], id.Bytes[10:16])
 
 	// 1. Build Payload / Claims
 	claims := JwtPayload{
-		ID:              idStr,
+		ID:              id.String(),
 		Email:           email,
-		PrimaryUserID:   uuidToPtr(primaryUserID),
-		SecondaryUserID: uuidToPtr(secondaryUserID),
+		PrimaryUserID:   primaryUserID.String(),
+		SecondaryUserID: secondaryUserID.String(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.cfg.AccessTokenExpiration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -201,7 +192,7 @@ func (s *Service) GenerateTokens(
 	})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to save refresh token to database",
-			slog.String("user_id", idStr),
+			slog.String("user_id", id.String()),
 			slog.String("error", err.Error()),
 		)
 		return nil, fmt.Errorf("failed to save refresh token: %w", err)
@@ -213,19 +204,25 @@ func (s *Service) GenerateTokens(
 	}, nil
 }
 
-func (s *Service) IsTokenExpired(tokenString string, secret string) bool {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+func (s *Service) ValidateAccessToken(tokenString string) (*JwtPayload, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JwtPayload{}, func(token *jwt.Token) (interface{}, error) {
+		// Ensure signing method matches expectations
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(secret), nil
-	}, jwt.WithLeeway(10*time.Second)) // 10s clockTolerance match from NestJS
+		return []byte(s.cfg.AccessTokenSecret), nil
+	})
 
 	if err != nil {
-		return true
+		return nil, err
 	}
 
-	return !token.Valid
+	claims, ok := token.Claims.(*JwtPayload)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	return claims, nil
 }
 
 func (s *Service) CreateUserWithFreePlan(

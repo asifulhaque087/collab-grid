@@ -45,7 +45,7 @@ func (t *App) RegisterRoute(r chi.Router) {
 
 		// --- Protected Routes ---
 		r.Group(func(r chi.Router) {
-			r.Use(auth.JWTMiddleware)                // 1st: Inject UserID into context
+			r.Use(auth.JWTMiddleware(authService))   // 1st: Inject UserID into context
 			r.Use(auth.CasbinMiddleware(t.enforcer)) // 2nd: Enforce authorization
 
 			r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
