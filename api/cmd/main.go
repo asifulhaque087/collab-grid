@@ -35,10 +35,15 @@ func main() {
 	}
 	defer pool.Close()
 
+	enforcer, err := postgresql.InitCasbinEnforcer(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize Casbin: %v", err)
+	}
+
 	// 1. Create Chi router instead of http.NewServeMux()
 	router := chi.NewRouter()
 
-	appModule := module.NewApp(logger, cfg, pool)
+	appModule := module.NewApp(logger, cfg, pool, enforcer)
 
 	server := app.NewServer(router, appModule)
 	server.Start(cfg.Port)

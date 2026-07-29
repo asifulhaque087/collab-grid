@@ -27,8 +27,13 @@ func main() {
 	}
 	defer pool.Close()
 
+	enforcer, err := postgresql.InitCasbinEnforcer(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize Casbin enforcer: %v", err)
+	}
+
 	log.Println("Starting database seed job...")
-	if err := postgresql.Seed(ctx, pool); err != nil {
+	if err := postgresql.Seed(ctx, pool, enforcer); err != nil {
 		log.Fatalf("Database seeding failed: %v", err)
 	}
 	log.Println("Database seeding completed successfully.")

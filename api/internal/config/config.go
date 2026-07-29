@@ -1,13 +1,29 @@
 package config
 
 import (
+	_ "embed"
 	"fmt"
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/casbin/casbin/v2/model"
 	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 )
+
+// Embed model.conf at compile time (must be in the same folder as this file)
+//
+//go:embed model.conf
+var CasbinModelConf string
+
+// GetCasbinModel returns a parsed Casbin model instance.
+func GetCasbinModel() (model.Model, error) {
+	m, err := model.NewModelFromString(CasbinModelConf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse casbin model: %w", err)
+	}
+	return m, nil
+}
 
 type Config struct {
 	// Server & Network
