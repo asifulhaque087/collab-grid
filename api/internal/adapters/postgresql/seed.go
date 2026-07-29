@@ -368,6 +368,11 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.Enforcer) error {
 		return fmt.Errorf("failed binding tenant user to role: %w", err)
 	}
 
+	// Save all loaded and added policies directly into the PostgreSQL table
+	if err := e.SavePolicy(); err != nil {
+		return fmt.Errorf("failed to save policies to database: %w", err)
+	}
+
 	log.Println("Seed complete!")
 	return nil
 }

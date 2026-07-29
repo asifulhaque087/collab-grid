@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 
-	pgadapter "github.com/apache/casbin-pg-adapter"
 	"github.com/asifulhaque087/collab-grid/api/internal/config"
 	"github.com/casbin/casbin/v2"
+
+	// pgxadapter "github.com/noho-digital/casbin-pgx-adapter"
+	pgxadapter "github.com/pckhoi/casbin-pgx-adapter/v3"
 )
 
 // InitCasbinEnforcer sets up the Casbin PG adapter and loads policies into memory.
@@ -19,7 +21,9 @@ func InitCasbinEnforcer(dbConnString string) (*casbin.Enforcer, error) {
 	}
 
 	// 2. Initialize PostgreSQL adapter; creates 'casbin_rule' table automatically if it doesn't exist
-	adapter, err := pgadapter.NewAdapter(dbConnString)
+	// adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase(""))
+	adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase("demo"))
+	// adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithMigrate(false))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin pg adapter: %w", err)
 	}

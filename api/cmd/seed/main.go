@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
@@ -32,7 +31,7 @@ func main() {
 		log.Fatalf("Failed to initialize Casbin enforcer: %v", err)
 	}
 
-	log.Println("Starting database seed job...")
+	// log.Println("Starting database seed job...", enforcer)
 	if err := postgresql.Seed(ctx, pool, enforcer); err != nil {
 		log.Fatalf("Database seeding failed: %v", err)
 	}
