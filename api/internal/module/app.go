@@ -45,8 +45,11 @@ func (t *App) RegisterRoute(r chi.Router) {
 
 		// --- Protected Routes ---
 		r.Group(func(r chi.Router) {
+			limitGuard := auth.NewLimitGuard(queries, t.logger)
+
 			r.Use(auth.JWTMiddleware(authService))   // 1st: Inject UserID into context
 			r.Use(auth.CasbinMiddleware(t.enforcer)) // 2nd: Enforce authorization
+			r.Use(limitGuard.Middleware())           // 3rd: Enforce usage limits
 
 			r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")

@@ -27,6 +27,7 @@ type Querier interface {
 	// ============================================================================
 	GetPackageBySlug(ctx context.Context, slug string) (Package, error)
 	GetPackagePermissionLimit(ctx context.Context, arg GetPackagePermissionLimitParams) (GetPackagePermissionLimitRow, error)
+	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg GetPackagePermissionLimitByEndpointParams) (GetPackagePermissionLimitByEndpointRow, error)
 	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
 	// ============================================================================
 	// 2. User & Signup Queries

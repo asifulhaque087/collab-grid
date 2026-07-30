@@ -15,6 +15,17 @@ WHERE user_id = $1
   AND (end_date IS NULL OR end_date > NOW())
 ORDER BY start_date;
 
+-- name: GetPackagePermissionLimitByEndpoint :one
+SELECT 
+    ppl.id,
+    ppl.limit_count
+FROM package_permission_limits ppl
+JOIN permissions p ON ppl.permission_id = p.id
+WHERE ppl.package_id = $1
+  AND p.endpoint = $2
+  AND p.method = $3
+LIMIT 1;
+
 -- name: GetPackagePermissionLimit :one
 SELECT 
     ppl.id,

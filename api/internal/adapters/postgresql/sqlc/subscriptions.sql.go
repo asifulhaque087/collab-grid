@@ -102,6 +102,36 @@ func (q *Queries) GetPackagePermissionLimit(ctx context.Context, arg GetPackageP
 	return i, err
 }
 
+const getPackagePermissionLimitByEndpoint = `-- name: GetPackagePermissionLimitByEndpoint :one
+SELECT 
+    ppl.id,
+    ppl.limit_count
+FROM package_permission_limits ppl
+JOIN permissions p ON ppl.permission_id = p.id
+WHERE ppl.package_id = $1
+  AND p.endpoint = $2
+  AND p.method = $3
+LIMIT 1
+`
+
+type GetPackagePermissionLimitByEndpointParams struct {
+	PackageID pgtype.UUID `json:"package_id"`
+	Endpoint  string      `json:"endpoint"`
+	Method    string      `json:"method"`
+}
+
+type GetPackagePermissionLimitByEndpointRow struct {
+	ID         pgtype.UUID `json:"id"`
+	LimitCount pgtype.Int4 `json:"limit_count"`
+}
+
+func (q *Queries) GetPackagePermissionLimitByEndpoint(ctx context.Context, arg GetPackagePermissionLimitByEndpointParams) (GetPackagePermissionLimitByEndpointRow, error) {
+	row := q.db.QueryRow(ctx, getPackagePermissionLimitByEndpoint, arg.PackageID, arg.Endpoint, arg.Method)
+	var i GetPackagePermissionLimitByEndpointRow
+	err := row.Scan(&i.ID, &i.LimitCount)
+	return i, err
+}
+
 const getUserPrimaryOwner = `-- name: GetUserPrimaryOwner :one
 SELECT primary_user_id
 FROM users
