@@ -19,7 +19,7 @@ type TestModule struct {
 	AuthRepo         *auth.FakeRepo
 	LimitGuardRepo   *auth.FakeLimitGuardQueries
 	Cfg              *config.Config
-	enforcer         *casbin.Enforcer
+	Enforcer         *casbin.Enforcer
 }
 
 func NewTestModule() *TestModule {
@@ -38,7 +38,7 @@ func NewTestModule() *TestModule {
 			AccessTokenExpiration:  15 * time.Minute,
 			RefreshTokenExpiration: 7 * 24 * time.Hour,
 		},
-		enforcer: enforcer,
+		Enforcer: enforcer,
 	}
 }
 
@@ -79,12 +79,22 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 			limitGuard := auth.NewLimitGuard(t.LimitGuardRepo, logger)
 
 			r.Use(auth.JWTMiddleware(svc))
-			r.Use(auth.CasbinMiddleware(t.enforcer))
+			r.Use(auth.CasbinMiddleware(t.Enforcer))
 			r.Use(limitGuard.Middleware())
 
 			r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
 				w.Write([]byte(`{"boards": []}`))
+			})
+
+			r.Post("/demo", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"created": true}`))
+			})
+
+			r.Delete("/demo", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"deleted": true}`))
 			})
 		})
 	})

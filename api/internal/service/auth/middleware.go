@@ -194,10 +194,12 @@ func (lg *LimitGuard) enforceLimit(ctx context.Context, tenantID, pattern, metho
 }
 
 func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UUID, pattern, method string) error {
+	// Always look up the limit by the POST (create) permission for this endpoint.
+	// The same counter is shared across POST (increment) and DELETE (decrement).
 	limitRow, err := lg.queries.GetPackagePermissionLimitByEndpoint(ctx, repo.GetPackagePermissionLimitByEndpointParams{
 		PackageID: pkgID,
 		Endpoint:  pattern,
-		Method:    method,
+		Method:    http.MethodPost,
 	})
 	if err != nil {
 		return nil
@@ -213,6 +215,9 @@ func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UU
 			UserID:                   tenantID,
 			PackagePermissionLimitID: limitRow.ID,
 		})
+		if err != nil && strings.Contains(err.Error(), "no rows") {
+			return nil
+		}
 		return err
 	}
 
