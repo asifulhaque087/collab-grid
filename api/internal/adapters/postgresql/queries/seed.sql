@@ -16,8 +16,8 @@ TRUNCATE TABLE
 RESTART IDENTITY CASCADE;
 
 -- name: InsertPermission :one
-INSERT INTO permissions (action, subject, name, description)
-VALUES ($1, $2, $3, $4)
+INSERT INTO permissions (action, subject, name, endpoint, method, description)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, action, subject;
 
 -- name: InsertRole :one

@@ -79,6 +79,8 @@ type Permission struct {
 	Action      string      `json:"action"`
 	Subject     string      `json:"subject"`
 	Name        string      `json:"name"`
+	Endpoint    string      `json:"endpoint"`
+	Method      string      `json:"method"`
 	Description pgtype.Text `json:"description"`
 }
 

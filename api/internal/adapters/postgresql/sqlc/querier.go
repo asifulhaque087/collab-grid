@@ -13,16 +13,20 @@ import (
 type Querier interface {
 	AssignUserRole(ctx context.Context, arg AssignUserRoleParams) error
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
+	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// ============================================================================
 	// 4. Access Control (RBAC) & Quotas
 	// ============================================================================
 	GetAccessContextByUserId(ctx context.Context, userID pgtype.UUID) ([]GetAccessContextByUserIdRow, error)
+	GetActiveSubscriptions(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error)
+	GetLimitUsage(ctx context.Context, arg GetLimitUsageParams) (int32, error)
 	// ============================================================================
 	// 1. Defaults & Seed Checks
 	// ============================================================================
 	GetPackageBySlug(ctx context.Context, slug string) (Package, error)
+	GetPackagePermissionLimit(ctx context.Context, arg GetPackagePermissionLimitParams) (GetPackagePermissionLimitRow, error)
 	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
 	// ============================================================================
 	// 2. User & Signup Queries
@@ -31,8 +35,11 @@ type Querier interface {
 	GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (User, error)
 	GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (User, error)
+	GetUserPrimaryOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]GetUserQuotasRow, error)
 	GrantRolePermission(ctx context.Context, arg GrantRolePermissionParams) error
+	IncrementLimitUsage(ctx context.Context, arg IncrementLimitUsageParams) (pgtype.UUID, error)
+	InitializeLimitUsage(ctx context.Context, arg InitializeLimitUsageParams) (pgtype.UUID, error)
 	InsertPackage(ctx context.Context, arg InsertPackageParams) (pgtype.UUID, error)
 	InsertPackagePermissionLimit(ctx context.Context, arg InsertPackagePermissionLimitParams) error
 	InsertPermission(ctx context.Context, arg InsertPermissionParams) (InsertPermissionRow, error)

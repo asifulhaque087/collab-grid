@@ -70,8 +70,8 @@ func (q *Queries) InsertPackagePermissionLimit(ctx context.Context, arg InsertPa
 }
 
 const insertPermission = `-- name: InsertPermission :one
-INSERT INTO permissions (action, subject, name, description)
-VALUES ($1, $2, $3, $4)
+INSERT INTO permissions (action, subject, name, endpoint, method, description)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, action, subject
 `
 
@@ -79,6 +79,8 @@ type InsertPermissionParams struct {
 	Action      string      `json:"action"`
 	Subject     string      `json:"subject"`
 	Name        string      `json:"name"`
+	Endpoint    string      `json:"endpoint"`
+	Method      string      `json:"method"`
 	Description pgtype.Text `json:"description"`
 }
 
@@ -93,6 +95,8 @@ func (q *Queries) InsertPermission(ctx context.Context, arg InsertPermissionPara
 		arg.Action,
 		arg.Subject,
 		arg.Name,
+		arg.Endpoint,
+		arg.Method,
 		arg.Description,
 	)
 	var i InsertPermissionRow

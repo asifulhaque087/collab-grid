@@ -25,6 +25,8 @@ CREATE TABLE permissions (
     action TEXT NOT NULL,
     subject TEXT NOT NULL,
     name TEXT NOT NULL,
+    endpoint TEXT NOT NULL,
+    method TEXT NOT NULL,
     description TEXT,
     CONSTRAINT action_subject_uniq UNIQUE (action, subject)
 );

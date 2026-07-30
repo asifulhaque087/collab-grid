@@ -173,6 +173,8 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.Enforcer) error {
 			Action:      string(perm.Action),
 			Subject:     string(perm.Subject),
 			Name:        perm.Name,
+			Endpoint:    perm.Endpoint,
+			Method:      perm.Method,
 			Description: pgtype.Text{String: perm.Description, Valid: true},
 		})
 		if err != nil {

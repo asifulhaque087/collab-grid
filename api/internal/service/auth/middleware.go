@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/casbin/casbin/v2"
+	"github.com/go-chi/chi/v5"
 )
 
 type contextKey string
@@ -60,12 +61,19 @@ func CasbinMiddleware(e *casbin.Enforcer) func(http.Handler) http.Handler {
 				http.Error(w, `{"error": "Unauthorized: User not identified"}`, http.StatusUnauthorized)
 				return
 			}
+			tenantId := user.PrimaryUserID ?
 
-			path := r.URL.Path
+			rctx := chi.RouteContext(r.Context())
+			pattern := rctx.RoutePattern()
+
+			if pattern == "" {
+				pattern = r.URL.Path // Fallback if no pattern matched
+			}
+
 			method := r.Method
 
 			// Enforce against casbin_rule table loaded in memory
-			allowed, err := e.Enforce(user.ID, path, method)
+			allowed, err := e.Enforce(user.ID, pattern, method)
 			if err != nil {
 				http.Error(w, `{"error": "Internal server authorization error"}`, http.StatusInternalServerError)
 				return
@@ -79,4 +87,29 @@ func CasbinMiddleware(e *casbin.Enforcer) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func LimitMiddleware(authService *Service) func(http.Handler) http.Handler {
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			rctx := chi.RouteContext(r.Context())
+			pattern := rctx.RoutePattern()
+
+			if pattern == "" {
+				pattern = r.URL.Path // Fallback if no pattern matched
+			}
+
+			method := r.Method
+
+			if method == "POST" {
+
+			} else if method == "DELETE" {
+
+			}
+
+		})
+	}
+
 }
