@@ -23,9 +23,9 @@ func TestRegister(t *testing.T) {
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	t.Run("Register user returns 201", func(t *testing.T) {
-		body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
-		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
+		t.Run("Register user returns 201", func(t *testing.T) {
+			body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
+			res, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -35,9 +35,9 @@ func TestRegister(t *testing.T) {
 		}
 	})
 
-	t.Run("Register with duplicate email returns 409", func(t *testing.T) {
-		body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
-		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
+		t.Run("Register with duplicate email returns 409", func(t *testing.T) {
+			body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
+			res, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -53,9 +53,9 @@ func TestRegister(t *testing.T) {
 		}
 	})
 
-	t.Run("Register response contains email", func(t *testing.T) {
-		body := []byte(`{"name": "Jane Doe", "email": "jane@test.com", "password": "secret456"}`)
-		res, err := http.Post(ts.URL+"/users", "application/json", bytes.NewBuffer(body))
+		t.Run("Register response contains email", func(t *testing.T) {
+			body := []byte(`{"name": "Jane Doe", "email": "jane@test.com", "password": "secret456"}`)
+			res, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}

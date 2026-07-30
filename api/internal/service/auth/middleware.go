@@ -91,12 +91,22 @@ func CasbinMiddleware(e *casbin.Enforcer) func(http.Handler) http.Handler {
 	}
 }
 
+type LimitGuardQueries interface {
+	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
+	GetActiveSubscriptions(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error)
+	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg repo.GetPackagePermissionLimitByEndpointParams) (repo.GetPackagePermissionLimitByEndpointRow, error)
+	IncrementLimitUsage(ctx context.Context, arg repo.IncrementLimitUsageParams) (pgtype.UUID, error)
+	DecrementLimitUsage(ctx context.Context, arg repo.DecrementLimitUsageParams) (pgtype.UUID, error)
+	GetLimitUsage(ctx context.Context, arg repo.GetLimitUsageParams) (int32, error)
+	InitializeLimitUsage(ctx context.Context, arg repo.InitializeLimitUsageParams) (pgtype.UUID, error)
+}
+
 type LimitGuard struct {
-	queries *repo.Queries
+	queries LimitGuardQueries
 	logger  *slog.Logger
 }
 
-func NewLimitGuard(queries *repo.Queries, logger *slog.Logger) *LimitGuard {
+func NewLimitGuard(queries LimitGuardQueries, logger *slog.Logger) *LimitGuard {
 	return &LimitGuard{queries: queries, logger: logger}
 }
 

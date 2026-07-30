@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
@@ -15,9 +16,10 @@ import (
 )
 
 type TestModule struct {
-	AuthRepo *auth.FakeRepo
-	Cfg      *config.Config
-	enforcer *casbin.Enforcer
+	AuthRepo         *auth.FakeRepo
+	LimitGuardRepo   *auth.FakeLimitGuardQueries
+	Cfg              *config.Config
+	enforcer         *casbin.Enforcer
 }
 
 func NewTestModule() *TestModule {
@@ -27,14 +29,14 @@ func NewTestModule() *TestModule {
 	}
 
 	return &TestModule{
-		AuthRepo: auth.NewFakeRepo(),
+		AuthRepo:       auth.NewFakeRepo(),
+		LimitGuardRepo: auth.NewFakeLimitGuardQueries(),
 		Cfg: &config.Config{
 			Port:                   4000,
 			AccessTokenSecret:      "test-access-secret",
 			RefreshTokenSecret:     "test-refresh-secret",
 			AccessTokenExpiration:  15 * time.Minute,
 			RefreshTokenExpiration: 7 * 24 * time.Hour,
-			// Add any other config fields required by auth.NewService
 		},
 		enforcer: enforcer,
 	}
@@ -50,23 +52,40 @@ func (m *memUoW) RunInTx(
 }
 
 func (t *TestModule) RegisterRoute(r chi.Router) {
-
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 	slog.SetDefault(logger)
 
 	stores := domain.Stores{
-		Auth: t.AuthRepo, // map your repo(s) here depending on domain.Stores definition
+		Auth: t.AuthRepo,
 	}
 
-	// 2. Initialize your memory Unit of Work instance
 	uow := &memUoW{
 		stores: stores,
 	}
 	svc := auth.NewService(t.AuthRepo, uow, logger, t.Cfg)
-
 	handler := auth.NewHandler(svc)
 
-	r.Post("/users", handler.Register)
+	// Mirror app.go route structure
+	r.Route("/auth", func(r chi.Router) {
+		// --- Public Routes ---
+		r.Post("/register", handler.Register)
+		r.Get("/google", handler.HandleGoogleLogin)
+		r.Get("/google/callback", handler.HandleGoogleCallback)
+
+		// --- Protected Routes ---
+		r.Group(func(r chi.Router) {
+			limitGuard := auth.NewLimitGuard(t.LimitGuardRepo, logger)
+
+			r.Use(auth.JWTMiddleware(svc))
+			r.Use(auth.CasbinMiddleware(t.enforcer))
+			r.Use(limitGuard.Middleware())
+
+			r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"boards": []}`))
+			})
+		})
+	})
 }
