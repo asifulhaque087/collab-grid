@@ -16,6 +16,7 @@ type Querier interface {
 	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error)
 	// ============================================================================
 	// 4. Access Control (RBAC) & Quotas
 	// ============================================================================

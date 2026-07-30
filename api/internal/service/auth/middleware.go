@@ -175,7 +175,7 @@ func (lg *LimitGuard) enforceLimit(ctx context.Context, tenantID, pattern, metho
 	}
 
 	for _, pkgID := range activeSubs {
-		if err := lg.incrementUsage(ctx, tenantUUID, pkgID, pattern, method); err != nil {
+		if err := lg.adjustUsage(ctx, tenantUUID, pkgID, pattern, method); err != nil {
 			return err
 		}
 	}
@@ -183,7 +183,7 @@ func (lg *LimitGuard) enforceLimit(ctx context.Context, tenantID, pattern, metho
 	return nil
 }
 
-func (lg *LimitGuard) incrementUsage(ctx context.Context, tenantID, pkgID pgtype.UUID, pattern, method string) error {
+func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UUID, pattern, method string) error {
 	limitRow, err := lg.queries.GetPackagePermissionLimitByEndpoint(ctx, repo.GetPackagePermissionLimitByEndpointParams{
 		PackageID: pkgID,
 		Endpoint:  pattern,
@@ -198,7 +198,15 @@ func (lg *LimitGuard) incrementUsage(ctx context.Context, tenantID, pkgID pgtype
 		return nil
 	}
 
-	// Atomic conditional update
+	if method == http.MethodDelete {
+		_, err := lg.queries.DecrementLimitUsage(ctx, repo.DecrementLimitUsageParams{
+			UserID:                   tenantID,
+			PackagePermissionLimitID: limitRow.ID,
+		})
+		return err
+	}
+
+	// POST — atomic conditional increment
 	updatedID, err := lg.queries.IncrementLimitUsage(ctx, repo.IncrementLimitUsageParams{
 		UserID:                   tenantID,
 		PackagePermissionLimitID: limitRow.ID,

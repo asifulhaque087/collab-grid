@@ -45,6 +45,13 @@ WHERE user_id = $1
   AND used < $3
 RETURNING id;
 
+-- name: DecrementLimitUsage :one
+UPDATE limit_usages
+SET used = GREATEST(used - 1, 0)
+WHERE user_id = $1
+  AND package_permission_limit_id = $2
+RETURNING id;
+
 -- name: GetLimitUsage :one
 SELECT used
 FROM limit_usages

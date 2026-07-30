@@ -24,6 +24,26 @@ func (q *Queries) CountUserSubscriptions(ctx context.Context, userID pgtype.UUID
 	return column_1, err
 }
 
+const decrementLimitUsage = `-- name: DecrementLimitUsage :one
+UPDATE limit_usages
+SET used = GREATEST(used - 1, 0)
+WHERE user_id = $1
+  AND package_permission_limit_id = $2
+RETURNING id
+`
+
+type DecrementLimitUsageParams struct {
+	UserID                   pgtype.UUID `json:"user_id"`
+	PackagePermissionLimitID pgtype.UUID `json:"package_permission_limit_id"`
+}
+
+func (q *Queries) DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, decrementLimitUsage, arg.UserID, arg.PackagePermissionLimitID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getActiveSubscriptions = `-- name: GetActiveSubscriptions :many
 SELECT package_id
 FROM subscriptions
