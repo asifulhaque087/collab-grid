@@ -2,7 +2,7 @@ name: Deploy API
 
 on:
   push:
-    branches: [main]
+    branches: [nest]
     paths:
       - 'apps/api/**'
       - 'charts/api/**'
@@ -11,7 +11,7 @@ on:
       - '.github/secrets/.env.api'
 
   pull_request:
-    branches: [main]
+    branches: [nest]
     paths:
       - 'apps/api/**'
       - 'charts/api/**'

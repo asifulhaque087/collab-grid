@@ -2,14 +2,14 @@ name: Deploy Web
 
 on:
   push:
-    branches: [main]
+    branches: [nest]
     paths:
       - 'apps/web/**'
       - 'charts/web/**'
       - 'packages/common/**'
       - '.github/workflows/deploy-web.yml'
   pull_request:
-    branches: [main]
+    branches: [nest]
     paths:
       - 'apps/web/**'
       - 'charts/web/**'

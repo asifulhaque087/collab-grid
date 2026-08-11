@@ -2,12 +2,12 @@ name: Deploy Ingress Routes
 
 on:
   push:
-    branches: [main]
+    branches: [nest]
     paths:
       - 'charts/ingress-routes/**'
       - '.github/workflows/deploy-ingress.yml'
   pull_request:
-    branches: [main]
+    branches: [nest]
     paths:
       - 'charts/ingress-routes/**'
       - '.github/workflows/deploy-ingress.yml'
