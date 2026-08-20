@@ -8,7 +8,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/jackc/pgx/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
 
@@ -65,7 +65,7 @@ func ensureDatabaseExists(dbURL string) error {
 
 	// Override database name to default "postgres" system database
 	pgConfig.Database = "postgres"
-	adminDSN := pgConfig.ConnString() // ConnString() renders the updated DSN
+	adminDSN := stdlib.RegisterConnConfig(pgConfig)
 
 	adminDB, err := sql.Open("pgx", adminDSN)
 	if err != nil {

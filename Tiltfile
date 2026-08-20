@@ -9,10 +9,8 @@ api_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/ser
 migrate_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/migrate ./services/api/cmd/migrate'
 seed_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/seed ./services/api/cmd/seed'
 
-# compile_cmd = f'{api_build_cmd} && {migrate_build_cmd} && {seed_build_cmd}'
 compile_cmd = '{} && {} && {}'.format(api_build_cmd, migrate_build_cmd, seed_build_cmd)
-
-# compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api ./services/api/cmd'
+# compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/server ./services/api/cmd/server'
 
 if os.name == 'nt':
   compile_cmd = './infra/development/docker/api-build.bat'
@@ -22,41 +20,49 @@ local_resource(
   compile_cmd,
   deps=['./services/api'])
 
-
+# Server image (wrapped with live reload for Deployment)
 docker_build_with_restart(
-  'collab-grid/api:tilt',
-  '.',
-  entrypoint=['/app/build/api/server'],
-  dockerfile='./infra/development/docker/Dockerfile.api',
-  only=[
-    # './build/api',
-    './build/api/server',
-    # './shared',
-  ],
-  live_update=[
-    # sync('./build', '/app/build'),
-    sync('./build/api/server', '/app/build/api/server'),
-    # sync('./shared', '/app/shared'),
-  ],
+    'collab-grid/api:tilt',
+    '.',
+    entrypoint=['/app/build/api/server'],
+    dockerfile='./infra/development/docker/Dockerfile.api',
+    only=['./build/api'],
+    live_update=[
+        sync('./build/api', '/app/build/api'),
+    ],
+)
+
+# Migration image (plain image WITHOUT live reload wrapper for Job)
+docker_build(
+    'collab-grid/api-migrate:tilt',
+    '.',
+    dockerfile='./infra/development/docker/Dockerfile.api',
+    only=['./build/api'],
 )
 
 k8s_yaml(
     helm(
-        './infra/charts/api',              # Path to your chart directory
-        name='collabgrid-api',           # Equivalent to helm release name
-        namespace='collab-grid',                     # Target Kubernetes namespace
-        values=['./infra/charts/api/values.dev.yaml'], # (Optional) dev values
-        set=['image.repository=collab-grid/api', 'image.tag=tilt'] # Match image ref
+        './infra/charts/api',
+        name='collabgrid-api',
+        namespace='collab-grid',
+        values=['./infra/charts/api/values.dev.yaml'],
+        set=[
+            'image.repository=collab-grid/api',
+            'image.migrateRepository=collab-grid/api-migrate',
+            'image.tag=tilt'
+        ]
     )
 )
 
 
 k8s_resource(
     'collabgrid-api', 
-    port_forwards=8081, 
+    # port_forwards='8081:3001', 
+    port_forwards='3001', 
     resource_deps=['api-compile'],
-    # namespace='collab-grid'
 )
+
+k8s_resource('collabgrid-api-db-migrate', trigger_mode=TRIGGER_MODE_MANUAL)
 
 
 # k8s_resource('collabgrid-api-db-migrate', auto_init=True)

@@ -41,6 +41,12 @@ func (t *App) RegisterRoute(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		// --- Public Routes ---
 		r.Post("/register", handler.Register)
+
+		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("auth is healthy"))
+		})
+
 		r.Get("/google", handler.HandleGoogleLogin)
 		r.Get("/google/callback", handler.HandleGoogleCallback)
 

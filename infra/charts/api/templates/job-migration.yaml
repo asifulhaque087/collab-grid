@@ -25,16 +25,16 @@ spec:
               echo "PostgreSQL is up!"
 
         - name: migration
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["/app/build/api/migrate"] # Overrides default entrypoint /app/build/api
+          image: "{{ .Values.image.migrateRepository }}:{{ .Values.image.tag }}"
+          command: ["/app/build/api/migrate"]
           envFrom:
             - secretRef:
                 name: {{ include "api.fullname" . }}
 
       containers:
         - name: db-seed
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          command: ["/app/build/api/seed"] # Overrides default entrypoint /app/build/api
+          image: "{{ .Values.image.migrateRepository }}:{{ .Values.image.tag }}"
+          command: ["/app/build/api/seed"]
           envFrom:
             - secretRef:
                 name: {{ include "api.fullname" . }}

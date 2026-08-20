@@ -2,6 +2,7 @@ replicaCount: 1
 
 image:
   repository: asiful087/collab-grid-api
+  migrateRepository: asiful087/collab-grid-api
   tag: latest
   pullPolicy: IfNotPresent
 
