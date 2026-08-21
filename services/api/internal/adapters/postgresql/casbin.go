@@ -7,6 +7,7 @@ import (
 
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/casbin/casbin/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	// pgxadapter "github.com/noho-digital/casbin-pgx-adapter"
 	pgxadapter "github.com/pckhoi/casbin-pgx-adapter/v3"
@@ -20,10 +21,19 @@ func InitCasbinEnforcer(dbConnString string) (*casbin.Enforcer, error) {
 		return nil, fmt.Errorf("failed to load casbin model: %w", err)
 	}
 
+	// 2. Parse dbConnString to extract the database name dynamically
+	pgxCfg, err := pgxpool.ParseConfig(dbConnString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse database connection string: %w", err)
+	}
+
+	dbName := pgxCfg.ConnConfig.Database
+
+	// 3. Pass the parsed database name into WithDatabase()
+	adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase(dbName))
+
 	// 2. Initialize PostgreSQL adapter; creates 'casbin_rule' table automatically if it doesn't exist
-	// adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase(""))
-	adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase("demo"))
-	// adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithMigrate(false))
+	// adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase("collabgrid_db"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin pg adapter: %w", err)
 	}
