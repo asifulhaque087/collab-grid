@@ -37,15 +37,24 @@ func (t *App) RegisterRoute(r chi.Router) {
 	authService := auth.NewService(queries, uow, t.logger, t.cfg)
 	handler := auth.NewHandler(authService)
 
+	// health route
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Backend is healthy"))
+	})
+
 	// Grouping under /auth with Chi
 	r.Route("/auth", func(r chi.Router) {
 		// --- Public Routes ---
 		r.Post("/register", handler.Register)
-
-		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("auth is healthy"))
-		})
+		
+		// login
+		// forgot-password
+		// reset-password
+		// me
+		// logout
+		// refresh
+		
 
 		r.Get("/google", handler.HandleGoogleLogin)
 		r.Get("/google/callback", handler.HandleGoogleCallback)
