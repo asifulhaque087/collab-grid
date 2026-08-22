@@ -1,4 +1,4 @@
-package domain
+package auth
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// Service will use this
 type AuthRepo interface {
 	AssignUserRole(ctx context.Context, arg repo.AssignUserRoleParams) error
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
@@ -33,4 +34,21 @@ type AuthRepo interface {
 	SetResetPasswordToken(ctx context.Context, arg repo.SetResetPasswordTokenParams) error
 	UpdatePasswordAndClearTokens(ctx context.Context, arg repo.UpdatePasswordAndClearTokensParams) error
 	UpdateRefreshToken(ctx context.Context, arg repo.UpdateRefreshTokenParams) error
+}
+
+// Handler will use this
+type AuthService interface {
+	RegisterUser(ctx context.Context, dto RegisterUserDto) (*RegisterResponse, error)
+	GoogleLogin(ctx context.Context) string
+	GoogleCallback(ctx context.Context, code string) (*RegisterResponse, error)
+}
+
+type Stores struct {
+	Auth AuthRepo
+}
+
+type UnitOfWork interface {
+	// RunInTx runs fn inside a single transaction. Every store
+	// in the Stores value executes against that transaction.
+	RunInTx(ctx context.Context, fn func(Stores) error) error
 }

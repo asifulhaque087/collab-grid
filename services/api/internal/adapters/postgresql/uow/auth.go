@@ -41,13 +41,13 @@
 
 // === New ===
 
-package postgresql
+package uow
 
 import (
 	"context"
 
 	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/domain"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -55,13 +55,13 @@ type UoW struct {
 	pool *pgxpool.Pool
 }
 
-func NewUoW(pool *pgxpool.Pool) *UoW {
+func NewAuthUoW(pool *pgxpool.Pool) *UoW {
 	return &UoW{pool: pool}
 }
 
 func (u *UoW) RunInTx(
 	ctx context.Context,
-	fn func(domain.Stores) error,
+	fn func(auth.Stores) error,
 ) error {
 	tx, err := u.pool.Begin(ctx)
 	if err != nil {
@@ -69,7 +69,7 @@ func (u *UoW) RunInTx(
 	}
 	defer tx.Rollback(ctx) // no-op if Tx is already committed
 
-	stores := domain.Stores{
+	stores := auth.Stores{
 		Auth: repo.New(tx), // *pgx.Tx implements repo.DBTX!
 	}
 

@@ -8,8 +8,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/uow"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 )
@@ -32,7 +32,7 @@ func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforce
 
 func (t *App) RegisterRoute(r chi.Router) {
 	queries := repo.New(t.pool)
-	uow := postgresql.NewUoW(t.pool)
+	uow := uow.NewAuthUoW(t.pool)
 
 	authService := auth.NewService(queries, uow, t.logger, t.cfg)
 	handler := auth.NewHandler(authService)
@@ -47,14 +47,13 @@ func (t *App) RegisterRoute(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		// --- Public Routes ---
 		r.Post("/register", handler.Register)
-		
+
 		// login
 		// forgot-password
 		// reset-password
 		// me
 		// logout
 		// refresh
-		
 
 		r.Get("/google", handler.HandleGoogleLogin)
 		r.Get("/google/callback", handler.HandleGoogleCallback)

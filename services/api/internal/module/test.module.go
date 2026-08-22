@@ -9,15 +9,15 @@ import (
 
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/domain"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/mock"
 	"github.com/casbin/casbin/v2"
 	"github.com/go-chi/chi/v5"
 )
 
 type TestModule struct {
-	AuthRepo       *auth.FakeRepo
-	LimitGuardRepo *auth.FakeLimitGuardQueries
+	AuthRepo       *mock.FakeRepo
+	LimitGuardRepo *mock.FakeLimitGuardQueries
 	Cfg            *config.Config
 	Enforcer       *casbin.Enforcer
 }
@@ -29,8 +29,8 @@ func NewTestModule() *TestModule {
 	}
 
 	return &TestModule{
-		AuthRepo:       auth.NewFakeRepo(),
-		LimitGuardRepo: auth.NewFakeLimitGuardQueries(),
+		AuthRepo:       mock.NewFakeRepo(),
+		LimitGuardRepo: mock.NewFakeLimitGuardQueries(),
 		Cfg: &config.Config{
 			Port:                   4000,
 			AccessTokenSecret:      "test-access-secret",
@@ -43,11 +43,11 @@ func NewTestModule() *TestModule {
 }
 
 type memUoW struct {
-	stores domain.Stores
+	stores auth.Stores
 }
 
 func (m *memUoW) RunInTx(
-	_ context.Context, fn func(domain.Stores) error) error {
+	_ context.Context, fn func(auth.Stores) error) error {
 	return fn(m.stores)
 }
 
@@ -57,7 +57,7 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 	}))
 	slog.SetDefault(logger)
 
-	stores := domain.Stores{
+	stores := auth.Stores{
 		Auth: t.AuthRepo,
 	}
 

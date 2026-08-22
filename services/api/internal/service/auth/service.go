@@ -11,7 +11,6 @@ import (
 
 	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
@@ -21,14 +20,14 @@ import (
 const saltRounds = 12
 
 type Service struct {
-	authRepo     domain.AuthRepo
-	uow          domain.UnitOfWork
+	authRepo     AuthRepo
+	uow          UnitOfWork
 	logger       *slog.Logger
 	cfg          *config.Config
 	googleConfig *oauth2.Config
 }
 
-func NewService(authRepo domain.AuthRepo, uow domain.UnitOfWork, logger *slog.Logger, cfg *config.Config) *Service {
+func NewService(authRepo AuthRepo, uow UnitOfWork, logger *slog.Logger, cfg *config.Config) *Service {
 	return &Service{
 		authRepo:     authRepo,
 		uow:          uow,
@@ -240,7 +239,7 @@ func (s *Service) CreateUserWithFreePlan(
 
 	// 2. Execute database transaction
 
-	err := s.uow.RunInTx(ctx, func(tx domain.Stores) error {
+	err := s.uow.RunInTx(ctx, func(tx Stores) error {
 
 		var err error
 
