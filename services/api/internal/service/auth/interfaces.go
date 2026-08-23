@@ -37,7 +37,7 @@ type AuthRepo interface {
 
 // Enforcer abstracts authorization (e.g., Casbin)
 type Enforcer interface {
-	Enforce(rvals ...interface{}) (bool, error)
+	Enforce(sub, obj, act string) (bool, error)
 }
 
 // Handler will use this

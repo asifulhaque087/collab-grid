@@ -20,8 +20,8 @@ func NewCasbinEnforcer(e *casbin.Enforcer) *CasbinEnforcer {
 	return &CasbinEnforcer{enforcer: e}
 }
 
-func (c *CasbinEnforcer) Enforce(rvals ...interface{}) (bool, error) {
-	return c.enforcer.Enforce(rvals...)
+func (c *CasbinEnforcer) Enforce(sub, obj, act string) (bool, error) {
+	return c.enforcer.Enforce(sub, obj, act)
 }
 
 func (c *CasbinEnforcer) AddPolicy(params ...interface{}) (bool, error) {
