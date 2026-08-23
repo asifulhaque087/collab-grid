@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/uow"
@@ -18,10 +17,10 @@ type App struct {
 	logger   *slog.Logger
 	cfg      *config.Config
 	pool     *pgxpool.Pool
-	enforcer casbin.Enforcer
+	enforcer auth.Enforcer
 }
 
-func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforcer casbin.Enforcer) *App {
+func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforcer auth.Enforcer) *App {
 	return &App{
 		logger:   logger,
 		cfg:      cfg,

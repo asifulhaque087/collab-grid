@@ -11,22 +11,33 @@ import (
 	pgxadapter "github.com/pckhoi/casbin-pgx-adapter/v3"
 )
 
-// Enforcer interface defines authorization enforcement behavior.
-type Enforcer interface {
-	Enforce(rvals ...interface{}) (bool, error)
-}
-
-// CasbinEnforcer wraps *casbin.Enforcer to implement Enforcer.
+// CasbinEnforcer satisfies the domain authorization interface by wrapping *casbin.Enforcer.
 type CasbinEnforcer struct {
-	*casbin.Enforcer
+	enforcer *casbin.Enforcer
 }
 
 func NewCasbinEnforcer(e *casbin.Enforcer) *CasbinEnforcer {
-	return &CasbinEnforcer{Enforcer: e}
+	return &CasbinEnforcer{enforcer: e}
 }
 
 func (c *CasbinEnforcer) Enforce(rvals ...interface{}) (bool, error) {
-	return c.Enforcer.Enforce(rvals...)
+	return c.enforcer.Enforce(rvals...)
+}
+
+func (c *CasbinEnforcer) AddPolicy(params ...interface{}) (bool, error) {
+	return c.enforcer.AddPolicy(params...)
+}
+
+func (c *CasbinEnforcer) AddGroupingPolicy(params ...interface{}) (bool, error) {
+	return c.enforcer.AddGroupingPolicy(params...)
+}
+
+func (c *CasbinEnforcer) ClearPolicy() {
+	c.enforcer.ClearPolicy()
+}
+
+func (c *CasbinEnforcer) SavePolicy() error {
+	return c.enforcer.SavePolicy()
 }
 
 // InitCasbinEnforcer sets up the Casbin PG adapter and loads policies into memory.
