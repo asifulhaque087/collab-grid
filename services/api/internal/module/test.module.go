@@ -1,36 +1,34 @@
 package module
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/mock"
+	auth_mock "github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/mock"
 	"github.com/casbin/casbin/v2"
 	"github.com/go-chi/chi/v5"
 )
 
 type TestModule struct {
-	AuthRepo       *mock.FakeRepo
-	LimitGuardRepo *mock.FakeLimitGuardQueries
+	AuthRepo       *auth_mock.FakeRepo
+	LimitGuardRepo *auth_mock.FakeLimitGuardQueries
 	Cfg            *config.Config
 	Enforcer       *casbin.Enforcer
 }
 
 func NewTestModule() *TestModule {
-	enforcer, err := postgresql.InitFakeCasbinEnforcer()
+	enforcer, err := casbin.InitFakeCasbinEnforcer()
 	if err != nil {
 		panic("failed to initialize fake casbin enforcer: " + err.Error())
 	}
 
 	return &TestModule{
-		AuthRepo:       mock.NewFakeRepo(),
-		LimitGuardRepo: mock.NewFakeLimitGuardQueries(),
+		AuthRepo:       auth_mock.NewFakeRepo(),
+		LimitGuardRepo: auth_mock.NewFakeLimitGuardQueries(),
 		Cfg: &config.Config{
 			Port:                   4000,
 			AccessTokenSecret:      "test-access-secret",
@@ -40,15 +38,6 @@ func NewTestModule() *TestModule {
 		},
 		Enforcer: enforcer,
 	}
-}
-
-type memUoW struct {
-	stores auth.Stores
-}
-
-func (m *memUoW) RunInTx(
-	_ context.Context, fn func(auth.Stores) error) error {
-	return fn(m.stores)
 }
 
 func (t *TestModule) RegisterRoute(r chi.Router) {
@@ -61,9 +50,8 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 		Auth: t.AuthRepo,
 	}
 
-	uow := &memUoW{
-		stores: stores,
-	}
+	uow := auth_mock.NewMemUoW(stores)
+
 	svc := auth.NewService(t.AuthRepo, uow, logger, t.Cfg)
 	handler := auth.NewHandler(svc)
 

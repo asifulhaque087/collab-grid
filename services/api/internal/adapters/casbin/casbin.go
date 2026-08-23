@@ -1,5 +1,5 @@
 // internal/adapters/postgresql/casbin.go
-package postgresql
+package casbin
 
 import (
 	"fmt"

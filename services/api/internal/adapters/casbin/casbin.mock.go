@@ -1,4 +1,4 @@
-package postgresql
+package casbin
 
 import (
 	"fmt"
