@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
-	"github.com/casbin/casbin/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -50,7 +49,7 @@ func JWTMiddleware(authService *Service) func(http.Handler) http.Handler {
 	}
 }
 
-func CasbinMiddleware(e *casbin.Enforcer) func(http.Handler) http.Handler {
+func CasbinMiddleware(e Enforcer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			user, ok := GetUserFromContext(r.Context())

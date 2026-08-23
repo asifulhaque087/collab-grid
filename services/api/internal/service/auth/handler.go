@@ -6,22 +6,32 @@ import (
 	"net/http"
 
 	"github.com/asifulhaque087/collab-grid/services/api/internal/util"
+	"github.com/go-playground/validator/v10"
 )
 
 type Handler struct {
-	svc AuthService
+	svc      AuthService
+	validate *validator.Validate
 }
 
 func NewHandler(svc AuthService) *Handler {
-	return &Handler{svc: svc}
+	return &Handler{
+		svc:      svc,
+		validate: validator.New(),
+	}
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
-	var body RegisterUserDto
+	var body RegisterUserRequestDto
 
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
 		http.Error(w, "failed to parse JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

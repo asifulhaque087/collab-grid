@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/app"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
@@ -35,7 +36,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	enforcer, err := postgresql.InitCasbinEnforcer(cfg.DatabaseURL)
+	enforcer, err := casbin.InitCasbinEnforcer(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize Casbin: %v", err)
 	}

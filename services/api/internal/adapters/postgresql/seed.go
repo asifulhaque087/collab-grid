@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/casbin/casbin/v2"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
@@ -140,7 +140,7 @@ func assertQuotaSubsetOfTenant() error {
 }
 
 // Seed executes the database seeding pipeline against a pgxpool connection pool.
-func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.Enforcer) error {
+func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) error {
 	if err := assertQuotaSubsetOfTenant(); err != nil {
 		return fmt.Errorf("quota assertion failed: %w", err)
 	}

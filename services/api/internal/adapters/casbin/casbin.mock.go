@@ -3,11 +3,8 @@ package casbin
 import (
 	"fmt"
 
-	// "github.com/asifulhaque087/collab-grid/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/casbin/casbin/v2"
-	// "github.com/asifulhaque087/collab-grid/api/internal/config"
-	// "github.com/casbin/casbin/v2"
 )
 
 type PolicyRule struct {
@@ -21,7 +18,7 @@ type RoleMapping struct {
 	Role string
 }
 
-func InitFakeCasbinEnforcer() (*casbin.Enforcer, error) {
+func InitFakeCasbinEnforcer() (*CasbinEnforcer, error) {
 	m, err := config.GetCasbinModel()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load casbin model: %w", err)
@@ -57,5 +54,5 @@ func InitFakeCasbinEnforcer() (*casbin.Enforcer, error) {
 		}
 	}
 
-	return enforcer, nil
+	return NewCasbinEnforcer(enforcer), nil
 }

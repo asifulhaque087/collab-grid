@@ -1,52 +1,9 @@
-// // internal/adapters/postgresql/uow.go
-// package postgresql
-
-// import (
-// 	"context"
-// 	"fmt"
-
-// 	repo "github.com/asifulhaque087/collab-grid/api/internal/adapters/postgresql/sqlc"
-// 	"github.com/asifulhaque087/collab-grid/api/internal/domain"
-// 	"github.com/jackc/pgx/v5/pgxpool"
-// )
-
-// type PgxUnitOfWork struct {
-// 	pool *pgxpool.Pool
-// }
-
-// func NewUnitOfWork(pool *pgxpool.Pool) *PgxUnitOfWork {
-// 	return &PgxUnitOfWork{pool: pool}
-// }
-
-// func (u *PgxUnitOfWork) RunInTx(ctx context.Context, fn func(txStores domain.TxStores) error) error {
-// 	tx, err := u.pool.Begin(ctx)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to begin transaction: %w", err)
-// 	}
-
-// 	defer func() {
-// 		_ = tx.Rollback(ctx)
-// 	}()
-
-// 	txStores := domain.TxStores{
-// 		Queries: repo.New(tx),
-// 	}
-
-// 	if err := fn(txStores); err != nil {
-// 		return err
-// 	}
-
-// 	return tx.Commit(ctx)
-// }
-
-// === New ===
-
 package uow
 
 import (
 	"context"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -67,10 +24,10 @@ func (u *UoW) RunInTx(
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx) // no-op if Tx is already committed
+	defer tx.Rollback(ctx)
 
 	stores := auth.Stores{
-		Auth: repo.New(tx), // *pgx.Tx implements repo.DBTX!
+		Auth: postgresql.NewAuthRepository(tx),
 	}
 
 	if err := fn(stores); err != nil {

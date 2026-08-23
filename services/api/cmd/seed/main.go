@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,12 +26,11 @@ func main() {
 	}
 	defer pool.Close()
 
-	enforcer, err := postgresql.InitCasbinEnforcer(cfg.DatabaseURL)
+	enforcer, err := casbin.InitCasbinEnforcer(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize Casbin enforcer: %v", err)
 	}
 
-	// log.Println("Starting database seed job...", enforcer)
 	if err := postgresql.Seed(ctx, pool, enforcer); err != nil {
 		log.Fatalf("Database seeding failed: %v", err)
 	}

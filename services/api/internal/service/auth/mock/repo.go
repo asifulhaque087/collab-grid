@@ -6,27 +6,26 @@ import (
 	"database/sql"
 	"sync"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type FakeRepo struct {
 	mu            sync.RWMutex
-	users         []repo.User
-	packages      map[string]repo.Package
-	roles         map[string]repo.Role
-	subscriptions []repo.CreateSubscriptionParams
-	userRoles     []repo.AssignUserRoleParams
-	repo.Querier
+	users         []auth.User
+	packages      map[string]auth.Package
+	roles         map[string]auth.Role
+	subscriptions []auth.CreateSubscriptionParams
+	userRoles     []auth.AssignUserRoleParams
 }
 
 func NewFakeRepo() *FakeRepo {
 	fr := &FakeRepo{
-		users:         make([]repo.User, 0),
-		packages:      make(map[string]repo.Package),
-		roles:         make(map[string]repo.Role),
-		subscriptions: make([]repo.CreateSubscriptionParams, 0),
-		userRoles:     make([]repo.AssignUserRoleParams, 0),
+		users:         make([]auth.User, 0),
+		packages:      make(map[string]auth.Package),
+		roles:         make(map[string]auth.Role),
+		subscriptions: make([]auth.CreateSubscriptionParams, 0),
+		userRoles:     make([]auth.AssignUserRoleParams, 0),
 	}
 
 	// Seed default package & role expected during signup
@@ -34,13 +33,13 @@ func NewFakeRepo() *FakeRepo {
 	_ = packageUUID.Scan("00000000-0000-0000-0000-000000000001")
 	_ = roleUUID.Scan("00000000-0000-0000-0000-000000000002")
 
-	fr.packages["free"] = repo.Package{
+	fr.packages["free"] = auth.Package{
 		ID:    packageUUID,
 		Title: "Free Plan",
 		Slug:  "free",
 	}
 
-	fr.roles["tenant"] = repo.Role{
+	fr.roles["tenant"] = auth.Role{
 		ID:    roleUUID,
 		Title: "Tenant",
 		Slug:  "tenant",
@@ -53,7 +52,7 @@ func NewFakeRepo() *FakeRepo {
 // Service Methods Implementation
 // ============================================================================
 
-func (f *FakeRepo) GetUserByEmail(ctx context.Context, email string) (repo.User, error) {
+func (f *FakeRepo) GetUserByEmail(ctx context.Context, email string) (auth.User, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
@@ -62,10 +61,10 @@ func (f *FakeRepo) GetUserByEmail(ctx context.Context, email string) (repo.User,
 			return u, nil
 		}
 	}
-	return repo.User{}, sql.ErrNoRows
+	return auth.User{}, sql.ErrNoRows
 }
 
-func (f *FakeRepo) GetUserById(ctx context.Context, id pgtype.UUID) (repo.User, error) {
+func (f *FakeRepo) GetUserById(ctx context.Context, id pgtype.UUID) (auth.User, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
@@ -74,48 +73,48 @@ func (f *FakeRepo) GetUserById(ctx context.Context, id pgtype.UUID) (repo.User, 
 			return u, nil
 		}
 	}
-	return repo.User{}, sql.ErrNoRows
+	return auth.User{}, sql.ErrNoRows
 }
 
-func (f *FakeRepo) GetPackageBySlug(ctx context.Context, slug string) (repo.Package, error) {
+func (f *FakeRepo) GetPackageBySlug(ctx context.Context, slug string) (auth.Package, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
 	pkg, exists := f.packages[slug]
 	if !exists {
-		return repo.Package{}, sql.ErrNoRows
+		return auth.Package{}, sql.ErrNoRows
 	}
 	return pkg, nil
 }
 
-func (f *FakeRepo) GetRoleBySlug(ctx context.Context, slug string) (repo.Role, error) {
+func (f *FakeRepo) GetRoleBySlug(ctx context.Context, slug string) (auth.Role, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
 	role, exists := f.roles[slug]
 	if !exists {
-		return repo.Role{}, sql.ErrNoRows
+		return auth.Role{}, sql.ErrNoRows
 	}
 	return role, nil
 }
 
-func (f *FakeRepo) CreateUser(ctx context.Context, arg repo.CreateUserParams) (repo.User, error) {
+func (f *FakeRepo) CreateUser(ctx context.Context, arg auth.CreateUserParams) (auth.User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	user := repo.User{
+	user := auth.User{
 		ID:       newUUID(),
 		Name:     arg.Name,
 		Email:    arg.Email,
-		Password: arg.Password,
-		Provider: arg.Provider,
+		Password: pgtype.Text{String: arg.Password, Valid: arg.Password != ""},
+		Provider: pgtype.Text{String: arg.Provider, Valid: arg.Provider != ""},
 	}
 
 	f.users = append(f.users, user)
 	return user, nil
 }
 
-func (f *FakeRepo) AssignUserRole(ctx context.Context, arg repo.AssignUserRoleParams) error {
+func (f *FakeRepo) AssignUserRole(ctx context.Context, arg auth.AssignUserRoleParams) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -123,7 +122,7 @@ func (f *FakeRepo) AssignUserRole(ctx context.Context, arg repo.AssignUserRolePa
 	return nil
 }
 
-func (f *FakeRepo) CreateSubscription(ctx context.Context, arg repo.CreateSubscriptionParams) error {
+func (f *FakeRepo) CreateSubscription(ctx context.Context, arg auth.CreateSubscriptionParams) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -131,7 +130,7 @@ func (f *FakeRepo) CreateSubscription(ctx context.Context, arg repo.CreateSubscr
 	return nil
 }
 
-func (f *FakeRepo) UpdateRefreshToken(ctx context.Context, arg repo.UpdateRefreshTokenParams) error {
+func (f *FakeRepo) UpdateRefreshToken(ctx context.Context, arg auth.UpdateRefreshTokenParams) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -157,12 +156,12 @@ func (f *FakeRepo) ClearRefreshToken(ctx context.Context, id pgtype.UUID) error 
 	return nil
 }
 
-func (f *FakeRepo) GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (repo.User, error) {
+func (f *FakeRepo) GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (auth.User, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
 	if !refreshToken.Valid {
-		return repo.User{}, sql.ErrNoRows
+		return auth.User{}, sql.ErrNoRows
 	}
 
 	for _, u := range f.users {
@@ -170,12 +169,55 @@ func (f *FakeRepo) GetUserByRefreshToken(ctx context.Context, refreshToken pgtyp
 			return u, nil
 		}
 	}
-	return repo.User{}, sql.ErrNoRows
+	return auth.User{}, sql.ErrNoRows
 }
 
-// ExecTx executes the provided transaction callback using the FakeRepo receiver
-func (f *FakeRepo) ExecTx(ctx context.Context, fn func(*repo.Queries) error) error {
-	return fn(nil)
+func (f *FakeRepo) GetAccessContextByUserId(ctx context.Context, userID pgtype.UUID) ([]auth.GetAccessContextByUserIdRow, error) {
+	return nil, nil
+}
+
+func (f *FakeRepo) GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (auth.User, error) {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	for _, u := range f.users {
+		if u.ResetPasswordToken.Valid && u.ResetPasswordToken.String == resetPasswordToken.String {
+			return u, nil
+		}
+	}
+	return auth.User{}, sql.ErrNoRows
+}
+
+func (f *FakeRepo) GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]auth.GetUserQuotasRow, error) {
+	return nil, nil
+}
+
+func (f *FakeRepo) SetResetPasswordToken(ctx context.Context, arg auth.SetResetPasswordTokenParams) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	for i, u := range f.users {
+		if u.ID.Bytes == arg.ID.Bytes && u.ID.Valid == arg.ID.Valid {
+			f.users[i].ResetPasswordToken = arg.ResetPasswordToken
+			return nil
+		}
+	}
+	return sql.ErrNoRows
+}
+
+func (f *FakeRepo) UpdatePasswordAndClearTokens(ctx context.Context, arg auth.UpdatePasswordAndClearTokensParams) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	for i, u := range f.users {
+		if u.ID.Bytes == arg.ID.Bytes && u.ID.Valid == arg.ID.Valid {
+			f.users[i].Password = arg.Password
+			f.users[i].RefreshToken = pgtype.Text{Valid: false}
+			f.users[i].ResetPasswordToken = pgtype.Text{Valid: false}
+			return nil
+		}
+	}
+	return sql.ErrNoRows
 }
 
 // ============================================================================
@@ -186,19 +228,19 @@ func (f *FakeRepo) Reset() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	f.users = make([]repo.User, 0)
-	f.subscriptions = make([]repo.CreateSubscriptionParams, 0)
-	f.userRoles = make([]repo.AssignUserRoleParams, 0)
+	f.users = make([]auth.User, 0)
+	f.subscriptions = make([]auth.CreateSubscriptionParams, 0)
+	f.userRoles = make([]auth.AssignUserRoleParams, 0)
 }
 
-func (f *FakeRepo) AddPackage(pkg repo.Package) {
+func (f *FakeRepo) AddPackage(pkg auth.Package) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	f.packages[pkg.Slug] = pkg
 }
 
-func (f *FakeRepo) AddRole(role repo.Role) {
+func (f *FakeRepo) AddRole(role auth.Role) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 

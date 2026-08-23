@@ -1,4 +1,3 @@
-// internal/adapters/postgresql/casbin.go
 package casbin
 
 import (
@@ -9,12 +8,29 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	// pgxadapter "github.com/noho-digital/casbin-pgx-adapter"
 	pgxadapter "github.com/pckhoi/casbin-pgx-adapter/v3"
 )
 
+// Enforcer interface defines authorization enforcement behavior.
+type Enforcer interface {
+	Enforce(rvals ...interface{}) (bool, error)
+}
+
+// CasbinEnforcer wraps *casbin.Enforcer to implement Enforcer.
+type CasbinEnforcer struct {
+	*casbin.Enforcer
+}
+
+func NewCasbinEnforcer(e *casbin.Enforcer) *CasbinEnforcer {
+	return &CasbinEnforcer{Enforcer: e}
+}
+
+func (c *CasbinEnforcer) Enforce(rvals ...interface{}) (bool, error) {
+	return c.Enforcer.Enforce(rvals...)
+}
+
 // InitCasbinEnforcer sets up the Casbin PG adapter and loads policies into memory.
-func InitCasbinEnforcer(dbConnString string) (*casbin.Enforcer, error) {
+func InitCasbinEnforcer(dbConnString string) (*CasbinEnforcer, error) {
 	// 1. Get the embedded model from internal/config
 	m, err := config.GetCasbinModel()
 	if err != nil {
@@ -31,14 +47,11 @@ func InitCasbinEnforcer(dbConnString string) (*casbin.Enforcer, error) {
 
 	// 3. Pass the parsed database name into WithDatabase()
 	adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase(dbName))
-
-	// 2. Initialize PostgreSQL adapter; creates 'casbin_rule' table automatically if it doesn't exist
-	// adapter, err := pgxadapter.NewAdapter(dbConnString, pgxadapter.WithDatabase("collabgrid_db"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin pg adapter: %w", err)
 	}
 
-	// 3. Create Enforcer with embedded model and DB adapter
+	// 4. Create Enforcer with embedded model and DB adapter
 	enforcer, err := casbin.NewEnforcer(m, adapter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
@@ -52,5 +65,5 @@ func InitCasbinEnforcer(dbConnString string) (*casbin.Enforcer, error) {
 	enforcer.EnableAutoSave(true)
 
 	log.Println("Casbin Enforcer initialized successfully with PG Adapter")
-	return enforcer, nil
+	return NewCasbinEnforcer(enforcer), nil
 }

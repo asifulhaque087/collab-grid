@@ -3,44 +3,48 @@ package auth
 import (
 	"context"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Service will use this
 type AuthRepo interface {
-	AssignUserRole(ctx context.Context, arg repo.AssignUserRoleParams) error
+	AssignUserRole(ctx context.Context, arg AssignUserRoleParams) error
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
-	CreateSubscription(ctx context.Context, arg repo.CreateSubscriptionParams) error
-	CreateUser(ctx context.Context, arg repo.CreateUserParams) (repo.User, error)
+	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 
-	GetAccessContextByUserId(ctx context.Context, userID pgtype.UUID) ([]repo.GetAccessContextByUserIdRow, error)
+	GetAccessContextByUserId(ctx context.Context, userID pgtype.UUID) ([]GetAccessContextByUserIdRow, error)
 	// ============================================================================
 	// 1. Defaults & Seed Checks
 	// ============================================================================
-	GetPackageBySlug(ctx context.Context, slug string) (repo.Package, error)
-	GetRoleBySlug(ctx context.Context, slug string) (repo.Role, error)
+	GetPackageBySlug(ctx context.Context, slug string) (Package, error)
+	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
 	// ============================================================================
 	// 2. User & Signup Queries
 	// ============================================================================
-	GetUserByEmail(ctx context.Context, email string) (repo.User, error)
-	GetUserById(ctx context.Context, id pgtype.UUID) (repo.User, error)
-	GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (repo.User, error)
-	GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (repo.User, error)
-	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]repo.GetUserQuotasRow, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
+	GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (User, error)
+	GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (User, error)
+	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]GetUserQuotasRow, error)
 	// ============================================================================
 	// 3. Password & Session Management Updates
 	// ============================================================================
-	SetResetPasswordToken(ctx context.Context, arg repo.SetResetPasswordTokenParams) error
-	UpdatePasswordAndClearTokens(ctx context.Context, arg repo.UpdatePasswordAndClearTokensParams) error
-	UpdateRefreshToken(ctx context.Context, arg repo.UpdateRefreshTokenParams) error
+	SetResetPasswordToken(ctx context.Context, arg SetResetPasswordTokenParams) error
+	UpdatePasswordAndClearTokens(ctx context.Context, arg UpdatePasswordAndClearTokensParams) error
+	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) error
+}
+
+// Enforcer abstracts authorization (e.g., Casbin)
+type Enforcer interface {
+	Enforce(rvals ...interface{}) (bool, error)
 }
 
 // Handler will use this
 type AuthService interface {
-	RegisterUser(ctx context.Context, dto RegisterUserDto) (*RegisterResponse, error)
+	RegisterUser(ctx context.Context, dto RegisterUserRequestDto) (*RegisterUserResponseDto, error)
 	GoogleLogin(ctx context.Context) string
-	GoogleCallback(ctx context.Context, code string) (*RegisterResponse, error)
+	GoogleCallback(ctx context.Context, code string) (*RegisterUserResponseDto, error)
 }
 
 type Stores struct {

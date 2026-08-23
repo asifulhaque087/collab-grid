@@ -4,24 +4,24 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
 	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/uow"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type App struct {
 	logger   *slog.Logger
 	cfg      *config.Config
 	pool     *pgxpool.Pool
-	enforcer *casbin.Enforcer
+	enforcer casbin.Enforcer
 }
 
-func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforcer *casbin.Enforcer) *App {
+func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforcer casbin.Enforcer) *App {
 	return &App{
 		logger:   logger,
 		cfg:      cfg,
@@ -32,9 +32,10 @@ func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforce
 
 func (t *App) RegisterRoute(r chi.Router) {
 	queries := repo.New(t.pool)
+	authRepo := postgresql.NewAuthRepository(t.pool)
 	uow := uow.NewAuthUoW(t.pool)
 
-	authService := auth.NewService(queries, uow, t.logger, t.cfg)
+	authService := auth.NewService(authRepo, uow, t.logger, t.cfg)
 	handler := auth.NewHandler(authService)
 
 	// health route

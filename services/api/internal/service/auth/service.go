@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"time"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -37,7 +36,7 @@ func NewService(authRepo AuthRepo, uow UnitOfWork, logger *slog.Logger, cfg *con
 	}
 }
 
-func (s *Service) RegisterUser(ctx context.Context, dto RegisterUserDto) (*RegisterResponse, error) {
+func (s *Service) RegisterUser(ctx context.Context, dto RegisterUserRequestDto) (*RegisterUserResponseDto, error) {
 
 	// Check for user
 
@@ -96,8 +95,7 @@ func (s *Service) RegisterUser(ctx context.Context, dto RegisterUserDto) (*Regis
 
 	s.logger.Info("user successfully registered", "user_id", user.ID, "email", user.Email)
 
-	return &RegisterResponse{
-		// User:         *user,
+	return &RegisterUserResponseDto{
 		ID:           user.ID.String(),
 		Name:         user.Name,
 		Email:        user.Email,
@@ -139,19 +137,13 @@ func (s *Service) ResolveSignupDefaults(ctx context.Context) (*SignupDefaults, e
 	}, nil
 }
 
-// func (s *Service) GenerateTokens() () {}
-// func (s *Service) IsTokenExpired() () {}
-
 func (s *Service) GenerateTokens(
-
 	ctx context.Context,
 	id pgtype.UUID,
 	email string,
 	primaryUserID pgtype.UUID,
 	secondaryUserID pgtype.UUID,
-) (*AuthTokens, error) {
-
-	// Format primary ID string for JWT claims
+) (*AuthTokensResponseDto, error) {
 
 	// 1. Build Payload / Claims
 	claims := JwtPayload{
@@ -185,8 +177,8 @@ func (s *Service) GenerateTokens(
 	}
 
 	// 4. Store Refresh Token in DB via AuthRepo
-	err = s.authRepo.UpdateRefreshToken(ctx, repo.UpdateRefreshTokenParams{
-		ID:           id, // Direct pass through, no Scan needed!
+	err = s.authRepo.UpdateRefreshToken(ctx, UpdateRefreshTokenParams{
+		ID:           id,
 		RefreshToken: pgtype.Text{String: refreshToken, Valid: true},
 	})
 	if err != nil {
@@ -197,7 +189,7 @@ func (s *Service) GenerateTokens(
 		return nil, fmt.Errorf("failed to save refresh token: %w", err)
 	}
 
-	return &AuthTokens{
+	return &AuthTokensResponseDto{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
@@ -228,8 +220,8 @@ func (s *Service) CreateUserWithFreePlan(
 	ctx context.Context,
 	params CreateUserParams,
 	defaults *SignupDefaults,
-) (*repo.User, error) {
-	var user repo.User
+) (*User, error) {
+	var user User
 
 	// 1. Convert string "0" to pgtype.Numeric
 	var amountNumeric pgtype.Numeric
@@ -244,18 +236,13 @@ func (s *Service) CreateUserWithFreePlan(
 		var err error
 
 		// Insert User
-		user, err = tx.Auth.CreateUser(ctx, repo.CreateUserParams{
-			Name:     params.Name,
-			Email:    params.Email,
-			Password: pgtype.Text{String: params.Password, Valid: params.Password != ""},
-			Provider: pgtype.Text{String: params.Provider, Valid: params.Provider != ""},
-		})
+		user, err = tx.Auth.CreateUser(ctx, params)
 		if err != nil {
 			return fmt.Errorf("failed to insert user: %w", err)
 		}
 
 		// Insert User Role
-		err = tx.Auth.AssignUserRole(ctx, repo.AssignUserRoleParams{
+		err = tx.Auth.AssignUserRole(ctx, AssignUserRoleParams{
 			UserID: user.ID,
 			RoleID: defaults.TenantRole.ID,
 		})
@@ -264,13 +251,13 @@ func (s *Service) CreateUserWithFreePlan(
 		}
 
 		// Insert Subscription
-		err = tx.Auth.CreateSubscription(ctx, repo.CreateSubscriptionParams{
+		err = tx.Auth.CreateSubscription(ctx, CreateSubscriptionParams{
 			UserID:        user.ID,
 			PackageID:     defaults.FreePackage.ID,
-			StartDate:     pgtype.Timestamp{Time: time.Now(), Valid: true}, // Fixed: pgtype.Timestamp
-			EndDate:       pgtype.Timestamp{Valid: false},                  // Fixed: pgtype.Timestamp NULL
+			StartDate:     pgtype.Timestamp{Time: time.Now(), Valid: true},
+			EndDate:       pgtype.Timestamp{Valid: false},
 			PaymentMethod: "manual",
-			Amount:        amountNumeric, // Fixed: pgtype.Numeric
+			Amount:        amountNumeric,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create subscription: %w", err)
@@ -294,7 +281,7 @@ func (s *Service) GoogleLogin(ctx context.Context) string {
 	return s.googleConfig.AuthCodeURL("random_csrf_state_token")
 }
 
-func (s *Service) GoogleCallback(ctx context.Context, code string) (*RegisterResponse, error) {
+func (s *Service) GoogleCallback(ctx context.Context, code string) (*RegisterUserResponseDto, error) {
 	token, err := s.googleConfig.Exchange(ctx, code)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "google code exchange failed", slog.String("error", err.Error()))
@@ -309,20 +296,20 @@ func (s *Service) GoogleCallback(ctx context.Context, code string) (*RegisterRes
 	}
 	defer resp.Body.Close()
 
-	var googleUser GoogleUserInfo
+	var googleUser GoogleUserInfoDto
 	if err := json.NewDecoder(resp.Body).Decode(&googleUser); err != nil {
 		s.logger.ErrorContext(ctx, "failed to decode google user info", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to decode user info: %w", err)
 	}
 
-	return s.ValidateSocialUser(ctx, ValidateSocialUserDto{
+	return s.ValidateSocialUser(ctx, ValidateSocialUserRequestDto{
 		Email:    googleUser.Email,
 		Name:     googleUser.Name,
 		Provider: "google",
 	})
 }
 
-func (s *Service) ValidateSocialUser(ctx context.Context, dto ValidateSocialUserDto) (*RegisterResponse, error) {
+func (s *Service) ValidateSocialUser(ctx context.Context, dto ValidateSocialUserRequestDto) (*RegisterUserResponseDto, error) {
 	existing, err := s.authRepo.GetUserByEmail(ctx, dto.Email)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		s.logger.ErrorContext(ctx, "failed to query social user by email",
@@ -332,7 +319,7 @@ func (s *Service) ValidateSocialUser(ctx context.Context, dto ValidateSocialUser
 		return nil, ErrInternalServer
 	}
 
-	var user *repo.User
+	var user *User
 
 	if errors.Is(err, sql.ErrNoRows) {
 		defaults, err := s.ResolveSignupDefaults(ctx)
@@ -370,7 +357,7 @@ func (s *Service) ValidateSocialUser(ctx context.Context, dto ValidateSocialUser
 		return nil, fmt.Errorf("%w: %v", ErrInternalServer, err)
 	}
 
-	return &RegisterResponse{
+	return &RegisterUserResponseDto{
 		ID:           user.ID.String(),
 		Name:         user.Name,
 		Email:        user.Email,

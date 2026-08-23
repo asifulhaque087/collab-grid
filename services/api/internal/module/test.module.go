@@ -6,10 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	auth_mock "github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/mock"
-	"github.com/casbin/casbin/v2"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,7 +17,7 @@ type TestModule struct {
 	AuthRepo       *auth_mock.FakeRepo
 	LimitGuardRepo *auth_mock.FakeLimitGuardQueries
 	Cfg            *config.Config
-	Enforcer       *casbin.Enforcer
+	Enforcer       *casbin.CasbinEnforcer
 }
 
 func NewTestModule() *TestModule {
