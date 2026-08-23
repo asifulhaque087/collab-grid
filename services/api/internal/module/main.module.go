@@ -48,8 +48,7 @@ func (t *App) RegisterRoute(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		// --- Public Routes ---
 		r.Post("/register", handler.Register)
-
-		// login
+		r.Post("/login", handler.Login)
 		// forgot-password
 		// reset-password
 		// me

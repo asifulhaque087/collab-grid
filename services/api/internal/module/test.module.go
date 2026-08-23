@@ -60,6 +60,7 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 	r.Route("/auth", func(r chi.Router) {
 		// --- Public Routes ---
 		r.Post("/register", handler.Register)
+		r.Post("/login", handler.Login)
 		r.Get("/google", handler.HandleGoogleLogin)
 		r.Get("/google/callback", handler.HandleGoogleCallback)
 

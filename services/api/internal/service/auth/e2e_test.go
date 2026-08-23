@@ -126,6 +126,86 @@ func TestRegister(t *testing.T) {
 	testModule.AuthRepo.Reset()
 }
 
+func TestLogin(t *testing.T) {
+	router := chi.NewRouter()
+	testModule := module.NewTestModule()
+
+	server := app.NewServer(router, testModule)
+	r := server.Init()
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	t.Run("login returns 200 with tokens", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		registerUser(t, ts, "login@test.com")
+
+		body := []byte(`{"email": "login@test.com", "password": "secret123"}`)
+		res, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", res.StatusCode)
+		}
+
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if resp["id"] == "" {
+			t.Error("expected non-empty id")
+		}
+		if resp["email"] != "login@test.com" {
+			t.Errorf("expected email login@test.com, got %v", resp["email"])
+		}
+		if resp["accessToken"] == "" {
+			t.Error("expected non-empty accessToken")
+		}
+		if resp["refreshToken"] == "" {
+			t.Error("expected non-empty refreshToken")
+		}
+	})
+
+	t.Run("login with wrong password returns 401", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		registerUser(t, ts, "wrongpass@test.com")
+
+		body := []byte(`{"email": "wrongpass@test.com", "password": "badpassword"}`)
+		res, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", res.StatusCode)
+		}
+	})
+
+	t.Run("login with unknown email returns 401", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		body := []byte(`{"email": "ghost@test.com", "password": "secret123"}`)
+		res, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", res.StatusCode)
+		}
+	})
+
+	testModule.AuthRepo.Reset()
+}
+
 func TestLimitGuard(t *testing.T) {
 	router := chi.NewRouter()
 	testModule := module.NewTestModule()

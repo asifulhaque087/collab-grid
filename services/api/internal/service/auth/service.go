@@ -105,6 +105,41 @@ func (s *Service) RegisterUser(ctx context.Context, dto RegisterUserRequestDto) 
 
 }
 
+func (s *Service) LoginUser(ctx context.Context, dto LoginUserRequestDto) (*RegisterUserResponseDto, error) {
+	user, err := s.authRepo.GetUserByEmail(ctx, dto.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidCredentials
+		}
+		s.logger.Error("failed to query user by email", "email", dto.Email, "error", err)
+		return nil, ErrInternalServer
+	}
+
+	if !user.Password.Valid || user.Password.String == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password.String), []byte(dto.Password)); err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	tokens, err := s.GenerateTokens(ctx, user.ID, user.Email, user.PrimaryUserID, user.SecondaryUserID)
+	if err != nil || tokens == nil {
+		s.logger.Error("failed to generate auth tokens", "user_id", user.ID.String(), "error", err)
+		return nil, ErrInternalServer
+	}
+
+	s.logger.Info("user successfully logged in", "user_id", user.ID.String(), "email", user.Email)
+
+	return &RegisterUserResponseDto{
+		ID:           user.ID.String(),
+		Name:         user.Name,
+		Email:        user.Email,
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}, nil
+}
+
 func (s *Service) ResolveSignupDefaults(ctx context.Context) (*SignupDefaults, error) {
 	freePackage, err := s.authRepo.GetPackageBySlug(ctx, FreePackageSlug)
 	if errors.Is(err, sql.ErrNoRows) {
