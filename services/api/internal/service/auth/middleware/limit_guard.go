@@ -1,4 +1,4 @@
-package auth
+package middleware
 
 import (
 	"context"
@@ -6,98 +6,19 @@ import (
 	"net/http"
 	"strings"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type contextKey string
-
-const (
-	UserContextKey contextKey = "user_claims"
-)
-
-func GetUserFromContext(ctx context.Context) (*JwtPayload, bool) {
-	user, ok := ctx.Value(UserContextKey).(*JwtPayload)
-	return user, ok
-}
-
-func JWTMiddleware(authService *Service) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, `{"error": "Unauthorized: Missing authorization header"}`, http.StatusUnauthorized)
-				return
-			}
-
-			parts := strings.Split(authHeader, " ")
-			if len(parts) != 2 || parts[0] != "Bearer" {
-				http.Error(w, `{"error": "Unauthorized: Invalid header format"}`, http.StatusUnauthorized)
-				return
-			}
-
-			claims, err := authService.ValidateAccessToken(parts[1])
-			if err != nil {
-				http.Error(w, `{"error": "Unauthorized: Invalid or expired token"}`, http.StatusUnauthorized)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), UserContextKey, claims)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-func CasbinMiddleware(e Enforcer) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, ok := GetUserFromContext(r.Context())
-			if !ok || user.ID == "" {
-				http.Error(w, `{"error": "Unauthorized: User not identified"}`, http.StatusUnauthorized)
-				return
-			}
-
-			var tenantID string
-			if user.PrimaryUserID != "" {
-				tenantID = user.PrimaryUserID
-			} else {
-				tenantID = user.ID
-			}
-
-			rctx := chi.RouteContext(r.Context())
-			pattern := rctx.RoutePattern()
-
-			if pattern == "" {
-				pattern = r.URL.Path
-			}
-
-			method := r.Method
-
-			allowed, err := e.Enforce(tenantID, pattern, method)
-			if err != nil {
-				http.Error(w, `{"error": "Internal server authorization error"}`, http.StatusInternalServerError)
-				return
-			}
-
-			if !allowed {
-				http.Error(w, `{"error": "Forbidden: Access denied"}`, http.StatusForbidden)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
 type LimitGuardQueries interface {
 	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
 	GetActiveSubscriptions(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error)
-	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg repo.GetPackagePermissionLimitByEndpointParams) (repo.GetPackagePermissionLimitByEndpointRow, error)
-	IncrementLimitUsage(ctx context.Context, arg repo.IncrementLimitUsageParams) (pgtype.UUID, error)
-	DecrementLimitUsage(ctx context.Context, arg repo.DecrementLimitUsageParams) (pgtype.UUID, error)
-	GetLimitUsage(ctx context.Context, arg repo.GetLimitUsageParams) (int32, error)
-	InitializeLimitUsage(ctx context.Context, arg repo.InitializeLimitUsageParams) (pgtype.UUID, error)
+	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg sqlc.GetPackagePermissionLimitByEndpointParams) (sqlc.GetPackagePermissionLimitByEndpointRow, error)
+	IncrementLimitUsage(ctx context.Context, arg sqlc.IncrementLimitUsageParams) (pgtype.UUID, error)
+	DecrementLimitUsage(ctx context.Context, arg sqlc.DecrementLimitUsageParams) (pgtype.UUID, error)
+	GetLimitUsage(ctx context.Context, arg sqlc.GetLimitUsageParams) (int32, error)
+	InitializeLimitUsage(ctx context.Context, arg sqlc.InitializeLimitUsageParams) (pgtype.UUID, error)
 }
 
 type LimitGuard struct {
@@ -195,7 +116,7 @@ func (lg *LimitGuard) enforceLimit(ctx context.Context, tenantID, pattern, metho
 func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UUID, pattern, method string) error {
 	// Always look up the limit by the POST (create) permission for this endpoint.
 	// The same counter is shared across POST (increment) and DELETE (decrement).
-	limitRow, err := lg.queries.GetPackagePermissionLimitByEndpoint(ctx, repo.GetPackagePermissionLimitByEndpointParams{
+	limitRow, err := lg.queries.GetPackagePermissionLimitByEndpoint(ctx, sqlc.GetPackagePermissionLimitByEndpointParams{
 		PackageID: pkgID,
 		Endpoint:  pattern,
 		Method:    http.MethodPost,
@@ -210,7 +131,7 @@ func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UU
 	}
 
 	if method == http.MethodDelete {
-		_, err := lg.queries.DecrementLimitUsage(ctx, repo.DecrementLimitUsageParams{
+		_, err := lg.queries.DecrementLimitUsage(ctx, sqlc.DecrementLimitUsageParams{
 			UserID:                   tenantID,
 			PackagePermissionLimitID: limitRow.ID,
 		})
@@ -221,7 +142,7 @@ func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UU
 	}
 
 	// POST — atomic conditional increment
-	updatedID, err := lg.queries.IncrementLimitUsage(ctx, repo.IncrementLimitUsageParams{
+	updatedID, err := lg.queries.IncrementLimitUsage(ctx, sqlc.IncrementLimitUsageParams{
 		UserID:                   tenantID,
 		PackagePermissionLimitID: limitRow.ID,
 		Used:                     limitRow.LimitCount.Int32,
@@ -231,7 +152,7 @@ func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UU
 	}
 
 	// Check why update failed
-	existing, err := lg.queries.GetLimitUsage(ctx, repo.GetLimitUsageParams{
+	existing, err := lg.queries.GetLimitUsage(ctx, sqlc.GetLimitUsageParams{
 		UserID:                   tenantID,
 		PackagePermissionLimitID: limitRow.ID,
 	})
@@ -240,7 +161,7 @@ func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UU
 	}
 
 	// Initialize counter
-	_, err = lg.queries.InitializeLimitUsage(ctx, repo.InitializeLimitUsageParams{
+	_, err = lg.queries.InitializeLimitUsage(ctx, sqlc.InitializeLimitUsageParams{
 		UserID:                   tenantID,
 		PackagePermissionLimitID: limitRow.ID,
 	})

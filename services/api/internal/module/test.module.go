@@ -9,6 +9,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/middleware"
 	auth_mock "github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/mock"
 	"github.com/go-chi/chi/v5"
 )
@@ -64,10 +65,10 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 
 		// --- Protected Routes ---
 		r.Group(func(r chi.Router) {
-			limitGuard := auth.NewLimitGuard(t.LimitGuardRepo, logger)
+			limitGuard := middleware.NewLimitGuard(t.LimitGuardRepo, logger)
 
-			r.Use(auth.JWTMiddleware(svc))
-			r.Use(auth.CasbinMiddleware(t.Enforcer))
+			r.Use(middleware.JWTMiddleware(svc))
+			r.Use(middleware.CasbinMiddleware(t.Enforcer))
 			r.Use(limitGuard.Middleware())
 
 			r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {

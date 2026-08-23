@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"sync"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -131,22 +131,22 @@ func (f *FakeLimitGuardQueries) GetActiveSubscriptions(ctx context.Context, user
 	return result, nil
 }
 
-func (f *FakeLimitGuardQueries) GetPackagePermissionLimitByEndpoint(ctx context.Context, arg repo.GetPackagePermissionLimitByEndpointParams) (repo.GetPackagePermissionLimitByEndpointRow, error) {
+func (f *FakeLimitGuardQueries) GetPackagePermissionLimitByEndpoint(ctx context.Context, arg sqlc.GetPackagePermissionLimitByEndpointParams) (sqlc.GetPackagePermissionLimitByEndpointRow, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
 	for _, l := range f.limits {
 		if l.PackageID.Bytes == arg.PackageID.Bytes && l.Endpoint == arg.Endpoint && l.Method == arg.Method {
-			return repo.GetPackagePermissionLimitByEndpointRow{
+			return sqlc.GetPackagePermissionLimitByEndpointRow{
 				ID:         l.ID,
 				LimitCount: pgtype.Int4{Int32: l.Limit, Valid: true},
 			}, nil
 		}
 	}
-	return repo.GetPackagePermissionLimitByEndpointRow{}, sql.ErrNoRows
+	return sqlc.GetPackagePermissionLimitByEndpointRow{}, sql.ErrNoRows
 }
 
-func (f *FakeLimitGuardQueries) IncrementLimitUsage(ctx context.Context, arg repo.IncrementLimitUsageParams) (pgtype.UUID, error) {
+func (f *FakeLimitGuardQueries) IncrementLimitUsage(ctx context.Context, arg sqlc.IncrementLimitUsageParams) (pgtype.UUID, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -162,7 +162,7 @@ func (f *FakeLimitGuardQueries) IncrementLimitUsage(ctx context.Context, arg rep
 	return pgtype.UUID{}, sql.ErrNoRows
 }
 
-func (f *FakeLimitGuardQueries) DecrementLimitUsage(ctx context.Context, arg repo.DecrementLimitUsageParams) (pgtype.UUID, error) {
+func (f *FakeLimitGuardQueries) DecrementLimitUsage(ctx context.Context, arg sqlc.DecrementLimitUsageParams) (pgtype.UUID, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -177,7 +177,7 @@ func (f *FakeLimitGuardQueries) DecrementLimitUsage(ctx context.Context, arg rep
 	return pgtype.UUID{}, sql.ErrNoRows
 }
 
-func (f *FakeLimitGuardQueries) GetLimitUsage(ctx context.Context, arg repo.GetLimitUsageParams) (int32, error) {
+func (f *FakeLimitGuardQueries) GetLimitUsage(ctx context.Context, arg sqlc.GetLimitUsageParams) (int32, error) {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
@@ -189,7 +189,7 @@ func (f *FakeLimitGuardQueries) GetLimitUsage(ctx context.Context, arg repo.GetL
 	return 0, sql.ErrNoRows
 }
 
-func (f *FakeLimitGuardQueries) InitializeLimitUsage(ctx context.Context, arg repo.InitializeLimitUsageParams) (pgtype.UUID, error) {
+func (f *FakeLimitGuardQueries) InitializeLimitUsage(ctx context.Context, arg sqlc.InitializeLimitUsageParams) (pgtype.UUID, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 

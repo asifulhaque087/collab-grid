@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 )
 
@@ -151,7 +151,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	}
 	defer tx.Rollback(ctx)
 
-	queries := repo.New(tx)
+	queries := sqlc.New(tx)
 
 	log.Println("Seeding database...")
 
@@ -169,7 +169,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	permissionIDs := make(map[string]pgtype.UUID)
 
 	for _, perm := range PermissionCatalog {
-		p, err := queries.InsertPermission(ctx, repo.InsertPermissionParams{
+		p, err := queries.InsertPermission(ctx, sqlc.InsertPermissionParams{
 			Action:      string(perm.Action),
 			Subject:     string(perm.Subject),
 			Name:        perm.Name,
@@ -185,7 +185,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 
 	// 2. Seed Super Admin Role
 	log.Println("  Seeding roles...")
-	superAdminRoleID, err := queries.InsertRole(ctx, repo.InsertRoleParams{
+	superAdminRoleID, err := queries.InsertRole(ctx, sqlc.InsertRoleParams{
 		Title: "Super Admin",
 		Slug:  auth.SuperAdminRoleSlug,
 	})
@@ -200,7 +200,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 		return fmt.Errorf("failed hashing password: %w", err)
 	}
 
-	superAdminUserID, err := queries.InsertUser(ctx, repo.InsertUserParams{
+	superAdminUserID, err := queries.InsertUser(ctx, sqlc.InsertUserParams{
 		Name:     "Super Admin",
 		Email:    "admin@collabgrid.com",
 		Password: pgtype.Text{String: string(hash), Valid: true},
@@ -210,7 +210,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 		return fmt.Errorf("failed inserting super admin user: %w", err)
 	}
 
-	if err := queries.AssignUserRole(ctx, repo.AssignUserRoleParams{
+	if err := queries.AssignUserRole(ctx, sqlc.AssignUserRoleParams{
 		UserID: superAdminUserID,
 		RoleID: superAdminRoleID,
 	}); err != nil {
@@ -218,7 +218,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	}
 
 	// 4. Seed Tenant Role
-	tenantRoleID, err := queries.InsertRole(ctx, repo.InsertRoleParams{
+	tenantRoleID, err := queries.InsertRole(ctx, sqlc.InsertRoleParams{
 		Title:           "Tenant",
 		Slug:            auth.TenantRoleSlug,
 		PrimaryUserID:   superAdminUserID,
@@ -230,7 +230,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 
 	// 5. Seed Packages
 	log.Println("  Seeding packages...")
-	freePackageID, err := queries.InsertPackage(ctx, repo.InsertPackageParams{
+	freePackageID, err := queries.InsertPackage(ctx, sqlc.InsertPackageParams{
 		Title:           "Free",
 		Slug:            auth.FreePackageSlug,
 		Price:           "0",
@@ -241,7 +241,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 		return fmt.Errorf("failed inserting free package: %w", err)
 	}
 
-	proPackageID, err := queries.InsertPackage(ctx, repo.InsertPackageParams{
+	proPackageID, err := queries.InsertPackage(ctx, sqlc.InsertPackageParams{
 		Title:           "Pro",
 		Slug:            auth.ProPackageSlug,
 		Price:           "9",
@@ -256,7 +256,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	log.Println("  Seeding role permissions...")
 
 	superAdminPermID := permissionIDs[PermissionKey(string(ActionManage), string(SubjectsAll))]
-	if err := queries.GrantRolePermission(ctx, repo.GrantRolePermissionParams{
+	if err := queries.GrantRolePermission(ctx, sqlc.GrantRolePermissionParams{
 		RoleID:       superAdminRoleID,
 		PermissionID: superAdminPermID,
 	}); err != nil {
@@ -266,7 +266,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	for _, perm := range PermissionCatalog {
 		if isTenantPermission(perm) {
 			pID := permissionIDs[PermissionKey(string(perm.Action), string(perm.Subject))]
-			if err := queries.GrantRolePermission(ctx, repo.GrantRolePermissionParams{
+			if err := queries.GrantRolePermission(ctx, sqlc.GrantRolePermissionParams{
 				RoleID:       tenantRoleID,
 				PermissionID: pID,
 			}); err != nil {
@@ -279,7 +279,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	log.Println("  Seeding package limits...")
 	for _, quota := range FreePackageQuotas {
 		pID := permissionIDs[PermissionKey(string(quota.Action), string(quota.Subject))]
-		if err := queries.InsertPackagePermissionLimit(ctx, repo.InsertPackagePermissionLimitParams{
+		if err := queries.InsertPackagePermissionLimit(ctx, sqlc.InsertPackagePermissionLimitParams{
 			PackageID:    freePackageID,
 			PermissionID: pID,
 			LimitCount:   pgtype.Int4{Int32: quota.Limit, Valid: true},
@@ -290,7 +290,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 
 	for _, quota := range ProPackageQuotas {
 		pID := permissionIDs[PermissionKey(string(quota.Action), string(quota.Subject))]
-		if err := queries.InsertPackagePermissionLimit(ctx, repo.InsertPackagePermissionLimitParams{
+		if err := queries.InsertPackagePermissionLimit(ctx, sqlc.InsertPackagePermissionLimitParams{
 			PackageID:    proPackageID,
 			PermissionID: pID,
 			LimitCount:   pgtype.Int4{Int32: quota.Limit, Valid: true},
@@ -301,7 +301,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 
 	// 8. Seed Tenant User
 	log.Println("  Seeding tenant user...")
-	tenantUserID, err := queries.InsertUser(ctx, repo.InsertUserParams{
+	tenantUserID, err := queries.InsertUser(ctx, sqlc.InsertUserParams{
 		Name:     "Tenant User",
 		Email:    "tenant@collabgrid.com",
 		Password: pgtype.Text{String: string(hash), Valid: true},
@@ -311,7 +311,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 		return fmt.Errorf("failed inserting tenant user: %w", err)
 	}
 
-	if err := queries.AssignUserRole(ctx, repo.AssignUserRoleParams{
+	if err := queries.AssignUserRole(ctx, sqlc.AssignUserRoleParams{
 		UserID: tenantUserID,
 		RoleID: tenantRoleID,
 	}); err != nil {
@@ -322,7 +322,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	var numericAmount pgtype.Numeric
 	_ = numericAmount.Scan("0")
 
-	if err := queries.InsertSubscription(ctx, repo.InsertSubscriptionParams{
+	if err := queries.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 		UserID:        tenantUserID,
 		PackageID:     freePackageID,
 		StartDate:     pgtype.Timestamp{Time: time.Now(), Valid: true},

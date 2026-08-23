@@ -1,25 +1,25 @@
-package postgresql
+package repo
 
 import (
 	"context"
 
-	repo "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuthRepository struct {
-	queries *repo.Queries
+	queries *sqlc.Queries
 }
 
-func NewAuthRepository(db repo.DBTX) *AuthRepository {
+func NewAuthRepository(db sqlc.DBTX) *AuthRepository {
 	return &AuthRepository{
-		queries: repo.New(db),
+		queries: sqlc.New(db),
 	}
 }
 
 func (r *AuthRepository) AssignUserRole(ctx context.Context, arg auth.AssignUserRoleParams) error {
-	return r.queries.AssignUserRole(ctx, repo.AssignUserRoleParams{
+	return r.queries.AssignUserRole(ctx, sqlc.AssignUserRoleParams{
 		UserID: arg.UserID,
 		RoleID: arg.RoleID,
 	})
@@ -30,7 +30,7 @@ func (r *AuthRepository) ClearRefreshToken(ctx context.Context, id pgtype.UUID) 
 }
 
 func (r *AuthRepository) CreateSubscription(ctx context.Context, arg auth.CreateSubscriptionParams) error {
-	return r.queries.CreateSubscription(ctx, repo.CreateSubscriptionParams{
+	return r.queries.CreateSubscription(ctx, sqlc.CreateSubscriptionParams{
 		UserID:        arg.UserID,
 		PackageID:     arg.PackageID,
 		StartDate:     arg.StartDate,
@@ -41,7 +41,7 @@ func (r *AuthRepository) CreateSubscription(ctx context.Context, arg auth.Create
 }
 
 func (r *AuthRepository) CreateUser(ctx context.Context, arg auth.CreateUserParams) (auth.User, error) {
-	u, err := r.queries.CreateUser(ctx, repo.CreateUserParams{
+	u, err := r.queries.CreateUser(ctx, sqlc.CreateUserParams{
 		Name:     arg.Name,
 		Email:    arg.Email,
 		Password: pgtype.Text{String: arg.Password, Valid: arg.Password != ""},
@@ -136,7 +136,7 @@ func (r *AuthRepository) GetUserQuotas(ctx context.Context, userID pgtype.UUID) 
 }
 
 func (r *AuthRepository) SetResetPasswordToken(ctx context.Context, arg auth.SetResetPasswordTokenParams) error {
-	return r.queries.SetResetPasswordToken(ctx, repo.SetResetPasswordTokenParams{
+	return r.queries.SetResetPasswordToken(ctx, sqlc.SetResetPasswordTokenParams{
 		ResetPasswordToken:     arg.ResetPasswordToken,
 		ResetPasswordExpiresAt: arg.ResetPasswordExpiresAt,
 		ID:                     arg.ID,
@@ -144,20 +144,20 @@ func (r *AuthRepository) SetResetPasswordToken(ctx context.Context, arg auth.Set
 }
 
 func (r *AuthRepository) UpdatePasswordAndClearTokens(ctx context.Context, arg auth.UpdatePasswordAndClearTokensParams) error {
-	return r.queries.UpdatePasswordAndClearTokens(ctx, repo.UpdatePasswordAndClearTokensParams{
+	return r.queries.UpdatePasswordAndClearTokens(ctx, sqlc.UpdatePasswordAndClearTokensParams{
 		Password: arg.Password,
 		ID:       arg.ID,
 	})
 }
 
 func (r *AuthRepository) UpdateRefreshToken(ctx context.Context, arg auth.UpdateRefreshTokenParams) error {
-	return r.queries.UpdateRefreshToken(ctx, repo.UpdateRefreshTokenParams{
+	return r.queries.UpdateRefreshToken(ctx, sqlc.UpdateRefreshTokenParams{
 		RefreshToken: arg.RefreshToken,
 		ID:           arg.ID,
 	})
 }
 
-func toAuthUser(u repo.User) auth.User {
+func toAuthUser(u sqlc.User) auth.User {
 	return auth.User{
 		ID:                     u.ID,
 		Name:                   u.Name,
@@ -172,7 +172,7 @@ func toAuthUser(u repo.User) auth.User {
 	}
 }
 
-func toAuthPackage(p repo.Package) auth.Package {
+func toAuthPackage(p sqlc.Package) auth.Package {
 	return auth.Package{
 		ID:              p.ID,
 		Title:           p.Title,
@@ -183,7 +183,7 @@ func toAuthPackage(p repo.Package) auth.Package {
 	}
 }
 
-func toAuthRole(r repo.Role) auth.Role {
+func toAuthRole(r sqlc.Role) auth.Role {
 	return auth.Role{
 		ID:              r.ID,
 		Title:           r.Title,
