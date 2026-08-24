@@ -133,6 +133,71 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	util.WriteJson(w, http.StatusOK, result)
 }
 
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	claims, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, ErrUnauthorized.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	result, err := h.svc.GetMe(r.Context(), claims.ID)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrUnauthorized) {
+			status = http.StatusUnauthorized
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+
+	util.WriteJson(w, http.StatusOK, result)
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	claims, ok := GetUserFromContext(r.Context())
+	if !ok {
+		http.Error(w, ErrUnauthorized.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	result, err := h.svc.Logout(r.Context(), claims.ID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJson(w, http.StatusOK, result)
+}
+
+func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var body RefreshAccessTokenRequestDto
+
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "failed to parse JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	result, err := h.svc.RefreshAccessToken(ctx, body)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrUnauthorized) {
+			status = http.StatusUnauthorized
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+
+	util.WriteJson(w, http.StatusOK, result)
+}
+
 func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	url := h.svc.GoogleLogin(r.Context())
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)

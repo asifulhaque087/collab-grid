@@ -10,7 +10,7 @@ import (
 func CasbinMiddleware(e auth.Enforcer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, ok := GetUserFromContext(r.Context())
+			user, ok := auth.GetUserFromContext(r.Context())
 			if !ok || user.ID == "" {
 				http.Error(w, `{"error": "Unauthorized: User not identified"}`, http.StatusUnauthorized)
 				return

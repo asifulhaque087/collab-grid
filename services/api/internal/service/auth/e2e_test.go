@@ -453,6 +453,207 @@ func TestResetPassword(t *testing.T) {
 	testModule.MailRepo.Reset()
 }
 
+func TestMe(t *testing.T) {
+	router := chi.NewRouter()
+	testModule := module.NewTestModule()
+
+	server := app.NewServer(router, testModule)
+	r := server.Init()
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	t.Run("me returns user profile with 200", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		token, userID := registerUser(t, ts, "me@test.com")
+
+		res := authenticatedRequest(t, ts, "GET", "/auth/me", token, nil)
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", res.StatusCode)
+		}
+
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if resp["id"] != userID {
+			t.Errorf("expected id %s, got %v", userID, resp["id"])
+		}
+		if resp["email"] != "me@test.com" {
+			t.Errorf("expected email me@test.com, got %v", resp["email"])
+		}
+		for _, key := range []string{"roles", "permissions", "plan", "quotas"} {
+			if _, ok := resp[key]; !ok {
+				t.Errorf("response missing key %q", key)
+			}
+		}
+	})
+
+	t.Run("me without token returns 401", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		res := authenticatedRequest(t, ts, "GET", "/auth/me", "", nil)
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", res.StatusCode)
+		}
+	})
+
+	testModule.AuthRepo.Reset()
+}
+
+func TestLogout(t *testing.T) {
+	router := chi.NewRouter()
+	testModule := module.NewTestModule()
+
+	server := app.NewServer(router, testModule)
+	r := server.Init()
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	t.Run("logout clears refresh token", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		token, _ := registerUser(t, ts, "logout@test.com")
+
+		var loginResp map[string]any
+		loginBody := []byte(`{"email": "logout@test.com", "password": "secret123"}`)
+		loginRes, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+		json.NewDecoder(loginRes.Body).Decode(&loginResp)
+		loginRes.Body.Close()
+		oldRefreshToken, _ := loginResp["refreshToken"].(string)
+
+		res := authenticatedRequest(t, ts, "POST", "/auth/logout", token, nil)
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", res.StatusCode)
+		}
+
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if resp["message"] != "Signed out successfully." {
+			t.Errorf("unexpected message: %v", resp["message"])
+		}
+
+		refreshBody := []byte(`{"token": "` + oldRefreshToken + `"}`)
+		refreshRes, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(refreshBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer refreshRes.Body.Close()
+
+		if refreshRes.StatusCode != http.StatusUnauthorized {
+			t.Errorf("refresh after logout expected 401, got %d", refreshRes.StatusCode)
+		}
+	})
+
+	t.Run("logout without token returns 401", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		res := authenticatedRequest(t, ts, "POST", "/auth/logout", "", nil)
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", res.StatusCode)
+		}
+	})
+
+	testModule.AuthRepo.Reset()
+}
+
+func TestRefresh(t *testing.T) {
+	router := chi.NewRouter()
+	testModule := module.NewTestModule()
+
+	server := app.NewServer(router, testModule)
+	r := server.Init()
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	registerUser(t, ts, "refresh@test.com")
+
+	loginBody := []byte(`{"email": "refresh@test.com", "password": "secret123"}`)
+	loginRes, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var loginResp map[string]any
+	json.NewDecoder(loginRes.Body).Decode(&loginResp)
+	loginRes.Body.Close()
+	oldRefreshToken, _ := loginResp["refreshToken"].(string)
+
+	t.Run("refresh returns new token pair with 200", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		body := []byte(`{"token": "` + oldRefreshToken + `"}`)
+		res, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", res.StatusCode)
+		}
+
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		newAccess, _ := resp["accessToken"].(string)
+		newRefresh, _ := resp["refreshToken"].(string)
+
+		if newAccess == "" || newRefresh == "" {
+			t.Fatal("expected non-empty accessToken and refreshToken")
+		}
+		if newAccess == oldRefreshToken {
+			t.Error("access token should not equal refresh token")
+		}
+	})
+
+	t.Run("refresh with invalid token returns 401", func(t *testing.T) {
+		body := []byte(`{"token": "bogus-refresh-token"}`)
+		res, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", res.StatusCode)
+		}
+	})
+
+	t.Run("refresh with missing body returns 400", func(t *testing.T) {
+		body := []byte(`{}`)
+		res, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+		}
+	})
+
+	testModule.AuthRepo.Reset()
+}
+
 func TestLimitGuard(t *testing.T) {
 	router := chi.NewRouter()
 	testModule := module.NewTestModule()

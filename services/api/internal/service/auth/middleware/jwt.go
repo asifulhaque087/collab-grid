@@ -8,17 +8,6 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 )
 
-type contextKey string
-
-const (
-	UserContextKey contextKey = "user_claims"
-)
-
-func GetUserFromContext(ctx context.Context) (*auth.JwtPayload, bool) {
-	user, ok := ctx.Value(UserContextKey).(*auth.JwtPayload)
-	return user, ok
-}
-
 func JWTMiddleware(authService *auth.Service) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +29,7 @@ func JWTMiddleware(authService *auth.Service) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), UserContextKey, claims)
+			ctx := context.WithValue(r.Context(), auth.UserContextKey, claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

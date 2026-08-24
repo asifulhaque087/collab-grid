@@ -53,3 +53,36 @@ type ResetPasswordRequestDto struct {
 type ResetPasswordResponseDto struct {
 	Message string `json:"message"`
 }
+
+type MeResponseDto struct {
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Email       string             `json:"email"`
+	Roles       []string           `json:"roles"`
+	Permissions []PermissionTuple  `json:"permissions"`
+	Plan        string             `json:"plan"`
+	Quotas      []Quota            `json:"quotas"`
+}
+
+type PermissionTuple struct {
+	Action  string `json:"action"`
+	Subject string `json:"subject"`
+}
+
+type Quota struct {
+	ID        string `json:"id"`
+	Action    string `json:"action"`
+	Subject   string `json:"subject"`
+	Granted   int32  `json:"granted"`
+	Remaining int32  `json:"remaining"`
+	Extra     int32  `json:"extra"`
+}
+
+type RefreshAccessTokenRequestDto struct {
+	Token string `json:"token" validate:"required"`
+}
+
+type RefreshAccessTokenResponseDto struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}

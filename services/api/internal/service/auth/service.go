@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
@@ -239,6 +240,192 @@ func (s *Service) ResetPassword(ctx context.Context, dto ResetPasswordRequestDto
 	s.logger.Info("password reset successfully", "user_id", user.ID.String(), "email", user.Email)
 
 	return &ResetPasswordResponseDto{Message: ResetPasswordSuccessMsg}, nil
+}
+
+func (s *Service) GetMe(ctx context.Context, userID string) (*MeResponseDto, error) {
+	var uid pgtype.UUID
+	if err := uid.Scan(userID); err != nil {
+		return nil, ErrUnauthorized
+	}
+
+	var (
+		user      User
+		accessCtx []GetAccessContextByUserIdRow
+		quotas    []GetUserQuotasRow
+		userErr   error
+		accessErr error
+		quotaErr  error
+		wg        sync.WaitGroup
+	)
+
+	wg.Add(3)
+
+	go func() {
+		defer wg.Done()
+		user, userErr = s.authRepo.GetUserById(ctx, uid)
+	}()
+
+	go func() {
+		defer wg.Done()
+		accessCtx, accessErr = s.authRepo.GetAccessContextByUserId(ctx, uid)
+	}()
+
+	go func() {
+		defer wg.Done()
+		quotas, quotaErr = s.authRepo.GetUserQuotas(ctx, uid)
+	}()
+
+	wg.Wait()
+
+	if userErr != nil {
+		if errors.Is(userErr, sql.ErrNoRows) {
+			return nil, ErrUnauthorized
+		}
+		s.logger.Error("failed to get user by id", "user_id", userID, "error", userErr)
+		return nil, ErrInternalServer
+	}
+
+	if accessErr != nil {
+		s.logger.Error("failed to get access context", "user_id", userID, "error", accessErr)
+		return nil, ErrInternalServer
+	}
+
+	if quotaErr != nil {
+		s.logger.Error("failed to get user quotas", "user_id", userID, "error", quotaErr)
+		return nil, ErrInternalServer
+	}
+
+	rolesSet := make(map[string]struct{})
+	for _, row := range accessCtx {
+		rolesSet[row.RoleTitle] = struct{}{}
+	}
+	roles := make([]string, 0, len(rolesSet))
+	for r := range rolesSet {
+		roles = append(roles, r)
+	}
+
+	deduped := make(map[string]PermissionTuple)
+	for _, row := range accessCtx {
+		key := row.Action + ":" + row.Subject
+		if _, exists := deduped[key]; !exists {
+			deduped[key] = PermissionTuple{Action: row.Action, Subject: row.Subject}
+		}
+	}
+	permissions := make([]PermissionTuple, 0, len(deduped))
+	for _, p := range deduped {
+		permissions = append(permissions, p)
+	}
+
+	aggMap := make(map[string]*struct {
+		action    string
+		subject   string
+		granted   pgtype.Int4
+		totalUsed int64
+	})
+
+	for _, row := range quotas {
+		key := row.Action + ":" + row.Subject
+		existing, exists := aggMap[key]
+		if !exists {
+			aggMap[key] = &struct {
+				action    string
+				subject   string
+				granted   pgtype.Int4
+				totalUsed int64
+			}{
+				action:    row.Action,
+				subject:   row.Subject,
+				granted:   row.LimitCount,
+				totalUsed: row.TotalUsed,
+			}
+		} else {
+			if !existing.granted.Valid || existing.granted.Int32 == -1 {
+				existing.totalUsed += row.TotalUsed
+			} else if !row.LimitCount.Valid || row.LimitCount.Int32 == -1 {
+				existing.granted = pgtype.Int4{Int32: -1, Valid: true}
+				existing.totalUsed += row.TotalUsed
+			} else {
+				existing.granted.Int32 += row.LimitCount.Int32
+				existing.totalUsed += row.TotalUsed
+			}
+		}
+	}
+
+	resultQuotas := make([]Quota, 0, len(aggMap))
+	for _, agg := range aggMap {
+		unlimited := !agg.granted.Valid || agg.granted.Int32 == -1
+		granted := int32(0)
+		if agg.granted.Valid {
+			granted = agg.granted.Int32
+		}
+		remaining := granted - int32(agg.totalUsed)
+		if unlimited {
+			granted = -1
+			remaining = -1
+		} else if remaining < 0 {
+			remaining = 0
+		}
+		resultQuotas = append(resultQuotas, Quota{
+			ID:        agg.action + ":" + agg.subject,
+			Action:    agg.action,
+			Subject:   agg.subject,
+			Granted:   granted,
+			Remaining: remaining,
+			Extra:     0,
+		})
+	}
+
+	plan := "free"
+	if len(resultQuotas) > 0 {
+		plan = "active"
+	}
+
+	return &MeResponseDto{
+		ID:          user.ID.String(),
+		Name:        user.Name,
+		Email:       user.Email,
+		Roles:       roles,
+		Permissions: permissions,
+		Plan:        plan,
+		Quotas:      resultQuotas,
+	}, nil
+}
+
+func (s *Service) Logout(ctx context.Context, userID string) (*ForgotPasswordResponseDto, error) {
+	var uid pgtype.UUID
+	if err := uid.Scan(userID); err != nil {
+		return nil, ErrUnauthorized
+	}
+
+	err := s.authRepo.ClearRefreshToken(ctx, uid)
+	if err != nil {
+		s.logger.Error("failed to clear refresh token", "user_id", userID, "error", err)
+		return nil, ErrInternalServer
+	}
+
+	return &ForgotPasswordResponseDto{Message: LogoutSuccessMsg}, nil
+}
+
+func (s *Service) RefreshAccessToken(ctx context.Context, dto RefreshAccessTokenRequestDto) (*RefreshAccessTokenResponseDto, error) {
+	user, err := s.authRepo.GetUserByRefreshToken(ctx, pgtype.Text{String: dto.Token, Valid: true})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUnauthorized
+		}
+		s.logger.Error("failed to query user by refresh token", "error", err)
+		return nil, ErrInternalServer
+	}
+
+	tokens, err := s.GenerateTokens(ctx, user.ID, user.Email, user.PrimaryUserID, user.SecondaryUserID)
+	if err != nil || tokens == nil {
+		s.logger.Error("failed to generate tokens for refresh", "user_id", user.ID.String(), "error", err)
+		return nil, ErrInternalServer
+	}
+
+	return &RefreshAccessTokenResponseDto{
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}, nil
 }
 
 func (s *Service) ResolveSignupDefaults(ctx context.Context) (*SignupDefaults, error) {

@@ -62,9 +62,15 @@ func (t *App) RegisterRoute(r chi.Router) {
 		r.Post("/login", handler.Login)
 		r.Post("/forgot-password", handler.ForgotPassword)
 		r.Post("/reset-password", handler.ResetPassword)
-		// me
-		// logout
-		// refresh
+		r.Post("/refresh", handler.Refresh)
+
+		// --- JWT-only Routes ---
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.JWTMiddleware(authService))
+
+			r.Get("/me", handler.Me)
+			r.Post("/logout", handler.Logout)
+		})
 
 		r.Get("/google", handler.HandleGoogleLogin)
 		r.Get("/google/callback", handler.HandleGoogleCallback)

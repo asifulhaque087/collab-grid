@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -46,7 +47,7 @@ func (lg *LimitGuard) Middleware() func(http.Handler) http.Handler {
 				return
 			}
 
-			user, ok := GetUserFromContext(r.Context())
+			user, ok := auth.GetUserFromContext(r.Context())
 			if !ok || user.ID == "" {
 				http.Error(w, `{"error": "Unauthorized: User context missing"}`, http.StatusUnauthorized)
 				return

@@ -52,6 +52,9 @@ type AuthService interface {
 	LoginUser(ctx context.Context, dto LoginUserRequestDto) (*RegisterUserResponseDto, error)
 	ForgotPassword(ctx context.Context, dto ForgotPasswordRequestDto) (*ForgotPasswordResponseDto, error)
 	ResetPassword(ctx context.Context, dto ResetPasswordRequestDto) (*ResetPasswordResponseDto, error)
+	GetMe(ctx context.Context, userID string) (*MeResponseDto, error)
+	Logout(ctx context.Context, userID string) (*ForgotPasswordResponseDto, error)
+	RefreshAccessToken(ctx context.Context, dto RefreshAccessTokenRequestDto) (*RefreshAccessTokenResponseDto, error)
 	GoogleLogin(ctx context.Context) string
 	GoogleCallback(ctx context.Context, code string) (*RegisterUserResponseDto, error)
 }
