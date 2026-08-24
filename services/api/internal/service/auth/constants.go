@@ -10,6 +10,11 @@ const (
 	SuperAdminRoleSlug = "super-admin"
 )
 
+const (
+	ResetTokenBytes          = 32
+	ForgotPasswordSuccessMsg = "If an account with that email exists, a reset link has been sent."
+)
+
 // // Package Slugs
 // type Package string
 

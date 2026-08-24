@@ -40,10 +40,17 @@ type Enforcer interface {
 	Enforce(sub, obj, act string) (bool, error)
 }
 
+// AuthMailService handles transactional email for the auth domain.
+// The mail provider (in mail/) satisfies this interface.
+type AuthMailService interface {
+	SendPasswordResetEmail(to string, name string, resetURL string, expirationMinutes int, subject ...string) error
+}
+
 // Handler will use this
 type AuthService interface {
 	RegisterUser(ctx context.Context, dto RegisterUserRequestDto) (*RegisterUserResponseDto, error)
 	LoginUser(ctx context.Context, dto LoginUserRequestDto) (*RegisterUserResponseDto, error)
+	ForgotPassword(ctx context.Context, dto ForgotPasswordRequestDto) (*ForgotPasswordResponseDto, error)
 	GoogleLogin(ctx context.Context) string
 	GoogleCallback(ctx context.Context, code string) (*RegisterUserResponseDto, error)
 }

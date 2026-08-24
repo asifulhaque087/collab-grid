@@ -3,6 +3,7 @@ module github.com/asifulhaque087/collab-grid
 go 1.25.8
 
 require (
+	github.com/a-h/templ v0.3.1020
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/go-chi/chi/v5 v5.3.1

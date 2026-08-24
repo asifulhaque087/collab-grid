@@ -79,6 +79,31 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	util.WriteJson(w, http.StatusOK, result)
 }
 
+func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var body ForgotPasswordRequestDto
+
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "failed to parse JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	result, err := h.svc.ForgotPassword(ctx, body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJson(w, http.StatusOK, result)
+}
+
 func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	url := h.svc.GoogleLogin(r.Context())
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)

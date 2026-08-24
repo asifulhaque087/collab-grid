@@ -1,6 +1,7 @@
 package module
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -8,6 +9,7 @@ import (
 	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/uow"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/mail"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/middleware"
 	"github.com/go-chi/chi/v5"
@@ -35,7 +37,16 @@ func (t *App) RegisterRoute(r chi.Router) {
 	authRepo := repo.NewAuthRepository(t.pool)
 	uow := uow.NewAuthUoW(t.pool)
 
-	authService := auth.NewService(authRepo, uow, t.logger, t.cfg)
+	mailer := mail.NewMailer(mail.SMTPConfig{
+		Host:     t.cfg.SMTPHost,
+		Port:     fmt.Sprintf("%d", t.cfg.SMTPPort),
+		Username: t.cfg.SMTPUser,
+		Password: t.cfg.SMTPPass,
+		From:     t.cfg.MailFrom,
+	})
+	mailSvc := mail.NewProvider(mailer)
+
+	authService := auth.NewService(authRepo, uow, t.logger, t.cfg, mailSvc)
 	handler := auth.NewHandler(authService)
 
 	// health route
@@ -49,7 +60,7 @@ func (t *App) RegisterRoute(r chi.Router) {
 		// --- Public Routes ---
 		r.Post("/register", handler.Register)
 		r.Post("/login", handler.Login)
-		// forgot-password
+		r.Post("/forgot-password", handler.ForgotPassword)
 		// reset-password
 		// me
 		// logout

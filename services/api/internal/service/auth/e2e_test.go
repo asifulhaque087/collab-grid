@@ -206,6 +206,101 @@ func TestLogin(t *testing.T) {
 	testModule.AuthRepo.Reset()
 }
 
+func TestForgotPassword(t *testing.T) {
+	router := chi.NewRouter()
+	testModule := module.NewTestModule()
+
+	server := app.NewServer(router, testModule)
+	r := server.Init()
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	t.Run("forgot password for existing user returns 200", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		registerUser(t, ts, "forgot@test.com")
+
+		body := []byte(`{"email": "forgot@test.com"}`)
+		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", res.StatusCode)
+		}
+
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		msg, _ := resp["message"].(string)
+		if msg != "If an account with that email exists, a reset link has been sent." {
+			t.Errorf("unexpected message: %v", msg)
+		}
+	})
+
+	t.Run("forgot password for unknown email returns 200 with same message", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		body := []byte(`{"email": "ghost@test.com"}`)
+		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", res.StatusCode)
+		}
+
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		msg, _ := resp["message"].(string)
+		if msg != "If an account with that email exists, a reset link has been sent." {
+			t.Errorf("unexpected message: %v", msg)
+		}
+	})
+
+	t.Run("forgot password with invalid email returns 400", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		body := []byte(`{"email": "not-an-email"}`)
+		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+		}
+	})
+
+	t.Run("forgot password with missing email returns 400", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		body := []byte(`{}`)
+		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+		}
+	})
+
+	testModule.AuthRepo.Reset()
+}
+
 func TestLimitGuard(t *testing.T) {
 	router := chi.NewRouter()
 	testModule := module.NewTestModule()

@@ -17,8 +17,15 @@ import (
 type TestModule struct {
 	AuthRepo       *auth_mock.FakeRepo
 	LimitGuardRepo *auth_mock.FakeLimitGuardQueries
+	MailRepo       *FakeMailService
 	Cfg            *config.Config
 	Enforcer       *casbin.CasbinEnforcer
+}
+
+type FakeMailService struct{}
+
+func (f *FakeMailService) SendPasswordResetEmail(to string, name string, resetURL string, expirationMinutes int, subject ...string) error {
+	return nil
 }
 
 func NewTestModule() *TestModule {
@@ -30,12 +37,15 @@ func NewTestModule() *TestModule {
 	return &TestModule{
 		AuthRepo:       auth_mock.NewFakeRepo(),
 		LimitGuardRepo: auth_mock.NewFakeLimitGuardQueries(),
+		MailRepo:       &FakeMailService{},
 		Cfg: &config.Config{
 			Port:                   4000,
 			AccessTokenSecret:      "test-access-secret",
 			RefreshTokenSecret:     "test-refresh-secret",
 			AccessTokenExpiration:  15 * time.Minute,
 			RefreshTokenExpiration: 7 * 24 * time.Hour,
+			ResetTokenExpiration:   15 * time.Minute,
+			ResetPasswordURL:       "http://localhost:3000/reset-password",
 		},
 		Enforcer: enforcer,
 	}
@@ -53,7 +63,7 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 
 	uow := auth_mock.NewMemUoW(stores)
 
-	svc := auth.NewService(t.AuthRepo, uow, logger, t.Cfg)
+	svc := auth.NewService(t.AuthRepo, uow, logger, t.Cfg, t.MailRepo)
 	handler := auth.NewHandler(svc)
 
 	// Mirror app.go route structure
@@ -61,6 +71,7 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 		// --- Public Routes ---
 		r.Post("/register", handler.Register)
 		r.Post("/login", handler.Login)
+		r.Post("/forgot-password", handler.ForgotPassword)
 		r.Get("/google", handler.HandleGoogleLogin)
 		r.Get("/google/callback", handler.HandleGoogleCallback)
 

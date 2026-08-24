@@ -36,3 +36,11 @@ type ValidateSocialUserRequestDto struct {
 	Name     string `json:"name" validate:"required"`
 	Provider string `json:"provider" validate:"required"`
 }
+
+type ForgotPasswordRequestDto struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type ForgotPasswordResponseDto struct {
+	Message string `json:"message"`
+}

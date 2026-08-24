@@ -2,7 +2,10 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,15 +27,17 @@ type Service struct {
 	logger       *slog.Logger
 	cfg          *config.Config
 	googleConfig *oauth2.Config
+	mailSvc      AuthMailService
 }
 
-func NewService(authRepo AuthRepo, uow UnitOfWork, logger *slog.Logger, cfg *config.Config) *Service {
+func NewService(authRepo AuthRepo, uow UnitOfWork, logger *slog.Logger, cfg *config.Config, mailSvc AuthMailService) *Service {
 	return &Service{
 		authRepo:     authRepo,
 		uow:          uow,
 		logger:       logger,
 		cfg:          cfg,
 		googleConfig: NewGoogleConfig(cfg),
+		mailSvc:      mailSvc,
 	}
 }
 
@@ -138,6 +143,66 @@ func (s *Service) LoginUser(ctx context.Context, dto LoginUserRequestDto) (*Regi
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
 	}, nil
+}
+
+func (s *Service) ForgotPassword(ctx context.Context, dto ForgotPasswordRequestDto) (*ForgotPasswordResponseDto, error) {
+	user, err := s.authRepo.GetUserByEmail(ctx, dto.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &ForgotPasswordResponseDto{Message: ForgotPasswordSuccessMsg}, nil
+		}
+		s.logger.Error("failed to query user by email", "email", dto.Email, "error", err)
+		return nil, ErrInternalServer
+	}
+
+	if !user.Password.Valid || user.Password.String == "" {
+		return &ForgotPasswordResponseDto{Message: ForgotPasswordSuccessMsg}, nil
+	}
+
+	rawToken, err := generateResetToken()
+	if err != nil {
+		s.logger.Error("failed to generate reset token", "error", err)
+		return nil, ErrInternalServer
+	}
+
+	tokenHash := hashResetToken(rawToken)
+	expiresAt := time.Now().Add(s.cfg.ResetTokenExpiration)
+
+	err = s.authRepo.SetResetPasswordToken(ctx, SetResetPasswordTokenParams{
+		ResetPasswordToken:     pgtype.Text{String: tokenHash, Valid: true},
+		ResetPasswordExpiresAt: pgtype.Timestamp{Time: expiresAt, Valid: true},
+		ID:                     user.ID,
+	})
+	if err != nil {
+		s.logger.Error("failed to set reset password token", "user_id", user.ID.String(), "error", err)
+		return nil, ErrInternalServer
+	}
+
+	resetURL := fmt.Sprintf("%s?token=%s", s.cfg.ResetPasswordURL, rawToken)
+	expirationMinutes := int(s.cfg.ResetTokenExpiration.Minutes())
+
+	err = s.mailSvc.SendPasswordResetEmail(user.Email, user.Name, resetURL, expirationMinutes)
+	if err != nil {
+		s.logger.Error("failed to send password reset email", "email", user.Email, "error", err)
+		return nil, ErrInternalServer
+	}
+
+	s.logger.Info("password reset email sent", "email", user.Email)
+
+	return &ForgotPasswordResponseDto{Message: ForgotPasswordSuccessMsg}, nil
+}
+
+func generateResetToken() (string, error) {
+	b := make([]byte, ResetTokenBytes)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func hashResetToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:])
 }
 
 func (s *Service) ResolveSignupDefaults(ctx context.Context) (*SignupDefaults, error) {
