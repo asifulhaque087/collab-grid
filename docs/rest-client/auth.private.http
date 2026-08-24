@@ -1,0 +1,21 @@
+@baseUrl = http://localhost:3001/auth
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2OWNiNmE3LWJjZWQtNDE4NC1hZWMyLTc3ZmVjMmZmZjEyYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NTc2OTU2LCJpYXQiOjE3ODc1NzYwNTZ9.Mm9bX5TzlFGFZdyl7EH-ieWlwkBE6jldYgv9etCh5Jc
+
+### Current User
+GET {{baseUrl}}/me
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+
+ #==================================================================================================== Those are not implemented yet ================================================================================ 
+
+### Change Password
+
+PUT {{baseUrl}}/change-password
+Content-Type: application/json
+
+{
+  "email": "mridul@example.com",
+  "password": "SecurePassword123!"
+}

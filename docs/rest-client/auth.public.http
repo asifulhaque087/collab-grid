@@ -1,0 +1,71 @@
+# {{$guid}} for a random ID 
+# {{$timestamp}} for the current time.
+
+@baseUrl = http://localhost:3001/auth
+@accessToken= your_token_here
+
+### Register
+
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "name": "mridul_dev",
+  "email": "mridul@example.com",
+  "password": "SecurePassword123!"
+}
+
+
+### Login
+
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "mridul@example.com",
+  # "password": "SecurePassword123!"
+  "password": "SecurePassword123!!"
+}
+
+### Forgot Password
+
+POST {{baseUrl}}/forgot-password
+Content-Type: application/json
+
+{
+  "email": "mridul@example.com"
+}
+
+
+### Reset Password
+
+POST {{baseUrl}}/reset-password
+Content-Type: application/json
+
+{
+  "token": "9baf40829e791f70afd74c23767ed900fbcf9665fb0a49f1dcc0e89317f50cef",
+  "password": "SecurePassword123!!"
+}
+
+
+# === Those are not implemented yet === #
+
+### Resend Verification Link
+
+POST {{baseUrl}}/resend-verification-link
+Content-Type: application/json
+
+{
+  "email": "mridul@example.com"
+}
+
+
+### Verify Email
+
+PUT {{baseUrl}}/verify-email
+Content-Type: application/json
+
+{
+  "token": "e922dfa39dcbaf507ec1660419e6e11d877d0445"
+}
+
