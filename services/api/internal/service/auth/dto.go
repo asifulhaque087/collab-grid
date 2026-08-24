@@ -44,3 +44,12 @@ type ForgotPasswordRequestDto struct {
 type ForgotPasswordResponseDto struct {
 	Message string `json:"message"`
 }
+
+type ResetPasswordRequestDto struct {
+	Token    string `json:"token" validate:"required"`
+	Password string `json:"password" validate:"required,min=6"`
+}
+
+type ResetPasswordResponseDto struct {
+	Message string `json:"message"`
+}

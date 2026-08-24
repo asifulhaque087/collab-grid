@@ -11,8 +11,9 @@ const (
 )
 
 const (
-	ResetTokenBytes          = 32
-	ForgotPasswordSuccessMsg = "If an account with that email exists, a reset link has been sent."
+	ResetTokenBytes            = 32
+	ForgotPasswordSuccessMsg   = "If an account with that email exists, a reset link has been sent."
+	ResetPasswordSuccessMsg    = "Your password has been reset. You can now log in."
 )
 
 // // Package Slugs

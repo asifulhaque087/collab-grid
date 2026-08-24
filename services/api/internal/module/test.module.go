@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
@@ -22,10 +23,51 @@ type TestModule struct {
 	Enforcer       *casbin.CasbinEnforcer
 }
 
-type FakeMailService struct{}
+type SentMail struct {
+	To                string
+	Name              string
+	ResetURL          string
+	ExpirationMinutes int
+	Subject           string
+}
+
+type FakeMailService struct {
+	mu      sync.Mutex
+	Records []SentMail
+}
 
 func (f *FakeMailService) SendPasswordResetEmail(to string, name string, resetURL string, expirationMinutes int, subject ...string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	subj := ""
+	if len(subject) > 0 {
+		subj = subject[0]
+	}
+	f.Records = append(f.Records, SentMail{To: to, Name: name, ResetURL: resetURL, ExpirationMinutes: expirationMinutes, Subject: subj})
 	return nil
+}
+
+func (f *FakeMailService) LastResetToken() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.Records) == 0 {
+		return ""
+	}
+	raw := f.Records[len(f.Records)-1].ResetURL
+	if i := len(raw); i > 0 {
+		for idx := len(raw) - 1; idx >= 0; idx-- {
+			if raw[idx] == '=' {
+				return raw[idx+1:]
+			}
+		}
+	}
+	return ""
+}
+
+func (f *FakeMailService) Reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.Records = nil
 }
 
 func NewTestModule() *TestModule {
@@ -72,6 +114,7 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 		r.Post("/register", handler.Register)
 		r.Post("/login", handler.Login)
 		r.Post("/forgot-password", handler.ForgotPassword)
+		r.Post("/reset-password", handler.ResetPassword)
 		r.Get("/google", handler.HandleGoogleLogin)
 		r.Get("/google/callback", handler.HandleGoogleCallback)
 

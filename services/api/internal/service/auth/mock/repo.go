@@ -199,6 +199,7 @@ func (f *FakeRepo) SetResetPasswordToken(ctx context.Context, arg auth.SetResetP
 	for i, u := range f.users {
 		if u.ID.Bytes == arg.ID.Bytes && u.ID.Valid == arg.ID.Valid {
 			f.users[i].ResetPasswordToken = arg.ResetPasswordToken
+			f.users[i].ResetPasswordExpiresAt = arg.ResetPasswordExpiresAt
 			return nil
 		}
 	}
@@ -214,6 +215,7 @@ func (f *FakeRepo) UpdatePasswordAndClearTokens(ctx context.Context, arg auth.Up
 			f.users[i].Password = arg.Password
 			f.users[i].RefreshToken = pgtype.Text{Valid: false}
 			f.users[i].ResetPasswordToken = pgtype.Text{Valid: false}
+			f.users[i].ResetPasswordExpiresAt = pgtype.Timestamp{Valid: false}
 			return nil
 		}
 	}

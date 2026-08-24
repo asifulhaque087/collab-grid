@@ -205,6 +205,42 @@ func hashResetToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
+func (s *Service) ResetPassword(ctx context.Context, dto ResetPasswordRequestDto) (*ResetPasswordResponseDto, error) {
+	tokenHash := hashResetToken(dto.Token)
+
+	user, err := s.authRepo.GetUserByResetToken(ctx, pgtype.Text{String: tokenHash, Valid: true})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidResetToken
+		}
+		s.logger.Error("failed to query user by reset token", "error", err)
+		return nil, ErrInternalServer
+	}
+
+	if !user.ResetPasswordExpiresAt.Valid || user.ResetPasswordExpiresAt.Time.Before(time.Now()) {
+		return nil, ErrInvalidResetToken
+	}
+
+	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(dto.Password), saltRounds)
+	if err != nil {
+		s.logger.Error("failed to hash new password", "error", err)
+		return nil, ErrInternalServer
+	}
+
+	err = s.authRepo.UpdatePasswordAndClearTokens(ctx, UpdatePasswordAndClearTokensParams{
+		Password: pgtype.Text{String: string(hashedBytes), Valid: true},
+		ID:       user.ID,
+	})
+	if err != nil {
+		s.logger.Error("failed to update password and clear tokens", "user_id", user.ID.String(), "error", err)
+		return nil, ErrInternalServer
+	}
+
+	s.logger.Info("password reset successfully", "user_id", user.ID.String(), "email", user.Email)
+
+	return &ResetPasswordResponseDto{Message: ResetPasswordSuccessMsg}, nil
+}
+
 func (s *Service) ResolveSignupDefaults(ctx context.Context) (*SignupDefaults, error) {
 	freePackage, err := s.authRepo.GetPackageBySlug(ctx, FreePackageSlug)
 	if errors.Is(err, sql.ErrNoRows) {

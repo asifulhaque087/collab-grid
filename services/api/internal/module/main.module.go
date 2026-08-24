@@ -61,7 +61,7 @@ func (t *App) RegisterRoute(r chi.Router) {
 		r.Post("/register", handler.Register)
 		r.Post("/login", handler.Login)
 		r.Post("/forgot-password", handler.ForgotPassword)
-		// reset-password
+		r.Post("/reset-password", handler.ResetPassword)
 		// me
 		// logout
 		// refresh

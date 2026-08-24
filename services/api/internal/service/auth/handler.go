@@ -104,6 +104,35 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	util.WriteJson(w, http.StatusOK, result)
 }
 
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var body ResetPasswordRequestDto
+
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "failed to parse JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.validate.Struct(body); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	result, err := h.svc.ResetPassword(ctx, body)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, ErrInvalidResetToken) {
+			status = http.StatusBadRequest
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+
+	util.WriteJson(w, http.StatusOK, result)
+}
+
 func (h *Handler) HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
 	url := h.svc.GoogleLogin(r.Context())
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)

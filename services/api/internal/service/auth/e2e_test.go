@@ -301,6 +301,158 @@ func TestForgotPassword(t *testing.T) {
 	testModule.AuthRepo.Reset()
 }
 
+func TestResetPassword(t *testing.T) {
+	router := chi.NewRouter()
+	testModule := module.NewTestModule()
+
+	server := app.NewServer(router, testModule)
+	r := server.Init()
+
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	t.Run("reset password full flow works", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+		defer testModule.MailRepo.Reset()
+
+		registerUser(t, ts, "reset@test.com")
+
+		forgotBody := []byte(`{"email": "reset@test.com"}`)
+		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(forgotBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("forgot-password expected 200, got %d", res.StatusCode)
+		}
+
+		token := testModule.MailRepo.LastResetToken()
+		if token == "" {
+			t.Fatal("expected non-empty token from fake mail")
+		}
+
+		resetBody, _ := json.Marshal(map[string]string{
+			"token":    token,
+			"password": "newsecret456",
+		})
+		res, err = http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("reset-password expected 200, got %d", res.StatusCode)
+		}
+
+		var resp map[string]any
+		if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		msg, _ := resp["message"].(string)
+		if msg != "Your password has been reset. You can now log in." {
+			t.Errorf("unexpected message: %v", msg)
+		}
+
+		loginOldBody := []byte(`{"email": "reset@test.com", "password": "secret123"}`)
+		loginRes, _ := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginOldBody))
+		loginRes.Body.Close()
+		if loginRes.StatusCode != http.StatusUnauthorized {
+			t.Errorf("old password should no longer work, got %d", loginRes.StatusCode)
+		}
+
+		loginNewBody := []byte(`{"email": "reset@test.com", "password": "newsecret456"}`)
+		loginRes, _ = http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginNewBody))
+		loginRes.Body.Close()
+		if loginRes.StatusCode != http.StatusOK {
+			t.Errorf("new password should work, got %d", loginRes.StatusCode)
+		}
+	})
+
+	t.Run("reset password with invalid token returns 400", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		body := []byte(`{"token": "totally-fake-token", "password": "newsecret789"}`)
+		res, err := http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+		}
+
+		respBody, _ := io.ReadAll(res.Body)
+		if !bytes.Contains(respBody, []byte("invalid or expired reset token")) {
+			t.Errorf("expected reset token error, got: %s", string(respBody))
+		}
+	})
+
+	t.Run("reset password token is single-use", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+		defer testModule.MailRepo.Reset()
+
+		registerUser(t, ts, "singleuse@test.com")
+
+		forgotBody := []byte(`{"email": "singleuse@test.com"}`)
+		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(forgotBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+
+		token := testModule.MailRepo.LastResetToken()
+		if token == "" {
+			t.Fatal("expected non-empty token from fake mail")
+		}
+
+		resetBody, _ := json.Marshal(map[string]string{
+			"token":    token,
+			"password": "newpass111",
+		})
+		res, err = http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("first reset-password expected 200, got %d", res.StatusCode)
+		}
+
+		res, err = http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("reused token should return 400, got %d", res.StatusCode)
+		}
+	})
+
+	t.Run("reset password with missing fields returns 400", func(t *testing.T) {
+		defer testModule.AuthRepo.Reset()
+
+		body := []byte(`{"token": "some-token"}`)
+		res, err := http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", res.StatusCode)
+		}
+	})
+
+	testModule.AuthRepo.Reset()
+	testModule.MailRepo.Reset()
+}
+
 func TestLimitGuard(t *testing.T) {
 	router := chi.NewRouter()
 	testModule := module.NewTestModule()
