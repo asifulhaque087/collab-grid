@@ -15,6 +15,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/middleware"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/boards"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/inventory"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/order"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/role"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/user"
 	"github.com/go-chi/chi/v5"
@@ -69,6 +70,11 @@ func (t *App) RegisterRoute(r chi.Router) {
 	userRepo := repo.NewUserRepository(t.pool)
 	userSvc := user.NewService(userRepo, t.logger)
 	userHandler := user.NewHandler(userSvc)
+
+	orderRepo := repo.NewOrderRepository(t.pool)
+	orderGateway := order.NewPermissiveGateway()
+	orderSvc := order.NewService(orderRepo, orderGateway, mailSvc, t.logger)
+	orderHandler := order.NewHandler(orderSvc)
 
 	// health route
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +175,24 @@ func (t *App) RegisterRoute(r chi.Router) {
 			r.Post("/", userHandler.Create)
 			r.Patch("/{id}", userHandler.Update)
 			r.Delete("/{id}", userHandler.Remove)
+		})
+
+		// Grouping under /orders. Checkout (POST /) and invoice viewing are
+		// public — anonymous buyers; the unguessable order UUID gates access.
+		// Only the tenant-scoped listing requires JWT + Casbin + LimitGuard.
+		r.Route("/orders", func(r chi.Router) {
+			r.Post("/", orderHandler.Create)
+			r.Get("/{id}/invoice", orderHandler.Invoice)
+
+			limitGuard := middleware.NewLimitGuard(queries, t.logger)
+
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+				r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+				r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
+
+				r.Get("/", orderHandler.FindAll)
+			})
 		})
 	})
 }

@@ -1,0 +1,47 @@
+@baseUrl = http://localhost:3001/api/v1/orders
+@orderId = c937e5da-f8ce-4d69-8697-d7e424b1d84a
+@boardId = a87c42dc-3180-41e1-8c0a-81405f70d30e
+@widgetId = 942ea47c-189a-4778-9c49-4ddb8db8b604
+
+
+### Checkout (Create Order)
+
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "idempotencyKey": "order-key-0001",
+  "boardId": "{{boardId}}",
+  "widgetIds": [
+    "{{widgetId}}"
+  ],
+  "buyerUserId": "buyer-user-001",
+  "buyerName": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+8801700000000",
+  "address": "House 12, Road 5, Dhanmondi",
+  "city": "Dhaka",
+  "postalCode": "1209",
+  "country": "Bangladesh",
+  "cardLast4": "4242"
+}
+
+
+### Retry Checkout With Same Idempotency Key (Returns Original Order)
+
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "idempotencyKey": "order-key-0001",
+  "boardId": "{{boardId}}",
+  "widgetIds": [
+    "{{widgetId}}"
+  ],
+  "address": "House 12, Road 5, Dhanmondi"
+}
+
+
+### Get Order Invoice (HTML)
+
+GET {{baseUrl}}/{{orderId}}/invoice

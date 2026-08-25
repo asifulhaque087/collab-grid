@@ -15,6 +15,8 @@ type Querier interface {
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
 	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
 	CreateBoard(ctx context.Context, arg CreateBoardParams) (Board, error)
+	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
+	CreateOrderItems(ctx context.Context, arg []CreateOrderItemsParams) (int64, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateRolePermissions(ctx context.Context, arg CreateRolePermissionsParams) error
 	CreateSmartWidget(ctx context.Context, arg CreateSmartWidgetParams) (SmartWidget, error)
@@ -37,8 +39,14 @@ type Querier interface {
 	GetBoardById(ctx context.Context, arg GetBoardByIdParams) (GetBoardByIdRow, error)
 	GetBoardBySlug(ctx context.Context, arg GetBoardBySlugParams) (GetBoardBySlugRow, error)
 	GetBoardExistsForUser(ctx context.Context, arg GetBoardExistsForUserParams) (bool, error)
+	GetBoardIdById(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	GetBoardIdBySlug(ctx context.Context, slug string) (pgtype.UUID, error)
 	GetLimitUsage(ctx context.Context, arg GetLimitUsageParams) (int32, error)
+	GetOrderById(ctx context.Context, id pgtype.UUID) (Order, error)
+	// ============================================================================
+	// 9. Order Queries
+	// ============================================================================
+	GetOrderIdByIdempotencyKey(ctx context.Context, idempotencyKey string) (pgtype.UUID, error)
 	// ============================================================================
 	// 1. Defaults & Seed Checks
 	// ============================================================================
@@ -78,6 +86,8 @@ type Querier interface {
 	// 1. Board Queries
 	// ============================================================================
 	ListBoardsByPrimaryUserId(ctx context.Context, primaryUserID pgtype.UUID) ([]ListBoardsByPrimaryUserIdRow, error)
+	ListOrderItemsByOrderId(ctx context.Context, orderID pgtype.UUID) ([]ListOrderItemsByOrderIdRow, error)
+	ListOrdersByPrimaryUserID(ctx context.Context, primaryUserID pgtype.UUID) ([]ListOrdersByPrimaryUserIDRow, error)
 	ListRolePermissionEndpoints(ctx context.Context, roleID pgtype.UUID) ([]ListRolePermissionEndpointsRow, error)
 	ListRolePermissionsByRoleIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListRolePermissionsByRoleIDsRow, error)
 	ListRolesByPrimaryUserID(ctx context.Context, primaryUserID pgtype.UUID) ([]ListRolesByPrimaryUserIDRow, error)
@@ -86,6 +96,7 @@ type Querier interface {
 	// ============================================================================
 	ListSmartWidgetsByPrimaryUserId(ctx context.Context, arg ListSmartWidgetsByPrimaryUserIdParams) ([]ListSmartWidgetsByPrimaryUserIdRow, error)
 	ListUserRolesByUserIDs(ctx context.Context, userIds []pgtype.UUID) ([]ListUserRolesByUserIDsRow, error)
+	ListWidgetsForOrder(ctx context.Context, arg ListWidgetsForOrderParams) ([]ListWidgetsForOrderRow, error)
 	// ============================================================================
 	// 8. User Queries
 	// ============================================================================

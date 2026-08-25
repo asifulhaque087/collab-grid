@@ -3,9 +3,10 @@ package mail
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/mail/templates"
 	"github.com/a-h/templ"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/mail/templates"
 )
 
 const defaultResetPasswordSubject = "Reset Your Password"
@@ -40,6 +41,22 @@ func (p *Provider) SendPasswordResetEmail(to string, name string, resetURL strin
 	err := p.mailer.Send(context.Background(), to, subj, component)
 	if err != nil {
 		return fmt.Errorf("SendPasswordResetEmail: %w", err)
+	}
+	return nil
+}
+
+func (p *Provider) SendOrderInvoiceEmail(to string, order templates.InvoiceOrder, items []templates.InvoiceItem) error {
+	id := order.ID
+	if len(id) > 8 {
+		id = id[:8]
+	}
+	subject := fmt.Sprintf("Your CollabGrid invoice #%s", strings.ToUpper(id))
+
+	component := templates.OrderInvoiceEmail(order, items)
+
+	err := p.mailer.Send(context.Background(), to, subject, component)
+	if err != nil {
+		return fmt.Errorf("SendOrderInvoiceEmail: %w", err)
 	}
 	return nil
 }

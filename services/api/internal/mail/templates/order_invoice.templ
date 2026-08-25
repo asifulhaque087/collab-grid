@@ -1,0 +1,130 @@
+package templates
+
+import "fmt"
+
+type InvoiceOrder struct {
+	ID            string
+	CreatedAt     string
+	Status        string
+	BuyerName     string
+	Email         string
+	Phone         string
+	Address       string
+	City          string
+	PostalCode    string
+	Country       string
+	PaymentMethod string
+	CardLast4     string
+	Total         string
+}
+
+type InvoiceItem struct {
+	Name      string
+	Sku       string
+	Price     string
+	Quantity  int32
+	LineTotal string
+}
+
+templ OrderInvoiceEmail(order InvoiceOrder, items []InvoiceItem) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<title>Invoice #{ fmt.Sprintf("%.8s", order.ID) }</title>
+		</head>
+		<body style="margin: 0; font-family: sans-serif; background-color: #f1f5f9; padding: 24px;">
+			<div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden;">
+				<div style="padding: 28px 32px; background-color: #0f172a;">
+					<span style="font-size: 24px; font-weight: bold; color: #ffffff;">CollabGrid</span>
+					<span style="float: right; color: #94a3b8; font-size: 12px; letter-spacing: 2px;">INVOICE</span>
+				</div>
+
+				<div style="padding: 28px 32px;">
+					<table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+						<tr>
+							<td style="font-size: 11px; color: #64748b; text-transform: uppercase; padding-bottom: 4px;">Invoice Number</td>
+							<td rowspan="2" style="text-align: right; vertical-align: top;">
+								<span style="display: inline-block; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: bold;"
+									bgcolor={ statusBgColor(order.Status) }
+									color={ statusTextColor(order.Status) }>
+									{ statusLabel(order.Status) }
+								</span>
+							</td>
+						</tr>
+						<tr>
+							<td style="font-size: 14px; color: #0f172a; font-weight: bold;">#{ fmt.Sprintf("%.8s", order.ID) }</td>
+						</tr>
+						<tr>
+							<td colspan="2" style="font-size: 11px; color: #64748b; text-transform: uppercase; padding-top: 12px; padding-bottom: 4px;">Date</td>
+						</tr>
+						<tr>
+							<td colspan="2" style="font-size: 14px; color: #0f172a;">{ order.CreatedAt }</td>
+						</tr>
+					</table>
+
+					if order.BuyerName != "" || order.Email != "" || order.Phone != "" || order.Address != "" {
+						<p style="font-size: 11px; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">Bill To</p>
+						<p style="font-size: 13px; color: #0f172a; line-height: 1.7; margin-top: 0;">
+							if order.BuyerName != "" {
+								{ order.BuyerName }<br/>
+							}
+							if order.Email != "" {
+								{ order.Email }<br/>
+							}
+							if order.Phone != "" {
+								{ order.Phone }<br/>
+							}
+							{ order.Address }
+							if order.City != "" || order.PostalCode != "" || order.Country != "" {
+								<br/>
+								{ regionLine(order.City, order.PostalCode, order.Country) }
+							}
+						</p>
+					}
+
+					<table style="width: 100%; border-collapse: collapse; margin-top: 24px;">
+						<thead>
+							<tr style="background-color: #f1f5f9;">
+								<th align="left" style="padding: 10px 12px; font-size: 11px; color: #475569; text-transform: uppercase;">Item</th>
+								<th align="left" style="padding: 10px 12px; font-size: 11px; color: #475569; text-transform: uppercase;">SKU</th>
+								<th align="right" style="padding: 10px 12px; font-size: 11px; color: #475569; text-transform: uppercase;">Qty</th>
+								<th align="right" style="padding: 10px 12px; font-size: 11px; color: #475569; text-transform: uppercase;">Price</th>
+								<th align="right" style="padding: 10px 12px; font-size: 11px; color: #475569; text-transform: uppercase;">Total</th>
+							</tr>
+						</thead>
+						<tbody>
+							for i, item := range items {
+								<tr style={ bgColorForIndex(i) }>
+									<td style="padding: 10px 12px; font-size: 13px; color: #0f172a;">{ item.Name }</td>
+									<td style="padding: 10px 12px; font-size: 13px; color: #0f172a;">{ item.Sku }</td>
+									<td align="right" style="padding: 10px 12px; font-size: 13px; color: #0f172a;">{ fmt.Sprintf("%d", item.Quantity) }</td>
+									<td align="right" style="padding: 10px 12px; font-size: 13px; color: #0f172a;">{ item.Price }</td>
+									<td align="right" style="padding: 10px 12px; font-size: 13px; font-weight: bold; color: #0f172a;">{ item.LineTotal }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+
+					<table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+						<tr style="background-color: #f8fafc;">
+							<td style="padding: 12px; font-size: 15px; font-weight: bold; color: #0f172a;">Total</td>
+							<td align="right" style="padding: 12px; font-size: 15px; font-weight: bold; color: #0f172a;">{ order.Total }</td>
+						</tr>
+					</table>
+
+					if order.PaymentMethod != "" {
+						<p style="font-size: 11px; color: #64748b; text-transform: uppercase; margin-top: 28px; margin-bottom: 4px;">Payment Method</p>
+						<p style="font-size: 13px; color: #0f172a; margin-top: 0;">
+							{ paymentLine(order.PaymentMethod, order.CardLast4) }
+						</p>
+					}
+				</div>
+
+				<div style="padding: 16px 32px; background-color: #f8fafc; text-align: center;">
+					<p style="font-size: 12px; color: #94a3b8; margin: 0;">Thank you for your purchase.</p>
+				</div>
+			</div>
+		</body>
+	</html>
+}
