@@ -1,7 +1,7 @@
 @baseUrl = http://localhost:3001/api/v1/inventory
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2MmFhMTIxLTkzYzMtNDU5Ny04ZjBjLWQ1YTVkZGY0YWExYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjM4MTU0LCJpYXQiOjE3ODc2MzcyNTR9.lUzGI9S2deMLcLM6S6QSx8Mtf9KhTICimEy6gEGFPZ8
-@itemId = e5dc07de-b742-4f1b-8748-747bceff8013
-@boardId = e5dc07de-b742-4f1b-8748-747bceff8013
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2MmFhMTIxLTkzYzMtNDU5Ny04ZjBjLWQ1YTVkZGY0YWExYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjM5MTYzLCJpYXQiOjE3ODc2MzgyNjN9.t-oH4jDA8Pc_Whrlc9zWBi5S-D-z3TqFJlxyZxCCzzQ
+@itemId = e01e963c-960e-4c63-ad6f-eb836399e24e
+@boardId = 89058f71-43cd-4042-ae77-8188ea0d0a5e
 
 
 ### Get All Inventory Items

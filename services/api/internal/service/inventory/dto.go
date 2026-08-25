@@ -6,7 +6,7 @@ type CreateInventoryRequestDto struct {
 	Name     string  `json:"name" validate:"required"`
 	Sku      string  `json:"sku" validate:"required"`
 	Quantity int32   `json:"quantity" validate:"min=0"`
-	Price    *string `json:"price,omitempty" validate:"omitempty,number"`
+	Price    *string `json:"price,omitempty" validate:"omitempty,numeric"`
 	Photo    *string `json:"photo,omitempty"`
 	BoardID  *string `json:"boardId,omitempty" validate:"omitempty,uuid"`
 	Width    *int32  `json:"width,omitempty" validate:"omitempty,min=1"`
@@ -17,7 +17,7 @@ type UpdateInventoryRequestDto struct {
 	Name     *string `json:"name,omitempty" validate:"omitempty,min=1"`
 	Sku      *string `json:"sku,omitempty" validate:"omitempty,min=1"`
 	Quantity *int32  `json:"quantity,omitempty" validate:"omitempty,min=0"`
-	Price    *string `json:"price,omitempty" validate:"omitempty,number"`
+	Price    *string `json:"price,omitempty" validate:"omitempty,numeric"`
 	Photo    *string `json:"photo,omitempty"`
 	BoardID  *string `json:"boardId,omitempty" validate:"omitempty,uuid"`
 	Width    *int32  `json:"width,omitempty" validate:"omitempty,min=1"`

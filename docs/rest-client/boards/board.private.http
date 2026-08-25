@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:3001/api/v1/boards
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJjZmNmMDM1LWZiNDItNDhlNC05YzMxLTMzYTZkM2VkMzBhNiIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjM1NDM5LCJpYXQiOjE3ODc2MzQ1Mzl9.F2IvQpN7Btxkqkv3pmy_XHU6f_yrIq-wBjy5av54UzM
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2MmFhMTIxLTkzYzMtNDU5Ny04ZjBjLWQ1YTVkZGY0YWExYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjM5MTYzLCJpYXQiOjE3ODc2MzgyNjN9.t-oH4jDA8Pc_Whrlc9zWBi5S-D-z3TqFJlxyZxCCzzQ
 @boardId = e5dc07de-b742-4f1b-8748-747bceff8013
 @slug = my-board
 
