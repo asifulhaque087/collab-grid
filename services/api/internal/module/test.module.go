@@ -109,46 +109,48 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 	handler := auth.NewHandler(svc)
 
 	// Mirror app.go route structure
-	r.Route("/auth", func(r chi.Router) {
-		// --- Public Routes ---
-		r.Post("/register", handler.Register)
-		r.Post("/login", handler.Login)
-		r.Post("/forgot-password", handler.ForgotPassword)
-		r.Post("/reset-password", handler.ResetPassword)
-		r.Post("/refresh", handler.Refresh)
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			// --- Public Routes ---
+			r.Post("/register", handler.Register)
+			r.Post("/login", handler.Login)
+			r.Post("/forgot-password", handler.ForgotPassword)
+			r.Post("/reset-password", handler.ResetPassword)
+			r.Post("/refresh", handler.Refresh)
 
-		// --- JWT-only Routes ---
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.JWTMiddleware(svc))
+			// --- JWT-only Routes ---
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.JWTMiddleware(svc, logger))
 
-			r.Get("/me", handler.Me)
-			r.Post("/logout", handler.Logout)
-		})
-
-		r.Get("/google", handler.HandleGoogleLogin)
-		r.Get("/google/callback", handler.HandleGoogleCallback)
-
-		// --- Protected Routes ---
-		r.Group(func(r chi.Router) {
-			limitGuard := middleware.NewLimitGuard(t.LimitGuardRepo, logger)
-
-			r.Use(middleware.JWTMiddleware(svc))
-			r.Use(middleware.CasbinMiddleware(t.Enforcer))
-			r.Use(limitGuard.Middleware())
-
-			r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`{"boards": []}`))
+				r.Get("/me", handler.Me)
+				r.Post("/logout", handler.Logout)
 			})
 
-			r.Post("/demo", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`{"created": true}`))
-			})
+			r.Get("/google", handler.HandleGoogleLogin)
+			r.Get("/google/callback", handler.HandleGoogleCallback)
 
-			r.Delete("/demo", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`{"deleted": true}`))
+			// --- Protected Routes ---
+			r.Group(func(r chi.Router) {
+				limitGuard := middleware.NewLimitGuard(t.LimitGuardRepo, logger)
+
+				r.Use(middleware.JWTMiddleware(svc, logger))
+				r.Use(middleware.CasbinMiddleware(t.Enforcer, logger))
+				r.Use(limitGuard.Middleware())
+
+				r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.Write([]byte(`{"boards": []}`))
+				})
+
+				r.Post("/demo", func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.Write([]byte(`{"created": true}`))
+				})
+
+				r.Delete("/demo", func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.Write([]byte(`{"deleted": true}`))
+				})
 			})
 		})
 	})

@@ -60,53 +60,55 @@ func (t *App) RegisterRoute(r chi.Router) {
 		w.Write([]byte("Backend is healthy"))
 	})
 
-	// Grouping under /auth with Chi
-	r.Route("/auth", func(r chi.Router) {
-		// --- Public Routes ---
-		r.Post("/register", handler.Register)
-		r.Post("/login", handler.Login)
-		r.Post("/forgot-password", handler.ForgotPassword)
-		r.Post("/reset-password", handler.ResetPassword)
-		r.Post("/refresh", handler.Refresh)
+	r.Route("/api/v1", func(r chi.Router) {
+		// Grouping under /auth with Chi
+		r.Route("/auth", func(r chi.Router) {
+			// --- Public Routes ---
+			r.Post("/register", handler.Register)
+			r.Post("/login", handler.Login)
+			r.Post("/forgot-password", handler.ForgotPassword)
+			r.Post("/reset-password", handler.ResetPassword)
+			r.Post("/refresh", handler.Refresh)
 
-		// --- JWT-only Routes ---
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.JWTMiddleware(authService))
+			// --- JWT-only Routes ---
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.JWTMiddleware(authService, t.logger))
 
-			r.Get("/me", handler.Me)
-			r.Post("/logout", handler.Logout)
-		})
+				r.Get("/me", handler.Me)
+				r.Post("/logout", handler.Logout)
+			})
 
-		r.Get("/google", handler.HandleGoogleLogin)
-		r.Get("/google/callback", handler.HandleGoogleCallback)
+			r.Get("/google", handler.HandleGoogleLogin)
+			r.Get("/google/callback", handler.HandleGoogleCallback)
 
-		// --- Protected Routes ---
-		r.Group(func(r chi.Router) {
-			limitGuard := middleware.NewLimitGuard(queries, t.logger)
+			// --- Protected Routes ---
+			r.Group(func(r chi.Router) {
+				limitGuard := middleware.NewLimitGuard(queries, t.logger)
 
-			r.Use(middleware.JWTMiddleware(authService))   // 1st: Inject UserID into context
-			r.Use(middleware.CasbinMiddleware(t.enforcer)) // 2nd: Enforce authorization
-			r.Use(limitGuard.Middleware())                 // 3rd: Enforce usage limits
+				r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+				r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+				r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
 
-			r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`{"boards": []}`))
+				r.Get("/demo", func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					w.Write([]byte(`{"boards": []}`))
+				})
 			})
 		})
-	})
 
-	// Grouping under /boards with Chi (JWT + Casbin + LimitGuard)
-	r.Route("/boards", func(r chi.Router) {
-		limitGuard := middleware.NewLimitGuard(queries, t.logger)
+		// Grouping under /boards with Chi (JWT + Casbin + LimitGuard)
+		r.Route("/boards", func(r chi.Router) {
+			limitGuard := middleware.NewLimitGuard(queries, t.logger)
 
-		r.Use(middleware.JWTMiddleware(authService))   // 1st: Inject UserID into context
-		r.Use(middleware.CasbinMiddleware(t.enforcer)) // 2nd: Enforce authorization
-		r.Use(limitGuard.Middleware())                 // 3rd: Enforce usage limits
+			r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+			r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+			r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
 
-		r.Get("/", boardHandler.FindAll)
-		r.Post("/", boardHandler.Create)
-		r.Get("/by-slug/{slug}", boardHandler.FindBySlug)
-		r.Patch("/{id}", boardHandler.Update)
-		r.Delete("/{id}", boardHandler.Remove)
+			r.Get("/", boardHandler.FindAll)
+			r.Post("/", boardHandler.Create)
+			r.Get("/by-slug/{slug}", boardHandler.FindBySlug)
+			r.Patch("/{id}", boardHandler.Update)
+			r.Delete("/{id}", boardHandler.Remove)
+		})
 	})
 }

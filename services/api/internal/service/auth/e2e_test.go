@@ -17,7 +17,7 @@ func registerUser(t *testing.T, ts *httptest.Server, email string) (token, userI
 	t.Helper()
 
 	body := []byte(`{"name":"Test User","email":"` + email + `","password":"secret123"}`)
-	res, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(body))
+	res, err := http.Post(ts.URL+"/api/v1/auth/register", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("Register user returns 201", func(t *testing.T) {
 		body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
-		res, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/register", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,7 +83,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("Register with duplicate email returns 409", func(t *testing.T) {
 		body := []byte(`{"name": "John Doe", "email": "john@test.com", "password": "secret123"}`)
-		res, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/register", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,7 +101,7 @@ func TestRegister(t *testing.T) {
 
 	t.Run("Register response contains email", func(t *testing.T) {
 		body := []byte(`{"name": "Jane Doe", "email": "jane@test.com", "password": "secret456"}`)
-		res, err := http.Post(ts.URL+"/auth/register", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/register", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -142,7 +142,7 @@ func TestLogin(t *testing.T) {
 		registerUser(t, ts, "login@test.com")
 
 		body := []byte(`{"email": "login@test.com", "password": "secret123"}`)
-		res, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +177,7 @@ func TestLogin(t *testing.T) {
 		registerUser(t, ts, "wrongpass@test.com")
 
 		body := []byte(`{"email": "wrongpass@test.com", "password": "badpassword"}`)
-		res, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,7 +192,7 @@ func TestLogin(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
 		body := []byte(`{"email": "ghost@test.com", "password": "secret123"}`)
-		res, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -222,7 +222,7 @@ func TestForgotPassword(t *testing.T) {
 		registerUser(t, ts, "forgot@test.com")
 
 		body := []byte(`{"email": "forgot@test.com"}`)
-		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/forgot-password", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -247,7 +247,7 @@ func TestForgotPassword(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
 		body := []byte(`{"email": "ghost@test.com"}`)
-		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/forgot-password", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -272,7 +272,7 @@ func TestForgotPassword(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
 		body := []byte(`{"email": "not-an-email"}`)
-		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/forgot-password", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -287,7 +287,7 @@ func TestForgotPassword(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
 		body := []byte(`{}`)
-		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/forgot-password", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -318,7 +318,7 @@ func TestResetPassword(t *testing.T) {
 		registerUser(t, ts, "reset@test.com")
 
 		forgotBody := []byte(`{"email": "reset@test.com"}`)
-		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(forgotBody))
+		res, err := http.Post(ts.URL+"/api/v1/auth/forgot-password", "application/json", bytes.NewBuffer(forgotBody))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -336,7 +336,7 @@ func TestResetPassword(t *testing.T) {
 			"token":    token,
 			"password": "newsecret456",
 		})
-		res, err = http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
+		res, err = http.Post(ts.URL+"/api/v1/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -357,14 +357,14 @@ func TestResetPassword(t *testing.T) {
 		}
 
 		loginOldBody := []byte(`{"email": "reset@test.com", "password": "secret123"}`)
-		loginRes, _ := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginOldBody))
+		loginRes, _ := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(loginOldBody))
 		loginRes.Body.Close()
 		if loginRes.StatusCode != http.StatusUnauthorized {
 			t.Errorf("old password should no longer work, got %d", loginRes.StatusCode)
 		}
 
 		loginNewBody := []byte(`{"email": "reset@test.com", "password": "newsecret456"}`)
-		loginRes, _ = http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginNewBody))
+		loginRes, _ = http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(loginNewBody))
 		loginRes.Body.Close()
 		if loginRes.StatusCode != http.StatusOK {
 			t.Errorf("new password should work, got %d", loginRes.StatusCode)
@@ -375,7 +375,7 @@ func TestResetPassword(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
 		body := []byte(`{"token": "totally-fake-token", "password": "newsecret789"}`)
-		res, err := http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/reset-password", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -398,7 +398,7 @@ func TestResetPassword(t *testing.T) {
 		registerUser(t, ts, "singleuse@test.com")
 
 		forgotBody := []byte(`{"email": "singleuse@test.com"}`)
-		res, err := http.Post(ts.URL+"/auth/forgot-password", "application/json", bytes.NewBuffer(forgotBody))
+		res, err := http.Post(ts.URL+"/api/v1/auth/forgot-password", "application/json", bytes.NewBuffer(forgotBody))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -413,7 +413,7 @@ func TestResetPassword(t *testing.T) {
 			"token":    token,
 			"password": "newpass111",
 		})
-		res, err = http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
+		res, err = http.Post(ts.URL+"/api/v1/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -423,7 +423,7 @@ func TestResetPassword(t *testing.T) {
 			t.Fatalf("first reset-password expected 200, got %d", res.StatusCode)
 		}
 
-		res, err = http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
+		res, err = http.Post(ts.URL+"/api/v1/auth/reset-password", "application/json", bytes.NewBuffer(resetBody))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -438,7 +438,7 @@ func TestResetPassword(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
 		body := []byte(`{"token": "some-token"}`)
-		res, err := http.Post(ts.URL+"/auth/reset-password", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/reset-password", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -468,7 +468,7 @@ func TestMe(t *testing.T) {
 
 		token, userID := registerUser(t, ts, "me@test.com")
 
-		res := authenticatedRequest(t, ts, "GET", "/auth/me", token, nil)
+		res := authenticatedRequest(t, ts, "GET", "/api/v1/auth/me", token, nil)
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
@@ -496,7 +496,7 @@ func TestMe(t *testing.T) {
 	t.Run("me without token returns 401", func(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
-		res := authenticatedRequest(t, ts, "GET", "/auth/me", "", nil)
+		res := authenticatedRequest(t, ts, "GET", "/api/v1/auth/me", "", nil)
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusUnauthorized {
@@ -524,7 +524,7 @@ func TestLogout(t *testing.T) {
 
 		var loginResp map[string]any
 		loginBody := []byte(`{"email": "logout@test.com", "password": "secret123"}`)
-		loginRes, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginBody))
+		loginRes, err := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(loginBody))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -532,7 +532,7 @@ func TestLogout(t *testing.T) {
 		loginRes.Body.Close()
 		oldRefreshToken, _ := loginResp["refreshToken"].(string)
 
-		res := authenticatedRequest(t, ts, "POST", "/auth/logout", token, nil)
+		res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/logout", token, nil)
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
@@ -548,7 +548,7 @@ func TestLogout(t *testing.T) {
 		}
 
 		refreshBody := []byte(`{"token": "` + oldRefreshToken + `"}`)
-		refreshRes, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(refreshBody))
+		refreshRes, err := http.Post(ts.URL+"/api/v1/auth/refresh", "application/json", bytes.NewBuffer(refreshBody))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -562,7 +562,7 @@ func TestLogout(t *testing.T) {
 	t.Run("logout without token returns 401", func(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
-		res := authenticatedRequest(t, ts, "POST", "/auth/logout", "", nil)
+		res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/logout", "", nil)
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusUnauthorized {
@@ -586,7 +586,7 @@ func TestRefresh(t *testing.T) {
 	registerUser(t, ts, "refresh@test.com")
 
 	loginBody := []byte(`{"email": "refresh@test.com", "password": "secret123"}`)
-	loginRes, err := http.Post(ts.URL+"/auth/login", "application/json", bytes.NewBuffer(loginBody))
+	loginRes, err := http.Post(ts.URL+"/api/v1/auth/login", "application/json", bytes.NewBuffer(loginBody))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,7 +599,7 @@ func TestRefresh(t *testing.T) {
 		defer testModule.AuthRepo.Reset()
 
 		body := []byte(`{"token": "` + oldRefreshToken + `"}`)
-		res, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/refresh", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -627,7 +627,7 @@ func TestRefresh(t *testing.T) {
 
 	t.Run("refresh with invalid token returns 401", func(t *testing.T) {
 		body := []byte(`{"token": "bogus-refresh-token"}`)
-		res, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/refresh", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -640,7 +640,7 @@ func TestRefresh(t *testing.T) {
 
 	t.Run("refresh with missing body returns 400", func(t *testing.T) {
 		body := []byte(`{}`)
-		res, err := http.Post(ts.URL+"/auth/refresh", "application/json", bytes.NewBuffer(body))
+		res, err := http.Post(ts.URL+"/api/v1/auth/refresh", "application/json", bytes.NewBuffer(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -670,12 +670,12 @@ func TestLimitGuard(t *testing.T) {
 
 		token, userID := registerUser(t, ts, "backoffice@test.com")
 
-		_, err := testModule.Enforcer.AddPolicy(userID, "/auth/demo", "POST")
+		_, err := testModule.Enforcer.AddPolicy(userID, "/api/v1/auth/demo", "POST")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+		res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
@@ -693,15 +693,15 @@ func TestLimitGuard(t *testing.T) {
 		const limit = 3
 
 		testModule.LimitGuardRepo.AddSubscriptionStr(userID, pkgID)
-		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/auth/demo", "POST", limit)
+		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/api/v1/auth/demo", "POST", limit)
 
-		_, err := testModule.Enforcer.AddPolicy(userID, "/auth/demo", "POST")
+		_, err := testModule.Enforcer.AddPolicy(userID, "/api/v1/auth/demo", "POST")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		for i := 0; i < limit; i++ {
-			res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+			res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 			res.Body.Close()
 
 			if res.StatusCode != http.StatusOK {
@@ -720,16 +720,16 @@ func TestLimitGuard(t *testing.T) {
 		const limit int32 = 2
 
 		testModule.LimitGuardRepo.AddSubscriptionStr(userID, pkgID)
-		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/auth/demo", "POST", limit)
+		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/api/v1/auth/demo", "POST", limit)
 
-		_, err := testModule.Enforcer.AddPolicy(userID, "/auth/demo", "POST")
+		_, err := testModule.Enforcer.AddPolicy(userID, "/api/v1/auth/demo", "POST")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Consume the limit
 		for i := 0; i < int(limit); i++ {
-			res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+			res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 			res.Body.Close()
 
 			if res.StatusCode != http.StatusOK {
@@ -738,7 +738,7 @@ func TestLimitGuard(t *testing.T) {
 		}
 
 		// Next should be 403
-		res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+		res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusForbidden {
@@ -761,20 +761,20 @@ func TestLimitGuard(t *testing.T) {
 		const limit int32 = 3
 
 		testModule.LimitGuardRepo.AddSubscriptionStr(userID, pkgID)
-		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/auth/demo", "POST", limit)
+		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/api/v1/auth/demo", "POST", limit)
 
-		_, err := testModule.Enforcer.AddPolicy(userID, "/auth/demo", "POST")
+		_, err := testModule.Enforcer.AddPolicy(userID, "/api/v1/auth/demo", "POST")
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = testModule.Enforcer.AddPolicy(userID, "/auth/demo", "DELETE")
+		_, err = testModule.Enforcer.AddPolicy(userID, "/api/v1/auth/demo", "DELETE")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// POST 3 times → used = 3
 		for i := 0; i < 3; i++ {
-			res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+			res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 			res.Body.Close()
 			if res.StatusCode != http.StatusOK {
 				t.Fatalf("POST attempt %d: expected 200, got %d", i+1, res.StatusCode)
@@ -783,7 +783,7 @@ func TestLimitGuard(t *testing.T) {
 
 		// DELETE 2 times → used = 1
 		for i := 0; i < 2; i++ {
-			res := authenticatedRequest(t, ts, "DELETE", "/auth/demo", token, nil)
+			res := authenticatedRequest(t, ts, "DELETE", "/api/v1/auth/demo", token, nil)
 			res.Body.Close()
 			if res.StatusCode != http.StatusOK {
 				t.Fatalf("DELETE attempt %d: expected 200, got %d", i+1, res.StatusCode)
@@ -792,14 +792,14 @@ func TestLimitGuard(t *testing.T) {
 
 		// POST 3 more times → first 2 succeed, 3rd should 403
 		for i := 0; i < 2; i++ {
-			res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+			res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 			res.Body.Close()
 			if res.StatusCode != http.StatusOK {
 				t.Errorf("POST after decrement attempt %d: expected 200, got %d", i+1, res.StatusCode)
 			}
 		}
 
-		res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+		res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 		defer res.Body.Close()
 		if res.StatusCode != http.StatusForbidden {
 			t.Errorf("expected 403 after exhausting quota, got %d", res.StatusCode)
@@ -815,15 +815,15 @@ func TestLimitGuard(t *testing.T) {
 		const pkgID = "00000000-0000-0000-0000-000000000040"
 
 		testModule.LimitGuardRepo.AddSubscriptionStr(userID, pkgID)
-		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/auth/demo", "POST", -1)
+		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/api/v1/auth/demo", "POST", -1)
 
-		_, err := testModule.Enforcer.AddPolicy(userID, "/auth/demo", "POST")
+		_, err := testModule.Enforcer.AddPolicy(userID, "/api/v1/auth/demo", "POST")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		for i := 0; i < 10; i++ {
-			res := authenticatedRequest(t, ts, "POST", "/auth/demo", token, nil)
+			res := authenticatedRequest(t, ts, "POST", "/api/v1/auth/demo", token, nil)
 			res.Body.Close()
 
 			if res.StatusCode != http.StatusOK {
@@ -841,14 +841,14 @@ func TestLimitGuard(t *testing.T) {
 		const pkgID = "00000000-0000-0000-0000-000000000050"
 
 		testModule.LimitGuardRepo.AddSubscriptionStr(userID, pkgID)
-		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/auth/demo", "GET", 0)
+		testModule.LimitGuardRepo.AddPermissionLimitStr(pkgID, "/api/v1/auth/demo", "GET", 0)
 
-		_, err := testModule.Enforcer.AddPolicy(userID, "/auth/demo", "GET")
+		_, err := testModule.Enforcer.AddPolicy(userID, "/api/v1/auth/demo", "GET")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		res := authenticatedRequest(t, ts, "GET", "/auth/demo", token, nil)
+		res := authenticatedRequest(t, ts, "GET", "/api/v1/auth/demo", token, nil)
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {

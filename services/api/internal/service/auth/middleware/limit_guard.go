@@ -49,6 +49,11 @@ func (lg *LimitGuard) Middleware() func(http.Handler) http.Handler {
 
 			user, ok := auth.GetUserFromContext(r.Context())
 			if !ok || user.ID == "" {
+				lg.logger.Warn("limit guard rejected request",
+					slog.String("pattern", pattern),
+					slog.String("method", method),
+					slog.String("reason", "user context missing"),
+				)
 				http.Error(w, `{"error": "Unauthorized: User context missing"}`, http.StatusUnauthorized)
 				return
 			}
@@ -123,6 +128,12 @@ func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UU
 		Method:    http.MethodPost,
 	})
 	if err != nil {
+		lg.logger.Error("failed to get package permission limit",
+			slog.String("tenant_id", tenantID.String()),
+			slog.String("pattern", pattern),
+			slog.String("method", http.MethodPost),
+			slog.String("error", err.Error()),
+		)
 		return nil
 	}
 
@@ -137,7 +148,20 @@ func (lg *LimitGuard) adjustUsage(ctx context.Context, tenantID, pkgID pgtype.UU
 			PackagePermissionLimitID: limitRow.ID,
 		})
 		if err != nil && strings.Contains(err.Error(), "no rows") {
+			lg.logger.Debug("skipped limit decrement: no usage row initialized",
+				slog.String("tenant_id", tenantID.String()),
+				slog.String("pattern", pattern),
+				slog.String("method", method),
+			)
 			return nil
+		}
+		if err != nil {
+			lg.logger.Error("failed to decrement limit usage",
+				slog.String("tenant_id", tenantID.String()),
+				slog.String("pattern", pattern),
+				slog.String("method", method),
+				slog.String("error", err.Error()),
+			)
 		}
 		return err
 	}

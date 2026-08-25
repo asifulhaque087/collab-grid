@@ -1,6 +1,6 @@
-@baseUrl = http://localhost:3001/boards
-@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJiYzMwMGJlLTdiNjItNDYzNy04MGFmLTExMjM2NzQ2ZmZiNCIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjI5ODk2LCJpYXQiOjE3ODc2Mjg5OTZ9.giSCThBZmWel7yjAqpFsUuWsg8D2KzFVuMwnkHcK1oY 
-@boardId = your_board_id_here
+@baseUrl = http://localhost:3001/api/v1/boards
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJjZmNmMDM1LWZiNDItNDhlNC05YzMxLTMzYTZkM2VkMzBhNiIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjM1NDM5LCJpYXQiOjE3ODc2MzQ1Mzl9.F2IvQpN7Btxkqkv3pmy_XHU6f_yrIq-wBjy5av54UzM
+@boardId = e5dc07de-b742-4f1b-8748-747bceff8013
 @slug = my-board
 
 

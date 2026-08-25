@@ -1,4 +1,4 @@
-@baseUrl = http://localhost:3001/auth
+@baseUrl = http://localhost:3001/api/v1/auth
 @accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2OWNiNmE3LWJjZWQtNDE4NC1hZWMyLTc3ZmVjMmZmZjEyYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NTc2OTU2LCJpYXQiOjE3ODc1NzYwNTZ9.Mm9bX5TzlFGFZdyl7EH-ieWlwkBE6jldYgv9etCh5Jc
 
 ### Current User
