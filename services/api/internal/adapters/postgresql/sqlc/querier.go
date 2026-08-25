@@ -19,6 +19,7 @@ type Querier interface {
 	CreateRolePermissions(ctx context.Context, arg CreateRolePermissionsParams) error
 	CreateSmartWidget(ctx context.Context, arg CreateSmartWidgetParams) (SmartWidget, error)
 	CreateSmartWidgets(ctx context.Context, arg []CreateSmartWidgetsParams) (int64, error)
+	CreateSubUser(ctx context.Context, arg CreateSubUserParams) (CreateSubUserRow, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error)
@@ -26,6 +27,8 @@ type Querier interface {
 	DeleteRole(ctx context.Context, id pgtype.UUID) error
 	DeleteRolePermissions(ctx context.Context, roleID pgtype.UUID) error
 	DeleteSmartWidget(ctx context.Context, id pgtype.UUID) error
+	DeleteSubUser(ctx context.Context, id pgtype.UUID) error
+	DeleteUserRoles(ctx context.Context, userID pgtype.UUID) error
 	// ============================================================================
 	// 4. Access Control (RBAC) & Quotas
 	// ============================================================================
@@ -58,8 +61,10 @@ type Querier interface {
 	// ============================================================================
 	GetUserPermissions(ctx context.Context, userID pgtype.UUID) ([]GetUserPermissionsRow, error)
 	GetUserPrimaryOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
+	GetUserProfileById(ctx context.Context, id pgtype.UUID) (GetUserProfileByIdRow, error)
 	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]GetUserQuotasRow, error)
 	GrantRolePermission(ctx context.Context, arg GrantRolePermissionParams) error
+	GrantUserRoles(ctx context.Context, arg GrantUserRolesParams) error
 	IncrementLimitUsage(ctx context.Context, arg IncrementLimitUsageParams) (pgtype.UUID, error)
 	InitializeLimitUsage(ctx context.Context, arg InitializeLimitUsageParams) (pgtype.UUID, error)
 	InsertPackage(ctx context.Context, arg InsertPackageParams) (pgtype.UUID, error)
@@ -80,6 +85,11 @@ type Querier interface {
 	// 6. Inventory (Smart Widget) Queries
 	// ============================================================================
 	ListSmartWidgetsByPrimaryUserId(ctx context.Context, arg ListSmartWidgetsByPrimaryUserIdParams) ([]ListSmartWidgetsByPrimaryUserIdRow, error)
+	ListUserRolesByUserIDs(ctx context.Context, userIds []pgtype.UUID) ([]ListUserRolesByUserIDsRow, error)
+	// ============================================================================
+	// 8. User Queries
+	// ============================================================================
+	ListWorkspaceUsers(ctx context.Context, arg ListWorkspaceUsersParams) ([]ListWorkspaceUsersRow, error)
 	// ============================================================================
 	// 3. Password & Session Management Updates
 	// ============================================================================
@@ -90,6 +100,7 @@ type Querier interface {
 	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) error
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
 	UpdateSmartWidget(ctx context.Context, arg UpdateSmartWidgetParams) error
+	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

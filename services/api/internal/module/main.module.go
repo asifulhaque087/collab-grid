@@ -16,6 +16,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/boards"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/inventory"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/role"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -64,6 +65,10 @@ func (t *App) RegisterRoute(r chi.Router) {
 	roleRepo := repo.NewRoleRepository(t.pool)
 	roleSvc := role.NewService(roleRepo, t.enforcer, t.logger)
 	roleHandler := role.NewHandler(roleSvc)
+
+	userRepo := repo.NewUserRepository(t.pool)
+	userSvc := user.NewService(userRepo, t.logger)
+	userHandler := user.NewHandler(userSvc)
 
 	// health route
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -150,6 +155,20 @@ func (t *App) RegisterRoute(r chi.Router) {
 			r.Post("/", roleHandler.Create)
 			r.Patch("/{id}", roleHandler.Update)
 			r.Delete("/{id}", roleHandler.Remove)
+		})
+
+		// Grouping under /users with Chi (JWT + Casbin + LimitGuard)
+		r.Route("/users", func(r chi.Router) {
+			limitGuard := middleware.NewLimitGuard(queries, t.logger)
+
+			r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+			r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+			r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
+
+			r.Get("/", userHandler.FindAll)
+			r.Post("/", userHandler.Create)
+			r.Patch("/{id}", userHandler.Update)
+			r.Delete("/{id}", userHandler.Remove)
 		})
 	})
 }
