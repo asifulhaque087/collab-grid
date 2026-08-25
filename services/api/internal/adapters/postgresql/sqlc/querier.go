@@ -15,10 +15,13 @@ type Querier interface {
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
 	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
 	CreateBoard(ctx context.Context, arg CreateBoardParams) (Board, error)
+	CreateSmartWidget(ctx context.Context, arg CreateSmartWidgetParams) (SmartWidget, error)
+	CreateSmartWidgets(ctx context.Context, arg []CreateSmartWidgetsParams) (int64, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error)
 	DeleteBoard(ctx context.Context, id pgtype.UUID) error
+	DeleteSmartWidget(ctx context.Context, id pgtype.UUID) error
 	// ============================================================================
 	// 4. Access Control (RBAC) & Quotas
 	// ============================================================================
@@ -26,6 +29,7 @@ type Querier interface {
 	GetActiveSubscriptions(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error)
 	GetBoardById(ctx context.Context, arg GetBoardByIdParams) (GetBoardByIdRow, error)
 	GetBoardBySlug(ctx context.Context, arg GetBoardBySlugParams) (GetBoardBySlugRow, error)
+	GetBoardExistsForUser(ctx context.Context, arg GetBoardExistsForUserParams) (bool, error)
 	GetBoardIdBySlug(ctx context.Context, slug string) (pgtype.UUID, error)
 	GetLimitUsage(ctx context.Context, arg GetLimitUsageParams) (int32, error)
 	// ============================================================================
@@ -36,6 +40,7 @@ type Querier interface {
 	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg GetPackagePermissionLimitByEndpointParams) (GetPackagePermissionLimitByEndpointRow, error)
 	GetPublicBoardBySlug(ctx context.Context, slug string) (GetPublicBoardBySlugRow, error)
 	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
+	GetSmartWidgetById(ctx context.Context, arg GetSmartWidgetByIdParams) (GetSmartWidgetByIdRow, error)
 	// ============================================================================
 	// 2. User & Signup Queries
 	// ============================================================================
@@ -59,6 +64,10 @@ type Querier interface {
 	// ============================================================================
 	ListBoardsByPrimaryUserId(ctx context.Context, primaryUserID pgtype.UUID) ([]ListBoardsByPrimaryUserIdRow, error)
 	// ============================================================================
+	// 6. Inventory (Smart Widget) Queries
+	// ============================================================================
+	ListSmartWidgetsByPrimaryUserId(ctx context.Context, arg ListSmartWidgetsByPrimaryUserIdParams) ([]ListSmartWidgetsByPrimaryUserIdRow, error)
+	// ============================================================================
 	// 3. Password & Session Management Updates
 	// ============================================================================
 	SetResetPasswordToken(ctx context.Context, arg SetResetPasswordTokenParams) error
@@ -66,6 +75,7 @@ type Querier interface {
 	UpdateBoard(ctx context.Context, arg UpdateBoardParams) (Board, error)
 	UpdatePasswordAndClearTokens(ctx context.Context, arg UpdatePasswordAndClearTokensParams) error
 	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) error
+	UpdateSmartWidget(ctx context.Context, arg UpdateSmartWidgetParams) error
 }
 
 var _ Querier = (*Queries)(nil)

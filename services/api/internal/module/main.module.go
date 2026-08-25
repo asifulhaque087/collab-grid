@@ -13,6 +13,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/middleware"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/boards"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/inventory"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -53,6 +54,10 @@ func (t *App) RegisterRoute(r chi.Router) {
 	boardRepo := repo.NewBoardRepository(t.pool)
 	boardSvc := boards.NewService(boardRepo, t.logger)
 	boardHandler := boards.NewHandler(boardSvc)
+
+	inventoryRepo := repo.NewInventoryRepository(t.pool)
+	inventorySvc := inventory.NewService(inventoryRepo, t.logger)
+	inventoryHandler := inventory.NewHandler(inventorySvc)
 
 	// health route
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +114,21 @@ func (t *App) RegisterRoute(r chi.Router) {
 			r.Get("/by-slug/{slug}", boardHandler.FindBySlug)
 			r.Patch("/{id}", boardHandler.Update)
 			r.Delete("/{id}", boardHandler.Remove)
+		})
+
+		// Grouping under /inventory with Chi (JWT + Casbin + LimitGuard)
+		r.Route("/inventory", func(r chi.Router) {
+			limitGuard := middleware.NewLimitGuard(queries, t.logger)
+
+			r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+			r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+			r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
+
+			r.Get("/", inventoryHandler.FindAll)
+			r.Post("/", inventoryHandler.Create)
+			r.Post("/import", inventoryHandler.ImportCsv)
+			r.Patch("/{id}", inventoryHandler.Update)
+			r.Delete("/{id}", inventoryHandler.Remove)
 		})
 	})
 }

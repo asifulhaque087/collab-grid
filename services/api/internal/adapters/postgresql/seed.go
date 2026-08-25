@@ -69,10 +69,10 @@ var PermissionCatalog = []PermissionDefinition{
 	{Action: ActionDelete, Subject: SubjectsBoard, Name: "Delete Board", Description: "Delete boards permanently.", Endpoint: "/api/v1/boards/:id", Method: "DELETE"},
 
 	// SmartWidget permissions
-	{Action: ActionCreate, Subject: SubjectsSmartWidget, Name: "Create Smart Widget", Description: "Add inventory widgets to boards.", Endpoint: "/api/v1/widgets", Method: "POST"},
-	{Action: ActionRead, Subject: SubjectsSmartWidget, Name: "Read Smart Widget", Description: "View widgets on canvas boards.", Endpoint: "/api/v1/widgets/*", Method: "GET"},
-	{Action: ActionUpdate, Subject: SubjectsSmartWidget, Name: "Update Smart Widget", Description: "Edit widget properties and canvas position.", Endpoint: "/api/v1/widgets/:id", Method: "PUT|PATCH"},
-	{Action: ActionDelete, Subject: SubjectsSmartWidget, Name: "Delete Smart Widget", Description: "Remove widgets from boards.", Endpoint: "/api/v1/widgets/:id", Method: "DELETE"},
+	{Action: ActionCreate, Subject: SubjectsSmartWidget, Name: "Create Smart Widget", Description: "Add inventory widgets to boards.", Endpoint: "/api/v1/inventory", Method: "POST"},
+	{Action: ActionRead, Subject: SubjectsSmartWidget, Name: "Read Smart Widget", Description: "View widgets on canvas boards.", Endpoint: "/api/v1/inventory/*", Method: "GET"},
+	{Action: ActionUpdate, Subject: SubjectsSmartWidget, Name: "Update Smart Widget", Description: "Edit widget properties and canvas position.", Endpoint: "/api/v1/inventory/:id", Method: "PUT|PATCH"},
+	{Action: ActionDelete, Subject: SubjectsSmartWidget, Name: "Delete Smart Widget", Description: "Remove widgets from boards.", Endpoint: "/api/v1/inventory/:id", Method: "DELETE"},
 
 	// User permissions
 	{Action: ActionCreate, Subject: SubjectsUser, Name: "Create User", Description: "Create sub-users and team members.", Endpoint: "/api/v1/users", Method: "POST"},

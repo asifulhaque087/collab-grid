@@ -1,0 +1,90 @@
+@baseUrl = http://localhost:3001/api/v1/inventory
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2MmFhMTIxLTkzYzMtNDU5Ny04ZjBjLWQ1YTVkZGY0YWExYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjM4MTU0LCJpYXQiOjE3ODc2MzcyNTR9.lUzGI9S2deMLcLM6S6QSx8Mtf9KhTICimEy6gEGFPZ8
+@itemId = e5dc07de-b742-4f1b-8748-747bceff8013
+@boardId = e5dc07de-b742-4f1b-8748-747bceff8013
+
+
+### Get All Inventory Items
+
+GET {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Get All Inventory Items By Board
+
+GET {{baseUrl}}?boardId={{boardId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Create Inventory Item
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Steel Bolt",
+  "sku": "SB-001",
+  "quantity": 100,
+  "price": "19.90",
+  "photo": "https://example.com/bolt.png",
+  "boardId": "{{boardId}}",
+  "width": 190,
+  "height": 190
+}
+
+
+### Create Inventory Item (No Board)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Wooden Screw",
+  "sku": "WS-002",
+  "quantity": 50
+}
+
+
+### Import Inventory From CSV
+
+POST {{baseUrl}}/import
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="boardId"
+
+{{boardId}}
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="inventory.csv"
+Content-Type: text/csv
+
+name,sku,price,quantity,photo
+Steel Bolt,SB-001,19.99,100,bolt.png
+Wooden Screw,WS-002,,50,
+--WebAppBoundary--
+
+
+### Update Inventory Item
+
+PATCH {{baseUrl}}/{{itemId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Updated Steel Bolt",
+  "quantity": 200,
+  "price": "24.99",
+  "boardId": "{{boardId}}"
+}
+
+
+### Delete Inventory Item
+
+DELETE {{baseUrl}}/{{itemId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
