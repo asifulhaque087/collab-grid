@@ -12,6 +12,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/mail"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/middleware"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/boards"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,8 +47,12 @@ func (t *App) RegisterRoute(r chi.Router) {
 	})
 	mailSvc := mail.NewProvider(mailer)
 
-	authService := auth.NewService(authRepo, uow, t.logger, t.cfg, mailSvc)
+	authService := auth.NewService(authRepo, uow, t.logger, t.cfg, mailSvc, t.enforcer)
 	handler := auth.NewHandler(authService)
+
+	boardRepo := repo.NewBoardRepository(t.pool)
+	boardSvc := boards.NewService(boardRepo, t.logger)
+	boardHandler := boards.NewHandler(boardSvc)
 
 	// health route
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -88,5 +93,20 @@ func (t *App) RegisterRoute(r chi.Router) {
 				w.Write([]byte(`{"boards": []}`))
 			})
 		})
+	})
+
+	// Grouping under /boards with Chi (JWT + Casbin + LimitGuard)
+	r.Route("/boards", func(r chi.Router) {
+		limitGuard := middleware.NewLimitGuard(queries, t.logger)
+
+		r.Use(middleware.JWTMiddleware(authService))   // 1st: Inject UserID into context
+		r.Use(middleware.CasbinMiddleware(t.enforcer)) // 2nd: Enforce authorization
+		r.Use(limitGuard.Middleware())                 // 3rd: Enforce usage limits
+
+		r.Get("/", boardHandler.FindAll)
+		r.Post("/", boardHandler.Create)
+		r.Get("/by-slug/{slug}", boardHandler.FindBySlug)
+		r.Patch("/{id}", boardHandler.Update)
+		r.Delete("/{id}", boardHandler.Remove)
 	})
 }

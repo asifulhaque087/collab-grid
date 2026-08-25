@@ -38,6 +38,7 @@ type AuthRepo interface {
 // Enforcer abstracts authorization (e.g., Casbin)
 type Enforcer interface {
 	Enforce(sub, obj, act string) (bool, error)
+	AddGroupingPolicy(params ...interface{}) (bool, error)
 }
 
 // AuthMailService handles transactional email for the auth domain.

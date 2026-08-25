@@ -14,14 +14,19 @@ type Querier interface {
 	AssignUserRole(ctx context.Context, arg AssignUserRoleParams) error
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
 	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
+	CreateBoard(ctx context.Context, arg CreateBoardParams) (Board, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error)
+	DeleteBoard(ctx context.Context, id pgtype.UUID) error
 	// ============================================================================
 	// 4. Access Control (RBAC) & Quotas
 	// ============================================================================
 	GetAccessContextByUserId(ctx context.Context, userID pgtype.UUID) ([]GetAccessContextByUserIdRow, error)
 	GetActiveSubscriptions(ctx context.Context, userID pgtype.UUID) ([]pgtype.UUID, error)
+	GetBoardById(ctx context.Context, arg GetBoardByIdParams) (GetBoardByIdRow, error)
+	GetBoardBySlug(ctx context.Context, arg GetBoardBySlugParams) (GetBoardBySlugRow, error)
+	GetBoardIdBySlug(ctx context.Context, slug string) (pgtype.UUID, error)
 	GetLimitUsage(ctx context.Context, arg GetLimitUsageParams) (int32, error)
 	// ============================================================================
 	// 1. Defaults & Seed Checks
@@ -29,6 +34,7 @@ type Querier interface {
 	GetPackageBySlug(ctx context.Context, slug string) (Package, error)
 	GetPackagePermissionLimit(ctx context.Context, arg GetPackagePermissionLimitParams) (GetPackagePermissionLimitRow, error)
 	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg GetPackagePermissionLimitByEndpointParams) (GetPackagePermissionLimitByEndpointRow, error)
+	GetPublicBoardBySlug(ctx context.Context, slug string) (GetPublicBoardBySlugRow, error)
 	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
 	// ============================================================================
 	// 2. User & Signup Queries
@@ -49,10 +55,15 @@ type Querier interface {
 	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) (pgtype.UUID, error)
 	// ============================================================================
+	// 1. Board Queries
+	// ============================================================================
+	ListBoardsByPrimaryUserId(ctx context.Context, primaryUserID pgtype.UUID) ([]ListBoardsByPrimaryUserIdRow, error)
+	// ============================================================================
 	// 3. Password & Session Management Updates
 	// ============================================================================
 	SetResetPasswordToken(ctx context.Context, arg SetResetPasswordTokenParams) error
 	TruncateAllTables(ctx context.Context) error
+	UpdateBoard(ctx context.Context, arg UpdateBoardParams) (Board, error)
 	UpdatePasswordAndClearTokens(ctx context.Context, arg UpdatePasswordAndClearTokensParams) error
 	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) error
 }

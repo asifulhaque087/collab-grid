@@ -29,9 +29,10 @@ type Service struct {
 	cfg          *config.Config
 	googleConfig *oauth2.Config
 	mailSvc      AuthMailService
+	enforcer     Enforcer
 }
 
-func NewService(authRepo AuthRepo, uow UnitOfWork, logger *slog.Logger, cfg *config.Config, mailSvc AuthMailService) *Service {
+func NewService(authRepo AuthRepo, uow UnitOfWork, logger *slog.Logger, cfg *config.Config, mailSvc AuthMailService, enforcer Enforcer) *Service {
 	return &Service{
 		authRepo:     authRepo,
 		uow:          uow,
@@ -39,6 +40,7 @@ func NewService(authRepo AuthRepo, uow UnitOfWork, logger *slog.Logger, cfg *con
 		cfg:          cfg,
 		googleConfig: NewGoogleConfig(cfg),
 		mailSvc:      mailSvc,
+		enforcer:     enforcer,
 	}
 }
 
@@ -595,6 +597,17 @@ func (s *Service) CreateUserWithFreePlan(
 			slog.String("error", err.Error()),
 		)
 		return nil, fmt.Errorf("createUserWithFreePlan tx error: %w", err)
+	}
+
+	// Bind the new user to their tenant role in Casbin: g(user_id, role_id).
+	// AutoSave is enabled, so this is persisted straight to PostgreSQL.
+	if _, err := s.enforcer.AddGroupingPolicy(user.ID.String(), defaults.TenantRole.ID.String()); err != nil {
+		s.logger.ErrorContext(ctx, "failed to add casbin grouping policy for new user",
+			slog.String("user_id", user.ID.String()),
+			slog.String("role_id", defaults.TenantRole.ID.String()),
+			slog.String("error", err.Error()),
+		)
+		return nil, fmt.Errorf("%w: %v", ErrInternalServer, err)
 	}
 
 	return &user, nil

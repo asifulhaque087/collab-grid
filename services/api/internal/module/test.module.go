@@ -105,7 +105,7 @@ func (t *TestModule) RegisterRoute(r chi.Router) {
 
 	uow := auth_mock.NewMemUoW(stores)
 
-	svc := auth.NewService(t.AuthRepo, uow, logger, t.Cfg, t.MailRepo)
+	svc := auth.NewService(t.AuthRepo, uow, logger, t.Cfg, t.MailRepo, t.Enforcer)
 	handler := auth.NewHandler(svc)
 
 	// Mirror app.go route structure

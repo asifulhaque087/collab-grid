@@ -1,0 +1,63 @@
+@baseUrl = http://localhost:3001/boards
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJiYzMwMGJlLTdiNjItNDYzNy04MGFmLTExMjM2NzQ2ZmZiNCIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjI5ODk2LCJpYXQiOjE3ODc2Mjg5OTZ9.giSCThBZmWel7yjAqpFsUuWsg8D2KzFVuMwnkHcK1oY 
+@boardId = your_board_id_here
+@slug = my-board
+
+
+### Get All Boards
+
+GET {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Create Board
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "My Board",
+  "access": "restricted"
+}
+
+
+### Create Board (Public)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Public Board",
+  "access": "public",
+  "maxWidth": 8000,
+  "maxHeight": 6000
+}
+
+
+### Find Board By Slug
+
+GET {{baseUrl}}/by-slug/{{slug}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Update Board
+
+PATCH {{baseUrl}}/{{boardId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Updated Board Name",
+  "access": "public"
+}
+
+
+### Delete Board
+
+DELETE {{baseUrl}}/{{boardId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
