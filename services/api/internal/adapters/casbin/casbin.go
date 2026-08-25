@@ -32,6 +32,14 @@ func (c *CasbinEnforcer) AddGroupingPolicy(params ...interface{}) (bool, error) 
 	return c.enforcer.AddGroupingPolicy(params...)
 }
 
+func (c *CasbinEnforcer) RemoveFilteredPolicy(fieldIndex int, fieldValues ...string) (bool, error) {
+	return c.enforcer.RemoveFilteredPolicy(fieldIndex, fieldValues...)
+}
+
+func (c *CasbinEnforcer) RemoveFilteredGroupingPolicy(fieldIndex int, fieldValues ...string) (bool, error) {
+	return c.enforcer.RemoveFilteredGroupingPolicy(fieldIndex, fieldValues...)
+}
+
 func (c *CasbinEnforcer) ClearPolicy() {
 	c.enforcer.ClearPolicy()
 }

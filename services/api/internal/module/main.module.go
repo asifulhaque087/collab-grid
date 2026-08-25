@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/repo"
 	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/uow"
@@ -14,6 +15,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth/middleware"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/boards"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/inventory"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/role"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -22,10 +24,10 @@ type App struct {
 	logger   *slog.Logger
 	cfg      *config.Config
 	pool     *pgxpool.Pool
-	enforcer auth.Enforcer
+	enforcer *casbin.CasbinEnforcer
 }
 
-func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforcer auth.Enforcer) *App {
+func NewApp(logger *slog.Logger, cfg *config.Config, pool *pgxpool.Pool, enforcer *casbin.CasbinEnforcer) *App {
 	return &App{
 		logger:   logger,
 		cfg:      cfg,
@@ -58,6 +60,10 @@ func (t *App) RegisterRoute(r chi.Router) {
 	inventoryRepo := repo.NewInventoryRepository(t.pool)
 	inventorySvc := inventory.NewService(inventoryRepo, t.logger)
 	inventoryHandler := inventory.NewHandler(inventorySvc)
+
+	roleRepo := repo.NewRoleRepository(t.pool)
+	roleSvc := role.NewService(roleRepo, t.enforcer, t.logger)
+	roleHandler := role.NewHandler(roleSvc)
 
 	// health route
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +135,21 @@ func (t *App) RegisterRoute(r chi.Router) {
 			r.Post("/import", inventoryHandler.ImportCsv)
 			r.Patch("/{id}", inventoryHandler.Update)
 			r.Delete("/{id}", inventoryHandler.Remove)
+		})
+
+		// Grouping under /roles with Chi (JWT + Casbin + LimitGuard)
+		r.Route("/roles", func(r chi.Router) {
+			limitGuard := middleware.NewLimitGuard(queries, t.logger)
+
+			r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+			r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+			r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
+
+			r.Get("/permissions", roleHandler.ListPermissions)
+			r.Get("/", roleHandler.FindAll)
+			r.Post("/", roleHandler.Create)
+			r.Patch("/{id}", roleHandler.Update)
+			r.Delete("/{id}", roleHandler.Remove)
 		})
 	})
 }

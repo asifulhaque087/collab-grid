@@ -93,7 +93,7 @@ var PermissionCatalog = []PermissionDefinition{
 	{Action: ActionDelete, Subject: SubjectsRole, Name: "Delete Role", Description: "Delete custom roles.", Endpoint: "/api/v1/roles/:id", Method: "DELETE"},
 
 	// Misc permissions
-	{Action: ActionRead, Subject: SubjectsPermission, Name: "Read Permission", Description: "View the permission catalog.", Endpoint: "/api/v1/permissions", Method: "GET"},
+	{Action: ActionRead, Subject: SubjectsPermission, Name: "Read Permission", Description: "View the permission catalog.", Endpoint: "/api/v1/roles/permissions", Method: "GET"},
 	{Action: ActionRead, Subject: SubjectsPaymentHistory, Name: "Read Payment History", Description: "View payment transaction records.", Endpoint: "/api/v1/payments/*", Method: "GET"},
 	{Action: ActionRead, Subject: SubjectsUserPlanSnapshot, Name: "Read Plan Snapshot", Description: "View user plan quota and usage.", Endpoint: "/api/v1/plan-snapshot", Method: "GET"},
 	{Action: ActionCreate, Subject: SubjectsSubscription, Name: "Create Subscription", Description: "Subscribe to or upgrade a subscription plan.", Endpoint: "/api/v1/subscriptions", Method: "POST"},

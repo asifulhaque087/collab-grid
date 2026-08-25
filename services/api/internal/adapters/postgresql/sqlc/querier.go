@@ -15,12 +15,16 @@ type Querier interface {
 	ClearRefreshToken(ctx context.Context, id pgtype.UUID) error
 	CountUserSubscriptions(ctx context.Context, userID pgtype.UUID) (int32, error)
 	CreateBoard(ctx context.Context, arg CreateBoardParams) (Board, error)
+	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
+	CreateRolePermissions(ctx context.Context, arg CreateRolePermissionsParams) error
 	CreateSmartWidget(ctx context.Context, arg CreateSmartWidgetParams) (SmartWidget, error)
 	CreateSmartWidgets(ctx context.Context, arg []CreateSmartWidgetsParams) (int64, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error)
 	DeleteBoard(ctx context.Context, id pgtype.UUID) error
+	DeleteRole(ctx context.Context, id pgtype.UUID) error
+	DeleteRolePermissions(ctx context.Context, roleID pgtype.UUID) error
 	DeleteSmartWidget(ctx context.Context, id pgtype.UUID) error
 	// ============================================================================
 	// 4. Access Control (RBAC) & Quotas
@@ -39,6 +43,7 @@ type Querier interface {
 	GetPackagePermissionLimit(ctx context.Context, arg GetPackagePermissionLimitParams) (GetPackagePermissionLimitRow, error)
 	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg GetPackagePermissionLimitByEndpointParams) (GetPackagePermissionLimitByEndpointRow, error)
 	GetPublicBoardBySlug(ctx context.Context, slug string) (GetPublicBoardBySlugRow, error)
+	GetRoleById(ctx context.Context, id pgtype.UUID) (GetRoleByIdRow, error)
 	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
 	GetSmartWidgetById(ctx context.Context, arg GetSmartWidgetByIdParams) (GetSmartWidgetByIdRow, error)
 	// ============================================================================
@@ -48,6 +53,10 @@ type Querier interface {
 	GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 	GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (User, error)
 	GetUserByResetToken(ctx context.Context, resetPasswordToken pgtype.Text) (User, error)
+	// ============================================================================
+	// 7. Role Queries
+	// ============================================================================
+	GetUserPermissions(ctx context.Context, userID pgtype.UUID) ([]GetUserPermissionsRow, error)
 	GetUserPrimaryOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]GetUserQuotasRow, error)
 	GrantRolePermission(ctx context.Context, arg GrantRolePermissionParams) error
@@ -59,10 +68,14 @@ type Querier interface {
 	InsertRole(ctx context.Context, arg InsertRoleParams) (pgtype.UUID, error)
 	InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) (pgtype.UUID, error)
+	ListAllPermissions(ctx context.Context) ([]ListAllPermissionsRow, error)
 	// ============================================================================
 	// 1. Board Queries
 	// ============================================================================
 	ListBoardsByPrimaryUserId(ctx context.Context, primaryUserID pgtype.UUID) ([]ListBoardsByPrimaryUserIdRow, error)
+	ListRolePermissionEndpoints(ctx context.Context, roleID pgtype.UUID) ([]ListRolePermissionEndpointsRow, error)
+	ListRolePermissionsByRoleIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListRolePermissionsByRoleIDsRow, error)
+	ListRolesByPrimaryUserID(ctx context.Context, primaryUserID pgtype.UUID) ([]ListRolesByPrimaryUserIDRow, error)
 	// ============================================================================
 	// 6. Inventory (Smart Widget) Queries
 	// ============================================================================
@@ -75,6 +88,7 @@ type Querier interface {
 	UpdateBoard(ctx context.Context, arg UpdateBoardParams) (Board, error)
 	UpdatePasswordAndClearTokens(ctx context.Context, arg UpdatePasswordAndClearTokensParams) error
 	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) error
+	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
 	UpdateSmartWidget(ctx context.Context, arg UpdateSmartWidgetParams) error
 }
 
