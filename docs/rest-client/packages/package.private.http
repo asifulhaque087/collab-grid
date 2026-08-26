@@ -1,0 +1,94 @@
+@baseUrl = http://localhost:3001/api/v1/packages
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImIxNDFjMjM2LWYxNjctNDRlNi05YjllLTFmOGQ1NWEyMGRiOCIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NzIzMzg1LCJpYXQiOjE3ODc3MjI0ODV9.7dBN8a-VmEiUcPvnNZdY2-cVmFAgYS4QTgERKAE7VA4
+@packageId = 97aab8b0-fe75-4db4-8521-860a3513c7fa
+@permissionId = fd77d69e-6d51-4c8e-9b58-77b62c0a2df3
+
+
+### List Available Permissions (for building packages)
+
+GET {{baseUrl}}/permissions
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Get All Packages
+
+GET {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Create Package (No Permissions)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Starter",
+  "price": "0"
+}
+
+
+### Create Package (With Permissions & Limits)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Business",
+  "price": "29",
+  "permissions": [
+    {
+      "permissionId": "{{permissionId}}",
+      "limit": 50
+    }
+  ]
+}
+
+
+### Update Package Name & Price
+
+PATCH {{baseUrl}}/{{packageId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Updated Business",
+  "price": "40"
+}
+
+
+### Replace Package Permissions
+
+PATCH {{baseUrl}}/{{packageId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "permissions": [
+    {
+      "permissionId": "{{permissionId}}",
+      "limit": -1
+    }
+  ]
+}
+
+
+### Clear Package Permissions
+
+PATCH {{baseUrl}}/{{packageId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "permissions": []
+}
+
+
+### Delete Package
+
+DELETE {{baseUrl}}/{{packageId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}

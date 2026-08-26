@@ -26,6 +26,10 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error)
 	DeleteBoard(ctx context.Context, id pgtype.UUID) error
+	// Delete a package.
+	DeletePackage(ctx context.Context, id pgtype.UUID) error
+	// Delete all permission limits belonging to a package.
+	DeletePackagePermissionLimits(ctx context.Context, packageID pgtype.UUID) error
 	DeleteRole(ctx context.Context, id pgtype.UUID) error
 	DeleteRolePermissions(ctx context.Context, roleID pgtype.UUID) error
 	DeleteSmartWidget(ctx context.Context, id pgtype.UUID) error
@@ -47,6 +51,8 @@ type Querier interface {
 	// 9. Order Queries
 	// ============================================================================
 	GetOrderIdByIdempotencyKey(ctx context.Context, idempotencyKey string) (pgtype.UUID, error)
+	// Single package with its active subscription count.
+	GetPackageByID(ctx context.Context, id pgtype.UUID) (GetPackageByIDRow, error)
 	// ============================================================================
 	// 1. Defaults & Seed Checks
 	// ============================================================================
@@ -88,6 +94,10 @@ type Querier interface {
 	ListBoardsByPrimaryUserId(ctx context.Context, primaryUserID pgtype.UUID) ([]ListBoardsByPrimaryUserIdRow, error)
 	ListOrderItemsByOrderId(ctx context.Context, orderID pgtype.UUID) ([]ListOrderItemsByOrderIdRow, error)
 	ListOrdersByPrimaryUserID(ctx context.Context, primaryUserID pgtype.UUID) ([]ListOrdersByPrimaryUserIDRow, error)
+	// Permission limits (with joined permission metadata) for the given packages.
+	ListPackagePermissionLimits(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListPackagePermissionLimitsRow, error)
+	// All packages with their active subscription count.
+	ListPackages(ctx context.Context) ([]ListPackagesRow, error)
 	ListRolePermissionEndpoints(ctx context.Context, roleID pgtype.UUID) ([]ListRolePermissionEndpointsRow, error)
 	ListRolePermissionsByRoleIDs(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListRolePermissionsByRoleIDsRow, error)
 	ListRolesByPrimaryUserID(ctx context.Context, primaryUserID pgtype.UUID) ([]ListRolesByPrimaryUserIDRow, error)
@@ -95,6 +105,12 @@ type Querier interface {
 	// 6. Inventory (Smart Widget) Queries
 	// ============================================================================
 	ListSmartWidgetsByPrimaryUserId(ctx context.Context, arg ListSmartWidgetsByPrimaryUserIdParams) ([]ListSmartWidgetsByPrimaryUserIdRow, error)
+	// ============================================================================
+	// Package Queries
+	// ============================================================================
+	// Permissions exposed for building/assigning package quotas. Mirrors the TS
+	// service which joins permissions through the tenant role (TENANT_ROLE_SLUG).
+	ListTenantRolePermissions(ctx context.Context, slug string) ([]ListTenantRolePermissionsRow, error)
 	ListUserRolesByUserIDs(ctx context.Context, userIds []pgtype.UUID) ([]ListUserRolesByUserIDsRow, error)
 	ListWidgetsForOrder(ctx context.Context, arg ListWidgetsForOrderParams) ([]ListWidgetsForOrderRow, error)
 	// ============================================================================
@@ -107,6 +123,8 @@ type Querier interface {
 	SetResetPasswordToken(ctx context.Context, arg SetResetPasswordTokenParams) error
 	TruncateAllTables(ctx context.Context) error
 	UpdateBoard(ctx context.Context, arg UpdateBoardParams) (Board, error)
+	// Partial update of a package. NULL arguments leave the column unchanged.
+	UpdatePackage(ctx context.Context, arg UpdatePackageParams) (Package, error)
 	UpdatePasswordAndClearTokens(ctx context.Context, arg UpdatePasswordAndClearTokensParams) error
 	UpdateRefreshToken(ctx context.Context, arg UpdateRefreshTokenParams) error
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
