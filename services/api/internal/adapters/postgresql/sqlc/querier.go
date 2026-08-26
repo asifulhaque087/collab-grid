@@ -61,7 +61,18 @@ type Querier interface {
 	GetPackageBySlug(ctx context.Context, slug string) (Package, error)
 	GetPackagePermissionLimit(ctx context.Context, arg GetPackagePermissionLimitParams) (GetPackagePermissionLimitRow, error)
 	GetPackagePermissionLimitByEndpoint(ctx context.Context, arg GetPackagePermissionLimitByEndpointParams) (GetPackagePermissionLimitByEndpointRow, error)
+	// Placed widgets for a board: those that already carry canvas coordinates
+	// (pos_x IS NOT NULL). Sidebar inventory items have NULL coordinates and are
+	// excluded until they are first placed.
+	GetPlacedWidgets(ctx context.Context, boardID pgtype.UUID) ([]GetPlacedWidgetsRow, error)
 	GetPublicBoardBySlug(ctx context.Context, slug string) (GetPublicBoardBySlugRow, error)
+	// ============================================================================
+	// Realtime Canvas Queries
+	// ============================================================================
+	// Lookup a board by its public slug. Returned regardless of access level; the
+	// gateway decides whether anonymous (public) or authenticated (private) access
+	// is allowed based on the `access` column.
+	GetRealtimeBoardBySlug(ctx context.Context, slug string) (GetRealtimeBoardBySlugRow, error)
 	GetRoleById(ctx context.Context, id pgtype.UUID) (GetRoleByIdRow, error)
 	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
 	GetSmartWidgetById(ctx context.Context, arg GetSmartWidgetByIdParams) (GetSmartWidgetByIdRow, error)
@@ -85,6 +96,10 @@ type Querier interface {
 	GetUserPrimaryOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	GetUserProfileById(ctx context.Context, id pgtype.UUID) (GetUserProfileByIdRow, error)
 	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]GetUserQuotasRow, error)
+	// The set of (action, subject) grants a user holds through their roles. Used to
+	// decide whether an authenticated editor may reposition widgets on the canvas
+	// (requires update:SmartWidget).
+	GetUserWidgetPermissions(ctx context.Context, userID pgtype.UUID) ([]GetUserWidgetPermissionsRow, error)
 	GrantRolePermission(ctx context.Context, arg GrantRolePermissionParams) error
 	GrantUserRoles(ctx context.Context, arg GrantUserRolesParams) error
 	IncrementLimitUsage(ctx context.Context, arg IncrementLimitUsageParams) (pgtype.UUID, error)
@@ -130,6 +145,8 @@ type Querier interface {
 	// 8. User Queries
 	// ============================================================================
 	ListWorkspaceUsers(ctx context.Context, arg ListWorkspaceUsersParams) ([]ListWorkspaceUsersRow, error)
+	// Permanently remove a sold/purchased widget, board-scoped.
+	RemoveWidget(ctx context.Context, arg RemoveWidgetParams) error
 	// ============================================================================
 	// 3. Password & Session Management Updates
 	// ============================================================================
@@ -143,6 +160,10 @@ type Querier interface {
 	UpdateRole(ctx context.Context, arg UpdateRoleParams) (Role, error)
 	UpdateSmartWidget(ctx context.Context, arg UpdateSmartWidgetParams) error
 	UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error)
+	// Stamp new canvas coordinates onto a widget, board-scoped so a stray id can't
+	// touch another board's row. Returns the full row so callers can read the
+	// widget's stored dimensions (width/height) for zone calculations.
+	UpdateWidgetPosition(ctx context.Context, arg UpdateWidgetPositionParams) (UpdateWidgetPositionRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -1,0 +1,62 @@
+@baseUrl = http://localhost:3001/api/v1/realtime
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQwZmYyYzI0LWU1NTAtNGM1NS05ZjVmLThlNzk4NTEyNjdmNSIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjUxMzAwLCJpYXQiOjE3ODc2NTA0MDB9.fb2x50UOQJxiA4crjY_OG7KWXudH52ZDzBremU0ZwyE
+@boardId = e5dc07de-b742-4f1b-8748-747bceff8013
+@slug = my-board
+@wsToken = <paste ws token from token-exchange below>
+
+
+### Exchange an access token for a short-lived WS token
+# The returned `token` is passed (as `?token=`) when opening the websocket.
+
+POST {{baseUrl}}/token-exchange
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "boardId": "{{boardId}}"
+}
+
+
+### Open the canvas websocket (public, anonymous end-user)
+# No auth required; pass an optional `?name=` for a friendly identity.
+# Send the JSON frames documented below once connected.
+
+ws://localhost:3001/api/v1/realtime/canvas?slug={{slug}}&name=Guest
+
+
+### Open the canvas websocket (authenticated tenant editor)
+# `token` is the WS token returned by the token-exchange call above.
+
+ws://localhost:3001/api/v1/realtime/canvas?token={{wsToken}}&slug={{slug}}&name=Editor
+
+
+### ── Example client → server frames (send over the open socket) ──
+# Board join (public):
+# { "type": "board:join:public", "payload": { "slug": "my-board", "viewport": { "minX": 0, "minY": 0, "maxX": 2000, "maxY": 2000 } } }
+#
+# Board join (private / authenticated):
+# { "type": "board:join:private", "payload": { "slug": "my-board", "viewport": { "minX": 0, "minY": 0, "maxX": 2000, "maxY": 2000 } } }
+#
+# Cursor move:
+# { "type": "cursor:move:send", "payload": { "x": 120, "y": 240 } }
+#
+# Viewport update:
+# { "type": "viewport:update", "payload": { "viewport": { "minX": 0, "minY": 0, "maxX": 4000, "maxY": 4000 } } }
+#
+# Soft lock:
+# { "type": "widget:lock:soft:init", "payload": { "widgetId": "WIDGET_ID" } }
+#
+# Soft release:
+# { "type": "widget:lock:soft:release:init", "payload": { "widgetId": "WIDGET_ID" } }
+#
+# Checkout (promote soft locks to hard):
+# { "type": "widget:lock:hard:init" }
+#
+# Live drag:
+# { "type": "widget:move", "payload": { "widgetId": "WIDGET_ID", "x": 500, "y": 600, "width": 200, "height": 120 } }
+#
+# Drag end (anchor):
+# { "type": "widget:move:end", "payload": { "widgetId": "WIDGET_ID", "x": 500, "y": 600, "width": 200, "height": 120 } }
+#
+# First placement:
+# { "type": "widget:place", "payload": { "widgetId": "WIDGET_ID", "x": 800, "y": 900 } }
