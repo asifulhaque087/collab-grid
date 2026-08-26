@@ -24,6 +24,52 @@ func (q *Queries) CountUserSubscriptions(ctx context.Context, userID pgtype.UUID
 	return column_1, err
 }
 
+const createSubscriptionReturning = `-- name: CreateSubscriptionReturning :one
+INSERT INTO subscriptions (
+    user_id,
+    package_id,
+    start_date,
+    end_date,
+    payment_method,
+    amount
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+)
+RETURNING id, user_id, package_id, start_date, end_date, payment_method, amount
+`
+
+type CreateSubscriptionReturningParams struct {
+	UserID        pgtype.UUID      `json:"user_id"`
+	PackageID     pgtype.UUID      `json:"package_id"`
+	StartDate     pgtype.Timestamp `json:"start_date"`
+	EndDate       pgtype.Timestamp `json:"end_date"`
+	PaymentMethod string           `json:"payment_method"`
+	Amount        pgtype.Numeric   `json:"amount"`
+}
+
+// Create a subscription and return the inserted row.
+func (q *Queries) CreateSubscriptionReturning(ctx context.Context, arg CreateSubscriptionReturningParams) (Subscription, error) {
+	row := q.db.QueryRow(ctx, createSubscriptionReturning,
+		arg.UserID,
+		arg.PackageID,
+		arg.StartDate,
+		arg.EndDate,
+		arg.PaymentMethod,
+		arg.Amount,
+	)
+	var i Subscription
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.PackageID,
+		&i.StartDate,
+		&i.EndDate,
+		&i.PaymentMethod,
+		&i.Amount,
+	)
+	return i, err
+}
+
 const decrementLimitUsage = `-- name: DecrementLimitUsage :one
 UPDATE limit_usages
 SET used = GREATEST(used - 1, 0)
@@ -152,12 +198,38 @@ func (q *Queries) GetPackagePermissionLimitByEndpoint(ctx context.Context, arg G
 	return i, err
 }
 
+const getSubscriptionByUserAndPackage = `-- name: GetSubscriptionByUserAndPackage :one
+SELECT id
+FROM subscriptions
+WHERE user_id = $1
+  AND package_id = $2
+LIMIT 1
+`
+
+type GetSubscriptionByUserAndPackageParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	PackageID pgtype.UUID `json:"package_id"`
+}
+
+// Look up a single subscription for a user + package pair. Used to block
+// duplicate Free-package subscriptions.
+func (q *Queries) GetSubscriptionByUserAndPackage(ctx context.Context, arg GetSubscriptionByUserAndPackageParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getSubscriptionByUserAndPackage, arg.UserID, arg.PackageID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getUserPrimaryOwner = `-- name: GetUserPrimaryOwner :one
+
 SELECT primary_user_id
 FROM users
 WHERE id = $1
 `
 
+// ============================================================================
+// Limit Guard Queries (do not remove — consumed by auth middleware)
+// ============================================================================
 func (q *Queries) GetUserPrimaryOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, getUserPrimaryOwner, id)
 	var primary_user_id pgtype.UUID
@@ -208,4 +280,65 @@ func (q *Queries) InitializeLimitUsage(ctx context.Context, arg InitializeLimitU
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const listSubscriptionsByUser = `-- name: ListSubscriptionsByUser :many
+
+SELECT
+    s.id,
+    s.package_id,
+    p.title AS package_title,
+    p.slug  AS package_slug,
+    s.start_date,
+    s.end_date,
+    s.payment_method,
+    s.amount
+FROM subscriptions s
+JOIN packages p ON p.id = s.package_id
+WHERE s.user_id = $1
+ORDER BY s.start_date DESC
+`
+
+type ListSubscriptionsByUserRow struct {
+	ID            pgtype.UUID      `json:"id"`
+	PackageID     pgtype.UUID      `json:"package_id"`
+	PackageTitle  string           `json:"package_title"`
+	PackageSlug   string           `json:"package_slug"`
+	StartDate     pgtype.Timestamp `json:"start_date"`
+	EndDate       pgtype.Timestamp `json:"end_date"`
+	PaymentMethod string           `json:"payment_method"`
+	Amount        pgtype.Numeric   `json:"amount"`
+}
+
+// ============================================================================
+// Subscription Service Queries
+// ============================================================================
+// List a user's subscriptions joined with their package details, newest first.
+func (q *Queries) ListSubscriptionsByUser(ctx context.Context, userID pgtype.UUID) ([]ListSubscriptionsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listSubscriptionsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSubscriptionsByUserRow
+	for rows.Next() {
+		var i ListSubscriptionsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PackageID,
+			&i.PackageTitle,
+			&i.PackageSlug,
+			&i.StartDate,
+			&i.EndDate,
+			&i.PaymentMethod,
+			&i.Amount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -22,11 +22,11 @@ POST {{baseUrl}}/login
 Content-Type: application/json
 
 {
-  # "email": "mridul@example.com",
-  # "password": "SecurePassword123!",
+  "email": "mridul@example.com",
+  "password": "SecurePassword123!"
   # "password": "SecurePassword123!!",
-  "email": "updated.jane@example.com",
-  "password": "newPassword123%"
+  # "email": "updated.jane@example.com",
+  # "password": "newPassword123%"
 }
 
 ### Forgot Password

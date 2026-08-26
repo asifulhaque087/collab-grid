@@ -97,6 +97,7 @@ var PermissionCatalog = []PermissionDefinition{
 	{Action: ActionRead, Subject: SubjectsPaymentHistory, Name: "Read Payment History", Description: "View payment transaction records.", Endpoint: "/api/v1/orders*", Method: "GET"},
 	{Action: ActionRead, Subject: SubjectsUserPlanSnapshot, Name: "Read Plan Snapshot", Description: "View user plan quota and usage.", Endpoint: "/api/v1/plan-snapshot", Method: "GET"},
 	{Action: ActionCreate, Subject: SubjectsSubscription, Name: "Create Subscription", Description: "Subscribe to or upgrade a subscription plan.", Endpoint: "/api/v1/subscriptions", Method: "POST"},
+	{Action: ActionRead, Subject: SubjectsSubscription, Name: "Read Subscription", Description: "View your subscription history.", Endpoint: "/api/v1/subscriptions", Method: "GET"},
 }
 
 func isTenantPermission(p PermissionDefinition) bool {

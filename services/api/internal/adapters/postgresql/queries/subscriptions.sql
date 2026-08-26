@@ -1,3 +1,50 @@
+-- ============================================================================
+-- Subscription Service Queries
+-- ============================================================================
+
+-- List a user's subscriptions joined with their package details, newest first.
+-- name: ListSubscriptionsByUser :many
+SELECT
+    s.id,
+    s.package_id,
+    p.title AS package_title,
+    p.slug  AS package_slug,
+    s.start_date,
+    s.end_date,
+    s.payment_method,
+    s.amount
+FROM subscriptions s
+JOIN packages p ON p.id = s.package_id
+WHERE s.user_id = $1
+ORDER BY s.start_date DESC;
+
+-- Look up a single subscription for a user + package pair. Used to block
+-- duplicate Free-package subscriptions.
+-- name: GetSubscriptionByUserAndPackage :one
+SELECT id
+FROM subscriptions
+WHERE user_id = $1
+  AND package_id = $2
+LIMIT 1;
+
+-- Create a subscription and return the inserted row.
+-- name: CreateSubscriptionReturning :one
+INSERT INTO subscriptions (
+    user_id,
+    package_id,
+    start_date,
+    end_date,
+    payment_method,
+    amount
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+)
+RETURNING *;
+
+-- ============================================================================
+-- Limit Guard Queries (do not remove — consumed by auth middleware)
+-- ============================================================================
+
 -- name: GetUserPrimaryOwner :one
 SELECT primary_user_id
 FROM users

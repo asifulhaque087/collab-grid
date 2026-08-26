@@ -18,6 +18,7 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/order"
 	pkg "github.com/asifulhaque087/collab-grid/services/api/internal/service/package"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/role"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/subscription"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -80,6 +81,10 @@ func (t *App) RegisterRoute(r chi.Router) {
 	packageRepo := repo.NewPackageRepository(t.pool)
 	packageSvc := pkg.NewService(packageRepo, t.logger)
 	packageHandler := pkg.NewHandler(packageSvc)
+
+	subscriptionRepo := repo.NewSubscriptionRepository(t.pool)
+	subscriptionSvc := subscription.NewService(subscriptionRepo, t.logger)
+	subscriptionHandler := subscription.NewHandler(subscriptionSvc)
 
 	// health route
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -213,6 +218,18 @@ func (t *App) RegisterRoute(r chi.Router) {
 			r.Post("/", packageHandler.Create)
 			r.Patch("/{id}", packageHandler.Update)
 			r.Delete("/{id}", packageHandler.Remove)
+		})
+
+		// Grouping under /subscriptions with Chi (JWT + Casbin + LimitGuard)
+		r.Route("/subscriptions", func(r chi.Router) {
+			limitGuard := middleware.NewLimitGuard(queries, t.logger)
+
+			r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+			r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+			r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
+
+			r.Get("/", subscriptionHandler.FindAll)
+			r.Post("/", subscriptionHandler.Subscribe)
 		})
 	})
 }

@@ -23,6 +23,8 @@ type Querier interface {
 	CreateSmartWidgets(ctx context.Context, arg []CreateSmartWidgetsParams) (int64, error)
 	CreateSubUser(ctx context.Context, arg CreateSubUserParams) (CreateSubUserRow, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) error
+	// Create a subscription and return the inserted row.
+	CreateSubscriptionReturning(ctx context.Context, arg CreateSubscriptionReturningParams) (Subscription, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DecrementLimitUsage(ctx context.Context, arg DecrementLimitUsageParams) (pgtype.UUID, error)
 	DeleteBoard(ctx context.Context, id pgtype.UUID) error
@@ -63,6 +65,9 @@ type Querier interface {
 	GetRoleById(ctx context.Context, id pgtype.UUID) (GetRoleByIdRow, error)
 	GetRoleBySlug(ctx context.Context, slug string) (Role, error)
 	GetSmartWidgetById(ctx context.Context, arg GetSmartWidgetByIdParams) (GetSmartWidgetByIdRow, error)
+	// Look up a single subscription for a user + package pair. Used to block
+	// duplicate Free-package subscriptions.
+	GetSubscriptionByUserAndPackage(ctx context.Context, arg GetSubscriptionByUserAndPackageParams) (pgtype.UUID, error)
 	// ============================================================================
 	// 2. User & Signup Queries
 	// ============================================================================
@@ -74,6 +79,9 @@ type Querier interface {
 	// 7. Role Queries
 	// ============================================================================
 	GetUserPermissions(ctx context.Context, userID pgtype.UUID) ([]GetUserPermissionsRow, error)
+	// ============================================================================
+	// Limit Guard Queries (do not remove — consumed by auth middleware)
+	// ============================================================================
 	GetUserPrimaryOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	GetUserProfileById(ctx context.Context, id pgtype.UUID) (GetUserProfileByIdRow, error)
 	GetUserQuotas(ctx context.Context, userID pgtype.UUID) ([]GetUserQuotasRow, error)
@@ -105,6 +113,11 @@ type Querier interface {
 	// 6. Inventory (Smart Widget) Queries
 	// ============================================================================
 	ListSmartWidgetsByPrimaryUserId(ctx context.Context, arg ListSmartWidgetsByPrimaryUserIdParams) ([]ListSmartWidgetsByPrimaryUserIdRow, error)
+	// ============================================================================
+	// Subscription Service Queries
+	// ============================================================================
+	// List a user's subscriptions joined with their package details, newest first.
+	ListSubscriptionsByUser(ctx context.Context, userID pgtype.UUID) ([]ListSubscriptionsByUserRow, error)
 	// ============================================================================
 	// Package Queries
 	// ============================================================================
