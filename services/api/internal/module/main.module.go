@@ -162,17 +162,24 @@ func (t *App) RegisterRoute(r chi.Router) {
 
 		// Grouping under /boards with Chi (JWT + Casbin + LimitGuard)
 		r.Route("/boards", func(r chi.Router) {
-			limitGuard := middleware.NewLimitGuard(queries, t.logger)
 
-			r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
-			r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
-			r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
+			r.Get("/public/{slug}", boardHandler.FindPublicBySlug)
 
-			r.Get("/", boardHandler.FindAll)
-			r.Post("/", boardHandler.Create)
-			r.Get("/by-slug/{slug}", boardHandler.FindBySlug)
-			r.Patch("/{id}", boardHandler.Update)
-			r.Delete("/{id}", boardHandler.Remove)
+			r.Group(func(r chi.Router) {
+
+				limitGuard := middleware.NewLimitGuard(queries, t.logger)
+
+				r.Use(middleware.JWTMiddleware(authService, t.logger))   // 1st: Inject UserID into context
+				r.Use(middleware.CasbinMiddleware(t.enforcer, t.logger)) // 2nd: Enforce authorization
+				r.Use(limitGuard.Middleware())                           // 3rd: Enforce usage limits
+
+				r.Get("/", boardHandler.FindAll)
+				r.Post("/", boardHandler.Create)
+				r.Get("/by-slug/{slug}", boardHandler.FindBySlug)
+				r.Patch("/{id}", boardHandler.Update)
+				r.Delete("/{id}", boardHandler.Remove)
+
+			})
 		})
 
 		// Grouping under /inventory with Chi (JWT + Casbin + LimitGuard)
