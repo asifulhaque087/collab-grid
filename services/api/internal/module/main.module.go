@@ -1,6 +1,7 @@
 package module
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,11 +18,13 @@ import (
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/inventory"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/order"
 	pkg "github.com/asifulhaque087/collab-grid/services/api/internal/service/package"
+	"github.com/asifulhaque087/collab-grid/services/api/internal/service/realtime"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/role"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/subscription"
 	"github.com/asifulhaque087/collab-grid/services/api/internal/service/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 type App struct {
@@ -74,9 +77,6 @@ func (t *App) RegisterRoute(r chi.Router) {
 	userHandler := user.NewHandler(userSvc)
 
 	orderRepo := repo.NewOrderRepository(t.pool)
-	orderGateway := order.NewPermissiveGateway()
-	orderSvc := order.NewService(orderRepo, orderGateway, mailSvc, t.logger)
-	orderHandler := order.NewHandler(orderSvc)
 
 	packageRepo := repo.NewPackageRepository(t.pool)
 	packageSvc := pkg.NewService(packageRepo, t.logger)
@@ -85,6 +85,38 @@ func (t *App) RegisterRoute(r chi.Router) {
 	subscriptionRepo := repo.NewSubscriptionRepository(t.pool)
 	subscriptionSvc := subscription.NewService(subscriptionRepo, t.logger)
 	subscriptionHandler := subscription.NewHandler(subscriptionSvc)
+
+	// ── Realtime (websocket canvas) ──────────────────────────
+	rdbOpts, err := redis.ParseURL(t.cfg.RedisURL)
+	if err != nil {
+		rdbOpts = &redis.Options{Addr: t.cfg.RedisURL}
+	}
+	rdb := redis.NewClient(rdbOpts)
+
+	rabbit := realtime.NewRabbitmqService(t.cfg.RabbitMQURL, t.logger)
+	rabbit.Connect()
+
+	realtimeRepo := repo.NewRealtimeRepository(t.pool)
+	zone := realtime.NewZoneService()
+	socketAuth := realtime.NewSocketAuthService(realtimeRepo, t.cfg.WSTokenSecret)
+	hub := realtime.NewHub(rdb, t.logger)
+	realtimeSvc := realtime.NewService(realtimeRepo, rdb, t.cfg.WSTokenSecret, t.logger, hub)
+	gateway := realtime.NewRealtimeGateway(hub, realtimeSvc, zone, socketAuth, rabbit, t.logger)
+	consumer := realtime.NewWidgetPersistenceConsumer(rabbit, realtimeRepo, t.logger)
+
+	// Background workers: cross-instance broadcast backplane, Redis keyspace
+	// expiry → lock auto-release, and durable widget-position persistence.
+	go hub.StartBackplane(context.Background())
+	go realtimeSvc.StartExpiryWatcher(context.Background())
+	go consumer.Start(context.Background())
+
+	tokenExchangeHandler := realtime.NewTokenExchangeHandler(socketAuth)
+
+	// The realtime service drives lock release + widget removal when an order is
+	// paid, broadcasting the changes to every connected canvas socket.
+	orderGateway := order.RealtimeGateway(realtimeSvc)
+	orderSvc := order.NewService(orderRepo, orderGateway, mailSvc, t.logger)
+	orderHandler := order.NewHandler(orderSvc)
 
 	// health route
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +262,19 @@ func (t *App) RegisterRoute(r chi.Router) {
 
 			r.Get("/", subscriptionHandler.FindAll)
 			r.Post("/", subscriptionHandler.Subscribe)
+		})
+
+		// Realtime websocket canvas — public upgrade; the socket authenticates
+		// itself via the query-param `token` from the token-exchange endpoint.
+		r.Get("/realtime/canvas", gateway.ServeWS)
+
+		// Realtime token exchange — JWT only (no Casbin), mirrors the legacy
+		// AccessTokenGuard on the NestJS controller.
+		r.Route("/realtime", func(r chi.Router) {
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.JWTMiddleware(authService, t.logger))
+				r.Post("/token-exchange", tokenExchangeHandler.Exchange)
+			})
 		})
 	})
 }
