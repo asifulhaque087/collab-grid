@@ -1,7 +1,7 @@
 load('ext://restart_process', 'docker_build_with_restart')
 load('ext://namespace', 'namespace_create')
 
-namespace_create('collab-grid')
+namespace_create('loot-board')
 
 ### API ###
 
@@ -22,7 +22,7 @@ local_resource(
 
 # Server image (wrapped with live reload for Deployment)
 docker_build_with_restart(
-    'collab-grid/api:tilt',
+    'loot-board/api:tilt',
     '.',
     entrypoint=['/app/build/api/server'],
     dockerfile='./infra/development/docker/Dockerfile.api',
@@ -34,7 +34,7 @@ docker_build_with_restart(
 
 # Migration image (plain image WITHOUT live reload wrapper for Job)
 docker_build(
-    'collab-grid/api-migrate:tilt',
+    'loot-board/api-migrate:tilt',
     '.',
     dockerfile='./infra/development/docker/Dockerfile.api',
     only=['./build/api'],
@@ -43,12 +43,12 @@ docker_build(
 k8s_yaml(
     helm(
         './infra/charts/api',
-        name='collabgrid-api',
-        namespace='collab-grid',
+        name='lootboard-api',
+        namespace='loot-board',
         values=['./infra/charts/api/values.dev.yaml'],
         set=[
-            'image.repository=collab-grid/api',
-            'image.migrateRepository=collab-grid/api-migrate',
+            'image.repository=loot-board/api',
+            'image.migrateRepository=loot-board/api-migrate',
             'image.tag=tilt'
         ]
     )
@@ -56,15 +56,15 @@ k8s_yaml(
 
 
 k8s_resource(
-    'collabgrid-api', 
+    'lootboard-api', 
     # port_forwards='8081:3001', 
     port_forwards='3001', 
     resource_deps=['api-compile'],
 )
 
-k8s_resource('collabgrid-api-db-migrate', trigger_mode=TRIGGER_MODE_MANUAL)
+k8s_resource('lootboard-api-db-migrate', trigger_mode=TRIGGER_MODE_MANUAL)
 
 
-# k8s_resource('collabgrid-api-db-migrate', auto_init=True)
+# k8s_resource('lootboard-api-db-migrate', auto_init=True)
 
 ### End of API ###

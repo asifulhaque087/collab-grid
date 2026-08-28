@@ -7,7 +7,7 @@ export function SiteFooter() {
       <div className="wrap foot-inner">
         <span className="logo" style={{ fontSize: 16 }}>
           <LogoMark />
-          CollabGrid
+          LootBoard
         </span>
         <div className="foot-links">
           {NAV_LINKS.map((l) => (

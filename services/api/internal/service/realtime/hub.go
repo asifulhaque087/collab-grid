@@ -156,7 +156,7 @@ func (h *Hub) publish(room, event string, payload any) {
 	}
 	msg := roomMessage{InstanceID: h.instanceID, Room: room, Event: event, Payload: raw}
 	b, _ := json.Marshal(msg)
-	if err := h.rdb.Publish(context.Background(), "collabgrid:rt", string(b)).Err(); err != nil {
+	if err := h.rdb.Publish(context.Background(), "lootboard:rt", string(b)).Err(); err != nil {
 		h.logger.Warn("redis backplane publish failed", "error", err.Error())
 	}
 }
@@ -168,7 +168,7 @@ func (h *Hub) StartBackplane(ctx context.Context) {
 	if h.rdb == nil {
 		return
 	}
-	pubsub := h.rdb.Subscribe(ctx, "collabgrid:rt")
+	pubsub := h.rdb.Subscribe(ctx, "lootboard:rt")
 	if _, err := pubsub.Receive(ctx); err != nil {
 		h.logger.Warn("redis backplane unavailable; running in single-instance mode", "error", err.Error())
 		return

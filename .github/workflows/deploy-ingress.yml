@@ -4,13 +4,13 @@ on:
   push:
     branches: [main]
     paths:
-      - 'charts/ingress-routes/**'
-      - '.github/workflows/deploy-ingress.yml'
+      - "charts/ingress-routes/**"
+      - ".github/workflows/deploy-ingress.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'charts/ingress-routes/**'
-      - '.github/workflows/deploy-ingress.yml'
+      - "charts/ingress-routes/**"
+      - ".github/workflows/deploy-ingress.yml"
 
 jobs:
   deploy-ingress:
@@ -29,6 +29,6 @@ jobs:
 
       - name: Deploy Ingress to Kubernetes
         run: |
-          helm upgrade --install collabgrid-ingress ./charts/ingress-routes \
-            --namespace collab-grid --create-namespace \
+          helm upgrade --install lootboard-ingress ./charts/ingress-routes \
+            --namespace loot-board --create-namespace \
             --wait

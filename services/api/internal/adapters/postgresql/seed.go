@@ -203,7 +203,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 
 	superAdminUserID, err := queries.InsertUser(ctx, sqlc.InsertUserParams{
 		Name:     "Super Admin",
-		Email:    "admin@collabgrid.com",
+		Email:    "admin@lootboard.com",
 		Password: pgtype.Text{String: string(hash), Valid: true},
 		Provider: pgtype.Text{String: "local", Valid: true},
 	})
@@ -304,7 +304,7 @@ func Seed(ctx context.Context, pool *pgxpool.Pool, e *casbin.CasbinEnforcer) err
 	log.Println("  Seeding tenant user...")
 	tenantUserID, err := queries.InsertUser(ctx, sqlc.InsertUserParams{
 		Name:     "Tenant User",
-		Email:    "tenant@collabgrid.com",
+		Email:    "tenant@lootboard.com",
 		Password: pgtype.Text{String: string(hash), Valid: true},
 		Provider: pgtype.Text{String: "local", Valid: true},
 	})

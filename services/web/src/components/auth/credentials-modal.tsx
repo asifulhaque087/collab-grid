@@ -3,18 +3,11 @@
 import { useState } from "react";
 import { Shield, User, Mail, Copy, Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogBody,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const SUPER_ADMIN = { email: "admin@collabgrid.com", password: "qwerty1234%" };
-const TENANT = { email: "tenant@collabgrid.com", password: "qwerty1234%" };
+const SUPER_ADMIN = { email: "admin@lootboard.com", password: "qwerty1234%" };
+const TENANT = { email: "tenant@lootboard.com", password: "qwerty1234%" };
 const ETHEREAL = { email: "christy.hackett34@ethereal.email", password: "RevrYqCNX83z9TJ9Nh" };
 
 function CopyButton({ value }: { value: string }) {
@@ -55,9 +48,7 @@ export function CredentialsModal({
       <DialogContent className="max-w-[480px]" overlayClassName="bg-black/15">
         <DialogHeader>
           <DialogTitle>Quick Login</DialogTitle>
-          <DialogDescription>
-            Use these credentials to sign in quickly
-          </DialogDescription>
+          <DialogDescription>Use these credentials to sign in quickly</DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-3">
           <div className="rounded-md border border-border bg-bg p-4">
@@ -68,12 +59,8 @@ export function CredentialsModal({
                 </div>
                 <div className="min-w-0">
                   <div className="text-[0.875rem] font-semibold text-text">Super Admin</div>
-                  <div className="mt-1 truncate font-mono text-[0.78rem] text-text-dim">
-                    {SUPER_ADMIN.email}
-                  </div>
-                  <div className="truncate font-mono text-[0.78rem] text-text-muted">
-                    {SUPER_ADMIN.password}
-                  </div>
+                  <div className="mt-1 truncate font-mono text-[0.78rem] text-text-dim">{SUPER_ADMIN.email}</div>
+                  <div className="truncate font-mono text-[0.78rem] text-text-muted">{SUPER_ADMIN.password}</div>
                 </div>
               </div>
               <Button
@@ -95,20 +82,11 @@ export function CredentialsModal({
                 </div>
                 <div className="min-w-0">
                   <div className="text-[0.875rem] font-semibold text-text">Tenant</div>
-                  <div className="mt-1 truncate font-mono text-[0.78rem] text-text-dim">
-                    {TENANT.email}
-                  </div>
-                  <div className="truncate font-mono text-[0.78rem] text-text-muted">
-                    {TENANT.password}
-                  </div>
+                  <div className="mt-1 truncate font-mono text-[0.78rem] text-text-dim">{TENANT.email}</div>
+                  <div className="truncate font-mono text-[0.78rem] text-text-muted">{TENANT.password}</div>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="shrink-0"
-                onClick={() => onFillCredentials(TENANT.email, TENANT.password)}
-              >
+              <Button size="sm" variant="secondary" className="shrink-0" onClick={() => onFillCredentials(TENANT.email, TENANT.password)}>
                 Use
               </Button>
             </div>
@@ -123,15 +101,11 @@ export function CredentialsModal({
                 <div className="text-[0.875rem] font-semibold text-text">Ethereal Test Email</div>
                 <div className="mt-2 space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate font-mono text-[0.78rem] text-text-dim">
-                      {ETHEREAL.email}
-                    </span>
+                    <span className="min-w-0 flex-1 truncate font-mono text-[0.78rem] text-text-dim">{ETHEREAL.email}</span>
                     <CopyButton value={ETHEREAL.email} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate font-mono text-[0.78rem] text-text-dim">
-                      {ETHEREAL.password}
-                    </span>
+                    <span className="min-w-0 flex-1 truncate font-mono text-[0.78rem] text-text-dim">{ETHEREAL.password}</span>
                     <CopyButton value={ETHEREAL.password} />
                   </div>
                 </div>

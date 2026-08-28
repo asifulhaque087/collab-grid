@@ -11,7 +11,7 @@ export function SiteNav() {
       <div className="nav-inner">
         <a href="#top" className="logo">
           <LogoMark />
-          CollabGrid
+          LootBoard
         </a>
         <div className="nav-links">
           {NAV_LINKS.map((l) => (

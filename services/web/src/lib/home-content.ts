@@ -1,14 +1,7 @@
 // Typed content for the marketing homepage. Keeping copy/data here (rendered
 // via `.map`) keeps the section components DRY and free of duplicated markup.
 
-import type {
-  ArchCard,
-  BentoStat,
-  DemoPeer,
-  DemoProduct,
-  LegendItem,
-  LifecycleState,
-} from "@/types/home";
+import type { ArchCard, BentoStat, DemoPeer, DemoProduct, LegendItem, LifecycleState } from "@/types/home";
 
 /** Entry point into the app. No auth yet — repoint at a real sign-up flow later. */
 export const APP_ENTRY = "/dashboard";
@@ -107,7 +100,7 @@ export const ARCH_CARDS: ArchCard[] = [
     icon: "socket",
     iconColor: "#94a3b8",
     title: "Lifecycle-aware sockets",
-    body: "Background a tab and its socket drops to a heartbeat-only state to free up resources. Refocus and CollabGrid fast-syncs the exact delta you missed — no full reload.",
+    body: "Background a tab and its socket drops to a heartbeat-only state to free up resources. Refocus and LootBoard fast-syncs the exact delta you missed — no full reload.",
     tech: "heartbeat · delta fast-sync",
   },
   {
@@ -151,8 +144,14 @@ export const DEMO_CATALOG: DemoProduct[] = [
 ];
 
 export const DEMO_INITIAL_COORDS: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 60, y: 48 }, { x: 300, y: 96 }, { x: 560, y: 54 }, { x: 790, y: 120 },
-  { x: 110, y: 300 }, { x: 380, y: 330 }, { x: 650, y: 300 }, { x: 300, y: 520 },
+  { x: 60, y: 48 },
+  { x: 300, y: 96 },
+  { x: 560, y: 54 },
+  { x: 790, y: 120 },
+  { x: 110, y: 300 },
+  { x: 380, y: 330 },
+  { x: 650, y: 300 },
+  { x: 300, y: 520 },
 ];
 
 export const DEMO_PEERS: DemoPeer[] = [

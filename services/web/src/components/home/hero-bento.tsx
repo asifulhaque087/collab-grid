@@ -12,13 +12,12 @@ export function HeroBento() {
           <div className="cell bento-copy">
             <span className="eyebrow">Real-time spatial commerce</span>
             <h1>
-              Stock you can <span className="hl-active">watch move</span>,{" "}
-              <span className="hl-soft">lock</span>, and sell — live on a shared canvas.
+              Stock you can <span className="hl-active">watch move</span>, <span className="hl-soft">lock</span>, and sell — live on a
+              shared canvas.
             </h1>
             <p className="sub">
-              CollabGrid streams only the widgets inside your viewport, holds each one with an
-              atomic lock the instant it&apos;s clicked, and runs every checkout through a queue that
-              physically can&apos;t double-spend.
+              LootBoard streams only the widgets inside your viewport, holds each one with an atomic lock the instant it&apos;s clicked, and
+              runs every checkout through a queue that physically can&apos;t double-spend.
             </p>
             <div className="cta">
               <Button asChild>

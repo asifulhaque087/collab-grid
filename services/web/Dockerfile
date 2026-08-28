@@ -2,7 +2,7 @@
 
 # Multi-stage build for the Next.js frontend (apps/web) in a pnpm/turborepo monorepo.
 # Build context is the REPO ROOT. Production uses Next.js standalone output.
-#   docker build -f apps/web/Dockerfile --target production -t collabgrid-web .
+#   docker build -f apps/web/Dockerfile --target production -t lootboard-web .
 
 ############################
 # Base — pnpm via corepack #

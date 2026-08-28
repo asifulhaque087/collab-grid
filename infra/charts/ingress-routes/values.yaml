@@ -1,6 +1,6 @@
 ingress:
   enabled: true
-  name: collabgrid-ingress
+  name: lootboard-ingress
   ingressClassName: nginx
 
   annotations:
@@ -8,35 +8,35 @@ ingress:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
 
   tls:
-    - secretName: collabgrid-ssl-secret
+    - secretName: lootboard-ssl-secret
       hosts:
-        - collabgrid.asif-haque.com
-        - www.collabgrid.asif-haque.com
-        - collabgrid-api.asif-haque.com
-        - www.collabgrid-api.asif-haque.com
+        - lootboard.asif-haque.com
+        - www.lootboard.asif-haque.com
+        - lootboard-api.asif-haque.com
+        - www.lootboard-api.asif-haque.com
 
   hosts:
-    - host: collabgrid.asif-haque.com
+    - host: lootboard.asif-haque.com
       paths:
         - path: /
           pathType: Prefix
-          serviceName: collabgrid-web
+          serviceName: lootboard-web
           servicePort: 3000
-    - host: www.collabgrid.asif-haque.com
+    - host: www.lootboard.asif-haque.com
       paths:
         - path: /
           pathType: Prefix
-          serviceName: collabgrid-web
+          serviceName: lootboard-web
           servicePort: 3000
-    - host: collabgrid-api.asif-haque.com
+    - host: lootboard-api.asif-haque.com
       paths:
         - path: /
           pathType: Prefix
-          serviceName: collabgrid-api
+          serviceName: lootboard-api
           servicePort: 3001
-    - host: www.collabgrid-api.asif-haque.com
+    - host: www.lootboard-api.asif-haque.com
       paths:
         - path: /
           pathType: Prefix
-          serviceName: collabgrid-api
+          serviceName: lootboard-api
           servicePort: 3001

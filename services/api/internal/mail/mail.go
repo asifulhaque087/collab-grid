@@ -50,7 +50,7 @@ func (p *Provider) SendOrderInvoiceEmail(to string, order templates.InvoiceOrder
 	if len(id) > 8 {
 		id = id[:8]
 	}
-	subject := fmt.Sprintf("Your CollabGrid invoice #%s", strings.ToUpper(id))
+	subject := fmt.Sprintf("Your LootBoard invoice #%s", strings.ToUpper(id))
 
 	component := templates.OrderInvoiceEmail(order, items)
 

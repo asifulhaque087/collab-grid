@@ -16,7 +16,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       <header className="relative z-[1] px-6 py-5">
         <Link href="/" className="logo" style={{ fontSize: 18 }}>
           <LogoMark />
-          CollabGrid
+          LootBoard
         </Link>
       </header>
       <main className="relative z-[1] flex flex-1 items-center justify-center px-6 pb-16">{children}</main>

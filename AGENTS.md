@@ -1,4 +1,4 @@
-# CollabGrid — Agent Guide
+# LootBoard — Agent Guide
 
 ## Quick Commands
 

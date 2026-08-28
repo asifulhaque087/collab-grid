@@ -36,7 +36,7 @@ export function Header({ user }: { user: CurrentUser }) {
             <LayoutGrid className="size-[18px] text-white" strokeWidth={2.5} />
           </div>
           <div className="text-[1.15rem] font-bold tracking-tight text-text">
-            Collab<span className="text-active">Grid</span>
+            Loot<span className="text-active">Board</span>
           </div>
         </div>
         <div className="hidden h-7 w-px shrink-0 bg-border md:block" />

@@ -1,4 +1,4 @@
-# CollabGrid — Backend Architecture & Engineering Deep-Dive
+# LootBoard — Backend Architecture & Engineering Deep-Dive
 
 > How the NestJS backend solves the hard problems behind a real-time collaborative commerce
 > canvas: concurrent ownership without race conditions, double-payment prevention, surviving
@@ -37,7 +37,7 @@ TOCTOU race: both reads see "available," both write "taken," both proceed to che
 locks (`SELECT … FOR UPDATE`) serialize this but buckle under flash-sale burst velocity and hold
 DB connections hostage for the entire human "thinking" time of a checkout.
 
-**The solution — a single atomic Redis operation.** Ownership is modeled as a lock *key* in Redis,
+**The solution — a single atomic Redis operation.** Ownership is modeled as a lock _key_ in Redis,
 acquired with `SET key value NX PX ttl`. Redis is single-threaded, so `NX` ("set only if Not
 eXists") is atomically all-or-nothing: exactly one of the two concurrent clients gets `OK`, the
 other gets `null`. No transaction, no row lock, no DB round-trip.
@@ -52,7 +52,7 @@ return { ok: false, reason: 'taken', holder: holder?.userId };
 
 The lock carries its own **TTL** (`PX 60000`), so a shopper who locks an item and then closes
 their laptop cannot strand inventory forever — Redis evicts the key after 60 seconds and the item
-frees itself (see §4). The lock value is JSON `{ userId, kind }` so the server always knows *who*
+frees itself (see §4). The lock value is JSON `{ userId, kind }` so the server always knows _who_
 holds it and whether it is a soft or hard lock.
 
 ### The three-state lock lifecycle
@@ -63,17 +63,17 @@ holds it and whether it is a soft or hard lock.
    └──── TTL expiry ────┴──────────── TTL expiry ────────────┘  (auto-release, item returns)
 ```
 
-| Transition | Mechanism | File |
-| --- | --- | --- |
-| Acquire soft lock | `SET NX PX 60000` | `realtime.service.ts:acquireSoftLock` |
-| Promote to hard lock | Re-`SET` same key `PX 300000`, add widget to a per-board `hardlocks:<board>` set | `realtime.service.ts:promoteToHardLocks` |
-| Verify ownership at checkout | `getLock` → compare `userId` | `realtime.service.ts:userHoldsLock` |
-| Release / expire | Key TTL fires keyspace event | §4 |
+| Transition                   | Mechanism                                                                        | File                                     |
+| ---------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------- |
+| Acquire soft lock            | `SET NX PX 60000`                                                                | `realtime.service.ts:acquireSoftLock`    |
+| Promote to hard lock         | Re-`SET` same key `PX 300000`, add widget to a per-board `hardlocks:<board>` set | `realtime.service.ts:promoteToHardLocks` |
+| Verify ownership at checkout | `getLock` → compare `userId`                                                     | `realtime.service.ts:userHoldsLock`      |
+| Release / expire             | Key TTL fires keyspace event                                                     | §4                                       |
 
-**Why a per-board `hardlocks` set?** When a key expires, the keyspace event only tells us *which
-key* died — not whether it was a soft or hard lock (both use the same `lock:<board>:<widget>` key).
+**Why a per-board `hardlocks` set?** When a key expires, the keyspace event only tells us _which
+key_ died — not whether it was a soft or hard lock (both use the same `lock:<board>:<widget>` key).
 `resolveExpiredLock` does an atomic `SREM` on the `hardlocks` set: if the widget was in it, it was a
-hard lock; the `SREM` both *answers the question* and *removes the membership* in one race-free op.
+hard lock; the `SREM` both _answers the question_ and _removes the membership_ in one race-free op.
 
 ---
 
@@ -154,7 +154,8 @@ they never reserved.
 
 1. **Idempotency key (pre-check).** Every checkout carries a client-generated UUID stored on a
    **unique** `order.idempotencyKey` column. A repeated submit finds the existing row and returns
-   the *original* order — no second insert, no second charge:
+   the _original_ order — no second insert, no second charge:
+
    ```ts
    const [existing] = await this.db.select(...).where(eq(orderTable.idempotencyKey, dto.idempotencyKey));
    if (existing) return { orderId: existing.id, duplicate: true };
@@ -165,8 +166,8 @@ they never reserved.
    caught and converted back into "return the original order" — so even a true concurrent
    double-submit yields one order.
 
-3. **Lock verification.** Before charging, the server confirms the buyer *actually holds a live
-   lock* on every widget (`realtime.userHoldsLock`). You cannot buy what you didn't reserve, and a
+3. **Lock verification.** Before charging, the server confirms the buyer _actually holds a live
+   lock_ on every widget (`realtime.userHoldsLock`). You cannot buy what you didn't reserve, and a
    lapsed 5-minute hard-lock window blocks the purchase.
 
 4. **Server-authoritative total.** The amount is recomputed from the database rows, never read from
@@ -183,8 +184,8 @@ locks, and broadcast `widget:purchased` to every viewer so the item leaves all c
 
 ## 4. Auto-Expiring Reservations — Redis Keyspace Notifications as an Event Bus
 
-**The problem.** A soft lock must auto-release after 60 s and a hard lock after 5 min — *and every
-connected client's canvas must update the instant it does*. Polling Redis for expired keys is
+**The problem.** A soft lock must auto-release after 60 s and a hard lock after 5 min — _and every
+connected client's canvas must update the instant it does_. Polling Redis for expired keys is
 wasteful and laggy; a per-lock `setTimeout` in Node is lost on restart and doesn't survive multiple
 server instances.
 
@@ -196,20 +197,20 @@ split in `redis.module.ts`) listens and routes:
 
 ```ts
 // realtime.gateway.ts — afterInit()
-this.subscriber.psubscribe('__keyevent@*__:expired');
-this.subscriber.on('pmessage', (_p, _c, expiredKey) => {
-  const parsed = this.realtime.parseLockKey(expiredKey);   // lock:<board>:<widget>
+this.subscriber.psubscribe("__keyevent@*__:expired");
+this.subscriber.on("pmessage", (_p, _c, expiredKey) => {
+  const parsed = this.realtime.parseLockKey(expiredKey); // lock:<board>:<widget>
   if (parsed) this.handleLockExpiry(parsed.boardId, parsed.widgetId);
 });
 ```
 
 `resolveExpiredLock` then classifies the expiry and the gateway broadcasts the right event:
 
-| Outcome | Meaning | Broadcast |
-| --- | --- | --- |
-| `soft` | A 60 s soft lock lapsed | `widget:lock:soft:release` (amber → open) |
-| `hard-released` | A 5 min hard lock lapsed unpaid | `widget:lock:hard:release` (red → open) |
-| `hard-purchased` | Hard lock expired but a `paid:` flag was set | delete widget + `widget:purchased` |
+| Outcome          | Meaning                                      | Broadcast                                 |
+| ---------------- | -------------------------------------------- | ----------------------------------------- |
+| `soft`           | A 60 s soft lock lapsed                      | `widget:lock:soft:release` (amber → open) |
+| `hard-released`  | A 5 min hard lock lapsed unpaid              | `widget:lock:hard:release` (red → open)   |
+| `hard-purchased` | Hard lock expired but a `paid:` flag was set | delete widget + `widget:purchased`        |
 
 This turns Redis TTL into a **reliable, server-driven event source** — no polling, no in-process
 timers, and it works identically whether the lock expires in 1 second or 5 minutes.
@@ -240,8 +241,8 @@ subscription:
 
 ```ts
 // realtime.gateway.ts — onViewportUpdate()
-for (const z of data.zones) if (!next.has(z)) await client.leave(room(z));  // left these
-for (const z of next) if (!data.zones.has(z)) await client.join(room(z));   // entered these
+for (const z of data.zones) if (!next.has(z)) await client.leave(room(z)); // left these
+for (const z of next) if (!data.zones.has(z)) await client.join(room(z)); // entered these
 data.zones = next;
 ```
 
@@ -254,7 +255,7 @@ data.zones = next;
   (presence join/leave, lock state changes). Lock color must be globally consistent, so it ignores
   zones.
 
-This keeps per-event fan-out proportional to *viewers of the affected region*, not total users —
+This keeps per-event fan-out proportional to _viewers of the affected region_, not total users —
 the core "stream only what's in the viewport" non-functional requirement.
 
 ---
@@ -273,11 +274,11 @@ denial so the UI can say "Too many rapid actions — slow down."
 // realtime.service.ts
 const last = this.lastLockAttempt.get(userId) ?? 0;
 this.lastLockAttempt.set(userId, now);
-if (now - last < MIN_LOCK_INTERVAL_MS) return { ok: false, reason: 'bot' };
+if (now - last < MIN_LOCK_INTERVAL_MS) return { ok: false, reason: "bot" };
 ```
 
-*(Per-instance heuristic today; in a multi-node deployment this would move to a Redis counter so the
-rate window is shared across nodes — see §10.)*
+_(Per-instance heuristic today; in a multi-node deployment this would move to a Redis counter so the
+rate window is shared across nodes — see §10.)_
 
 ---
 
@@ -285,7 +286,7 @@ rate window is shared across nodes — see §10.)*
 
 **The problem.** REST routes are protected by guards, but a WebSocket connection is long-lived and
 anonymous by default. End users join boards with no account at all, yet only the tenant (or a
-permitted sub-user) may *move* or *place* widgets — and unpublished boards must not be joinable by
+permitted sub-user) may _move_ or _place_ widgets — and unpublished boards must not be joinable by
 strangers.
 
 **The solution — authenticate once at join, cache the verdict.** `SocketAuthService.authenticate`
@@ -298,7 +299,7 @@ high-frequency move handlers cheap:
 
 - **Access gate.** Public boards: open to anyone. Restricted (unpublished) boards: only the
   authenticated owner (`ownsBoard`, tenant-scoped via `parentId`) may join — everyone else gets
-  *"This board is not published."*
+  _"This board is not published."_
 - **Privilege gate.** `canManageWidgets` builds a CASL ability from the user's role grants + tenant
   plan snapshot and checks `update:SmartWidget`. The result is stored as `socket.data.canMove`; the
   `widget:move` / `widget:move:end` / `widget:place` handlers early-return unless it's true.
@@ -314,8 +315,8 @@ if (!data.boardId || !data.canMove) return;   // end users are read-only on the 
 
 ## 8. Plan-Aware RBAC — CASL Abilities + Quota Snapshots
 
-**The problem.** Authorization here is two-dimensional: a *capability* question ("can this user
-create boards?") **and** a *quota* question ("has this tenant used up their plan's 2 free boards?").
+**The problem.** Authorization here is two-dimensional: a _capability_ question ("can this user
+create boards?") **and** a _quota_ question ("has this tenant used up their plan's 2 free boards?").
 And sub-users inherit their parent tenant's plan budget. A flat permission list can't express that.
 
 **The solution — a layered permission resolution** in `permissions.guard.ts`, expressed as CASL
@@ -328,17 +329,17 @@ abilities so backend and frontend share one model:
    - **granted** if unlimited (`granted`/`remaining` is `null`/`-1`) or `remaining > 0`;
    - **overflow-granted** if `remaining === 0` but the plan is still active (allowed now, but
      flagged for billing);
-   - **exhausted** (hard block) if `remaining === 0` *and* the plan has expired.
+   - **exhausted** (hard block) if `remaining === 0` _and_ the plan has expired.
 3. **Sub-user inheritance.** A tenant sub-user's quota is read from the **parent** tenant's snapshot
    (`fallbackToParentQuota`), so a team shares one plan budget.
 
 `buildAbility(grants)` produces a CASL `AppAbility`; the guard then checks each route's required
-tuple and throws a *quota* message vs an *authorization* message depending on whether the permission
+tuple and throws a _quota_ message vs an _authorization_ message depending on whether the permission
 was merely missing or specifically exhausted.
 
-**Quota decrement is a separate guard.** `QuotaGuard` runs *after* `PermissionsGuard` and only on
+**Quota decrement is a separate guard.** `QuotaGuard` runs _after_ `PermissionsGuard` and only on
 `CREATE` routes. It decrements the matching `remaining`, and once that hits 0 it increments an
-`extra` overage counter instead — so plan limits are enforced *and* overages are tracked for
+`extra` overage counter instead — so plan limits are enforced _and_ overages are tracked for
 billing, all at the data layer.
 
 ```
@@ -355,13 +356,13 @@ and resets their snapshot quotas, which is what flips active overflow into the h
 
 The realtime stack is designed so infrastructure hiccups degrade features rather than crash the app:
 
-| Failure | Behavior | Where |
-| --- | --- | --- |
-| Redis down at boot | `lazyConnect` + `retryStrategy` — app boots, first command reconnects | `redis.module.ts` |
-| Redis expiry subscriber not yet connected | `psubscribe(...).catch(() => undefined)` — bootstrap never blocks | `realtime.gateway.ts` |
-| RabbitMQ unreachable | Broadcasts still fire; only durable position persistence is skipped ("canvas stays live") | `rabbitmq.service.ts` |
-| Poison position message | Consumer `nack`s without requeue — one bad write dropped, not looped | `rabbitmq.service.ts` |
-| Stale Redis position vs DB | Reads prefer the live Redis position, reconciled by the consumer's eventual write | `realtime.service.ts:getBoardWidgets` |
+| Failure                                   | Behavior                                                                                  | Where                                 |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------- |
+| Redis down at boot                        | `lazyConnect` + `retryStrategy` — app boots, first command reconnects                     | `redis.module.ts`                     |
+| Redis expiry subscriber not yet connected | `psubscribe(...).catch(() => undefined)` — bootstrap never blocks                         | `realtime.gateway.ts`                 |
+| RabbitMQ unreachable                      | Broadcasts still fire; only durable position persistence is skipped ("canvas stays live") | `rabbitmq.service.ts`                 |
+| Poison position message                   | Consumer `nack`s without requeue — one bad write dropped, not looped                      | `rabbitmq.service.ts`                 |
+| Stale Redis position vs DB                | Reads prefer the live Redis position, reconciled by the consumer's eventual write         | `realtime.service.ts:getBoardWidgets` |
 
 Error handling throughout uses the shared `tryit()` helper (`packages/common`) returning
 `[data, error]` tuples instead of `try/catch`, keeping the failure path explicit and uniform.
@@ -383,7 +384,7 @@ the whole cluster regardless of which node a client landed on.
 ```ts
 // main.ts — bootstrap
 const redisIoAdapter = new RedisIoAdapter(app);
-await redisIoAdapter.connectToRedis();   // builds the pub/sub client pair
+await redisIoAdapter.connectToRedis(); // builds the pub/sub client pair
 app.useWebSocketAdapter(redisIoAdapter);
 ```
 
@@ -410,7 +411,7 @@ The design made this a clean drop-in:
 - Lock atomicity (`SET NX`) and expiry events are **already centralized in Redis**, so they remain
   correct across N instances with zero change — the hard part of multi-node correctness was done.
 
-**Graceful degradation.** The adapter clients use `lazyConnect`, and the *initial* connect is raced
+**Graceful degradation.** The adapter clients use `lazyConnect`, and the _initial_ connect is raced
 against a 3 s timeout: if `REDIS_URL` is unset or Redis is unreachable at boot, the adapter logs a
 warning and falls back to socket.io's in-memory adapter (correct for a single instance) instead of
 hanging bootstrap. The `retryStrategy` itself stays infinite, so once connected the backplane
@@ -446,28 +447,28 @@ apps/api/src/
 
 ### Which store owns what — and why
 
-| Store | Owns | Why this store |
-| --- | --- | --- |
-| **PostgreSQL** (Drizzle) | Boards, widgets, orders, users, roles, plan snapshots — the durable system of record | Relational integrity, transactions, type-safe migrations |
-| **Redis** | Soft/hard locks, `hardlocks`/`paid` sets, presence hash, write-behind widget positions, viewports | Single-threaded atomicity (`SET NX`), free TTL expiry, keyspace events, shared across instances |
-| **RabbitMQ** | The `widget.position` durable queue (debounced persistence) | Decouples 60 fps write storms from the DB; durable + back-pressured |
+| Store                    | Owns                                                                                              | Why this store                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **PostgreSQL** (Drizzle) | Boards, widgets, orders, users, roles, plan snapshots — the durable system of record              | Relational integrity, transactions, type-safe migrations                                        |
+| **Redis**                | Soft/hard locks, `hardlocks`/`paid` sets, presence hash, write-behind widget positions, viewports | Single-threaded atomicity (`SET NX`), free TTL expiry, keyspace events, shared across instances |
+| **RabbitMQ**             | The `widget.position` durable queue (debounced persistence)                                       | Decouples 60 fps write storms from the DB; durable + back-pressured                             |
 
 ### Inbound socket events (the backend's WebSocket API)
 
-| Event | Handler | Purpose |
-| --- | --- | --- |
-| `board:join` | `onJoin` | Auth + access gate, join zones, return widgets/peers/locks |
-| `viewport:update` | `onViewportUpdate` | Diff & re-subscribe zone rooms on pan/zoom |
-| `cursor:move:send` | `onCursorMove` | Relay cursor to the one zone it's in |
-| `widget:lock:soft:init` | `onSoftLock` | Atomic 60 s soft lock (+ bot guard) |
-| `widget:lock:hard:init` | `onHardLock` | Promote the user's soft locks to 5 min hard locks (checkout) |
+| Event                       | Handler                | Purpose                                                              |
+| --------------------------- | ---------------------- | -------------------------------------------------------------------- |
+| `board:join`                | `onJoin`               | Auth + access gate, join zones, return widgets/peers/locks           |
+| `viewport:update`           | `onViewportUpdate`     | Diff & re-subscribe zone rooms on pan/zoom                           |
+| `cursor:move:send`          | `onCursorMove`         | Relay cursor to the one zone it's in                                 |
+| `widget:lock:soft:init`     | `onSoftLock`           | Atomic 60 s soft lock (+ bot guard)                                  |
+| `widget:lock:hard:init`     | `onHardLock`           | Promote the user's soft locks to 5 min hard locks (checkout)         |
 | `widget:move` / `:move:end` | `onWidgetMove` / `End` | Write-behind position + debounced/immediate persist + zone broadcast |
-| `widget:place` | `onWidgetPlace` | Stamp first coordinates onto a sidebar item, broadcast to peers |
+| `widget:place`              | `onWidgetPlace`        | Stamp first coordinates onto a sidebar item, broadcast to peers      |
 
 ---
 
-*Backends like this are interesting because the hard parts aren't the CRUD — they're the
+_Backends like this are interesting because the hard parts aren't the CRUD — they're the
 concurrency model (atomic Redis locks), the impedance match between a 60 fps event stream and a
 relational database (write-behind cache + debounced queue), and making "expire in 60 seconds and
 tell everyone" a first-class, restart-safe primitive (keyspace events). Each was solved with the
-simplest mechanism that is actually correct under concurrency.*
+simplest mechanism that is actually correct under concurrency._
