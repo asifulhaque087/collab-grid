@@ -3,6 +3,7 @@
 ## Quick Commands
 
 **API (Go) — run from `services/api/`:**
+
 ```bash
 go run ./cmd/server    # start API server
 go run ./cmd/seed      # seed DB (permissions, roles, packages, casbin rules)
@@ -15,6 +16,7 @@ go test ./internal/service/auth # focused package tests
 ⚠️ Makefile targets `make build` and `make run` are **broken** — they reference `./cmd` and `cmd/main.go`, which no longer exist. Use the commands above.
 
 **Web — run from `web/`:**
+
 ```bash
 pnpm dev              # dev server (:3000)
 pnpm lint             # eslint --max-warnings 0
@@ -23,7 +25,7 @@ pnpm check-types      # next typegen && tsc --noEmit
 
 ## Layout & Stack
 
-- **Single Go module at repo root** (`github.com/asifulhaque087/collab-grid`) — that's why all import paths start with `github.com/asifulhaque087/collab-grid/services/api/...`.
+- **Single Go module at repo root** (`github.com/asifulhaque087/loot-board`) — that's why all import paths start with `github.com/asifulhaque087/loot-board/services/api/...`.
 - **API:** Go 1.25, pgx/v5, sqlc, chi/v5, casbin/v2, goose. Entrypoints: `services/api/cmd/{server,seed,migrate}/main.go`.
 - **Web:** Next.js 16, Tailwind CSS v4 (`@theme` in CSS; **no** `tailwind.config.js`), `@t3-oss/env-nextjs` (`src/vars.ts`).
 - **Infra:** Helm charts in `infra/charts/`, Dockerfiles in `infra/development/docker/`.

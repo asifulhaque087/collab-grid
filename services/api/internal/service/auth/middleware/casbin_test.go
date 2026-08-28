@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	auth "github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
+	auth "github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
 	"github.com/go-chi/chi/v5"
 )
 

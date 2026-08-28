@@ -10,12 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"log/slog"
+
+	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/redis/go-redis/v9"
-	"log/slog"
-	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
 )
 
 const (
@@ -39,7 +40,7 @@ type service struct {
 	logger   *slog.Logger
 	emitter  Emitter
 
-	mu             sync.Mutex
+	mu              sync.Mutex
 	lastLockAttempt map[string]int64
 }
 
@@ -100,11 +101,11 @@ func (s *service) GetRealtimeBoardBySlug(ctx context.Context, slug string) (*Boa
 	}
 
 	return &BoardJoinBoard{
-		ID:       row.ID.String(),
-		Slug:     row.Slug,
-		Name:     row.Name,
-		Access:   row.Access,
-		MaxWidth: orDefaultInt4(row.MaxWidth, 10000),
+		ID:        row.ID.String(),
+		Slug:      row.Slug,
+		Name:      row.Name,
+		Access:    row.Access,
+		MaxWidth:  orDefaultInt4(row.MaxWidth, 10000),
 		MaxHeight: orDefaultInt4(row.MaxHeight, 10000),
 	}, nil
 }
@@ -404,7 +405,7 @@ func (s *service) GetUserLocks(ctx context.Context, boardID, userID string) ([]W
 	return locks, nil
 }
 
-func (s *service) hardSetKey(boardID string) string  { return "hardlocks:" + boardID }
+func (s *service) hardSetKey(boardID string) string { return "hardlocks:" + boardID }
 func (s *service) paidKey(boardID, widgetID string) string {
 	return "paid:" + boardID + ":" + widgetID
 }

@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/module"
+	"github.com/asifulhaque087/loot-board/services/api/internal/module"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )

@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"sync"
 
-	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 

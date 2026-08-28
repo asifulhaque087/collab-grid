@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	auth "github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
+	auth "github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
 )
 
 const FreePackageSlug = auth.FreePackageSlug

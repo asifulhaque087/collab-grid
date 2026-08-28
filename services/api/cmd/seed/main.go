@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/casbin"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
+	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/casbin"
+	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql"
+	"github.com/asifulhaque087/loot-board/services/api/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

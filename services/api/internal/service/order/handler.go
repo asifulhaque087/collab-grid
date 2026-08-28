@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/mail/templates"
-	auth "github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/util"
+	"github.com/asifulhaque087/loot-board/services/api/internal/mail/templates"
+	auth "github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
+	"github.com/asifulhaque087/loot-board/services/api/internal/util"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 )

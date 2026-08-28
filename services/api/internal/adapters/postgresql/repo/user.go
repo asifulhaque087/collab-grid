@@ -6,8 +6,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/service/user"
+	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
+	"github.com/asifulhaque087/loot-board/services/api/internal/service/user"
 )
 
 type UserRepository struct {

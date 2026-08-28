@@ -1,4 +1,4 @@
-module github.com/asifulhaque087/collab-grid
+module github.com/asifulhaque087/loot-board
 
 go 1.25.8
 

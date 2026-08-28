@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/config"
+	"github.com/asifulhaque087/loot-board/services/api/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"

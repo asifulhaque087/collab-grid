@@ -3,8 +3,8 @@ package repo
 import (
 	"context"
 
-	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/service/boards"
+	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
+	"github.com/asifulhaque087/loot-board/services/api/internal/service/boards"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 

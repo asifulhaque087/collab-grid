@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	auth "github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/util"
+	auth "github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
+	"github.com/asifulhaque087/loot-board/services/api/internal/util"
 	"github.com/go-playground/validator/v10"
 )
 

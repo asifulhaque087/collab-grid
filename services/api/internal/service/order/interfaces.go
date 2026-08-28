@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/mail/templates"
+	"github.com/asifulhaque087/loot-board/services/api/internal/mail/templates"
 )
 
 type RealtimeGateway interface {

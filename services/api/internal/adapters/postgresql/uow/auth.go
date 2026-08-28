@@ -3,8 +3,8 @@ package uow
 import (
 	"context"
 
-	"github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/repo"
-	"github.com/asifulhaque087/collab-grid/services/api/internal/service/auth"
+	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/repo"
+	"github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

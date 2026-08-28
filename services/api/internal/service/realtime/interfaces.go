@@ -3,7 +3,7 @@ package realtime
 import (
 	"context"
 
-	sqlc "github.com/asifulhaque087/collab-grid/services/api/internal/adapters/postgresql/sqlc"
+	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -49,11 +49,11 @@ type Service interface {
 
 // BoardJoinBoard is a slim board projection used during join.
 type BoardJoinBoard struct {
-	ID       string
-	Slug     string
-	Name     string
-	Access   string
-	MaxWidth int32
+	ID        string
+	Slug      string
+	Name      string
+	Access    string
+	MaxWidth  int32
 	MaxHeight int32
 }
 
