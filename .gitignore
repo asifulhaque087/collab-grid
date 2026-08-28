@@ -17,9 +17,6 @@ node_modules
 # Testing
 coverage
 
-# Turbo
-.turbo
-
 # Vercel
 .vercel
 
@@ -42,9 +39,6 @@ yarn-error.log*
 *.pem
 
 # Prototypes
-prototypes
-
-compose.prod.yml
 .env.goose
 tmp
 values.dev.yaml

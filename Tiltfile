@@ -5,9 +5,9 @@ namespace_create('collab-grid')
 
 ### API ###
 
-api_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/server ./services/api/cmd/server'
-migrate_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/migrate ./services/api/cmd/migrate'
-seed_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/seed ./services/api/cmd/seed'
+api_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o build/api/server ./services/api/cmd/server'
+migrate_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o build/api/migrate ./services/api/cmd/migrate'
+seed_build_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o build/api/seed ./services/api/cmd/seed'
 
 compile_cmd = '{} && {} && {}'.format(api_build_cmd, migrate_build_cmd, seed_build_cmd)
 # compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/api/server ./services/api/cmd/server'
