@@ -1,76 +1,43 @@
-# LootBoard — Agent Guide
+# AGENTS.md
 
-## Quick Commands
+## ⚠️ Documentation is stale — trust the Go code, not the docs
+`README.md`, `context/*.md`, and `.github/workflows/*` describe a **TypeScript/NestJS + Turborepo** monorepo (`apps/api`, `packages/common`, Drizzle/Prisma). **That code does not exist in this repo.** The real implementation is Go. Treat those docs as an aspirational spec only; the executable source (Go files, `go.mod`, `sqlc.yaml`, `config.go`) is the source of truth.
 
-**API (Go) — run from `services/api/`:**
+## Layout
+- Go module root is the repo root (`github.com/asifulhaque087/loot-board`).
+- `services/api` — the Go API (chi, sqlc, goose, casbin, pgx, redis, rabbitmq, gorilla/websocket, templ). Entrypoints: `services/api/cmd/{server,migrate,seed}/main.go`.
+- `services/web` — a **separate** Next.js 16 app with its own `package.json`; it is NOT part of the Go module. Don't expect `npm`/`pnpm` commands to affect the Go service.
+- No `Makefile`/`Taskfile`. Local orchestration is via the `Tiltfile` (k8s + Tilt). There is no conventional task runner.
 
-```bash
-go run ./cmd/server    # start API server
-go run ./cmd/seed      # seed DB (permissions, roles, packages, casbin rules)
-go run ./cmd/migrate   # run Goose migrations
-sqlc generate          # regenerate sqlc/ from queries/*.sql
-go build ./... && go vet ./... && go test ./...
-go test ./internal/service/auth # focused package tests
+## Build & run
 ```
-
-⚠️ Makefile targets `make build` and `make run` are **broken** — they reference `./cmd` and `cmd/main.go`, which no longer exist. Use the commands above.
-
-**Web — run from `web/`:**
-
-```bash
-pnpm dev              # dev server (:3000)
-pnpm lint             # eslint --max-warnings 0
-pnpm check-types      # next typegen && tsc --noEmit
+go build -o build/api/server  ./services/api/cmd/server
+go build -o build/api/migrate ./services/api/cmd/migrate
+go build -o build/api/seed    ./services/api/cmd/seed
 ```
+Container builds add `CGO_ENABLED=0 GOOS=linux GOARCH=amd64` (see `Tiltfile`).
 
-## Layout & Stack
+All three binaries call `config.Load()`, which loads `.env` via godotenv then parses env with `caarlos0/env`. **Every config field is `required` with strict validation** (`url`, `hostname`, `min=16` for secrets). You cannot run them without a fully populated `.env` (incl. `DATABASE_URL`, `REDIS_URL`, `RABBITMQ_URL`, Google OAuth, SMTP, token secrets).
 
-- **Single Go module at repo root** (`github.com/asifulhaque087/loot-board`) — that's why all import paths start with `github.com/asifulhaque087/loot-board/services/api/...`.
-- **API:** Go 1.25, pgx/v5, sqlc, chi/v5, casbin/v2, goose. Entrypoints: `services/api/cmd/{server,seed,migrate}/main.go`.
-- **Web:** Next.js 16, Tailwind CSS v4 (`@theme` in CSS; **no** `tailwind.config.js`), `@t3-oss/env-nextjs` (`src/vars.ts`).
-- **Infra:** Helm charts in `infra/charts/`, Dockerfiles in `infra/development/docker/`.
+## Database migrations (goose)
+- Migration SQL files live in `services/api/internal/adapters/postgresql/migrations` and are embedded (`postgresql.EmbedMigrations`).
+- Run `./build/api/migrate` to apply them (`goose Up`). It also **creates the target database if missing** via `ensureDatabaseExists`.
+- Add new migrations as SQL files in that directory; they are embedded at build time, so they must be committed.
 
-## Architecture & Conventions
+## Codegen — regenerate after editing source files
+- **sqlc**: after editing any `.sql` under `services/api/internal/adapters/postgresql/queries/`, run `sqlc generate` from `services/api` (config: `services/api/sqlc.yaml`). Output: `services/api/internal/adapters/postgresql/sqlc/`. Never hand-edit generated files.
+- **templ**: after editing `*.templ` under `services/api/internal/mail/templates/`, run `templ generate` (binary: `~/go/bin/templ`). Output: `*_templ.go`.
+- Both `sqlc` and `templ` are required toolchain pieces; if generated code looks stale, regenerate before debugging.
 
-- **Wiring:** `internal/module/main.module.go` builds pool → repos (`adapters/postgresql/repo`) → services → handlers → chi routes under `/api/v1`. `contract.go` defines the `Module` interface.
-- **Middleware order per protected route group:** `JWTMiddleware` (injects `*JwtPayload` via `UserContextKey`) → `CasbinMiddleware` → `LimitGuard` (subscription usage checks).
-- **Tenant scoping:** `GetUserFromContext(r.Context())` returns `*JwtPayload` (`ID`, `PrimaryUserID`, `SecondaryUserID`). Services resolve `parentId ?? userId` via a local `resolvePrimaryUserID` helper (duplicated per service package on purpose).
-- **Service package layout** (`internal/service/{auth,boards,inventory,role}/`): `interfaces.go` declares the `Repo` interface (consumed by Service) and `Service` interface (consumed by Handler); `repo/` adapters convert sqlc row types ↔ service domain types; handlers map sentinel errors to HTTP status codes.
-- **Transactions:** single-statement repos wrap `*sqlc.Queries`; multi-statement writes (e.g. role create/update) hold the `*pgxpool.Pool` and manage `pool.Begin/Commit/Rollback` internally.
+## Architecture / wiring
+- HTTP: chi router. `module.NewApp` (`services/api/internal/module/main.module.go`) is the DI root: sqlc queries → repos → unit-of-work → services → handlers, plus casbin enforcer and mailer.
+- Domain services live in `services/api/internal/service/<domain>/` as `service.go` + `handler.go` + `dto.go` + `interfaces.go` (+ `mock/` for tests). Follow this shape for new domains.
+- RBAC: casbin with a pgx adapter (`casbin-pgx-adapter`); model is embedded from `services/api/internal/config/model.conf`. Enforcer is initialized against the DB in `main` and `seed`.
+- Realtime: `service/realtime` uses gorilla/websocket + redis (locks/presence/write-behind positions) + rabbitmq (debounced persistence). Keep cross-client traffic in named rooms, not raw socket ids.
 
-## Casbin & Permissions (top gotcha)
+## Tests
+- Run: `go test ./services/api/...`.
+- Auth/realtime tests use **in-memory fakes** (`module.NewTestModule`, `auth_mock`) and the fake casbin enforcer, so they run **without** a live Postgres/Redis/RabbitMQ. Do not add external-infra dependencies to these tests.
 
-- `CasbinMiddleware` enforces the **chi route pattern** (`RoutePattern()`) against policies seeded from `PermissionCatalog` in `internal/adapters/postgresql/seed.go` (matcher: `keyMatch2` on obj, `regexMatch` on act — method strings like `"PUT|PATCH"`/`"*"` are regexes).
-- When adding/moving routes you MUST update `PermissionCatalog` endpoints to match the real route paths, then re-run `go run ./cmd/seed` — mismatches surface as 403s at runtime, not compile time.
-- Role CRUD keeps Casbin in sync itself: `p(role_id, endpoint, method)` per granted permission (`syncRolePolicies` in the role service); role deletion also purges `g(user, role_id)` groupings. This is why `module.App.enforcer` is the concrete `*casbin.CasbinEnforcer`, not the narrow `auth.Enforcer` interface.
-
-## SQLC Patterns
-
-- Edit `queries/*.sql`, run `sqlc generate` (from `services/api/`). Never hand-edit `sqlc/` outputs. Schema comes from `migrations/` (embedded goose via `goose.SetBaseFS`).
-- Partial update: `SET col = COALESCE(sqlc.narg('col'), col)` (see `UpdateBoard`/`UpdateSmartWidget`).
-- Optional filter: `AND (sqlc.narg('board_id')::uuid IS NULL OR col = sqlc.narg('board_id'))`.
-- Bulk insert: `:copyfrom` for plain inserts (`CreateSmartWidgets`); `unnest(sqlc.arg('ids')::uuid[])` for grant-style `:exec`.
-- Batch select: `WHERE id = ANY($1::uuid[])` → `[]pgtype.UUID` param.
-- **NUMERIC columns → `pgtype.Numeric`**: pass them through request/response DTOs as `*string`; convert with `Numeric.Scan(string)` / `Numeric.Value()` (returns a string). Don't put `pgtype.Numeric` straight into JSON response structs.
-
-## Validator Gotchas (go-playground/v10)
-
-- `number` tag matches **integers only** (`^[0-9]+$`) — use `numeric` for decimal strings.
-- `omitempty` on pointer fields skips only `nil` pointers; an empty string still validates (normalize `""` → `nil` before `validate.Struct`).
-
-## Testing Quirks (Go API)
-
-- `module.NewTestModule()` injects `FakeRepo` (in-memory auth repo, guarded by `sync.RWMutex`), `FakeLimitGuardQueries`, `memUoW`, and `InitFakeCasbinEnforcer()`. Server setup: `app.NewServer(router, testModule)` + `httptest.NewServer(r)`.
-- `test.module.go` currently registers **only auth (+demo) routes** — boards/inventory/role handlers are not wired there yet; add them when writing integration tests for those domains.
-- Protected-endpoint tests need: registered user (for JWT), seeded `FakeLimitGuardQueries`, and `testModule.Enforcer.AddPolicy(...)` for the target endpoint.
-
-## Branch Workflow
-
-- Feature work goes on a feature branch cut from `golang`; when done: `git checkout golang && git merge <branch> && git branch -d <branch> && git push origin golang`.
-
-## Stale Artifacts & Legacy Paths
-
-- Root `README.md` / `BACKEND_ARCHITECTURE.md`: describe the legacy NestJS/Prisma monorepo (`apps/api`, `apps/web`, `@packages/common`).
-- `context/`: legacy NestJS-era knowledge base. Its TS/React/Tailwind standards still describe `web/`, but all file paths in it are stale (`apps/...`).
-- Path gotcha: the API lives at `services/api/` (NOT `api/` or `apps/api/`).
-- Legacy `compose.yml` / `Dockerfile.dev` retain old `apps/` references — use `infra/` configurations instead.
+## CI caveat
+`.github/workflows/deploy-*.yml` reference `apps/api`, `packages/common`, `charts/api`, and `./apps/api/Dockerfile` — none of which exist (real: `services/api`, `infra/charts/api`, `infra/development/docker/Dockerfile.api`). Those workflows are stale and will not match this layout.
