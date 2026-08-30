@@ -1,0 +1,25 @@
+FROM node:24-alpine
+
+WORKDIR /app
+
+RUN npm install -g pnpm@9.0.0
+
+# COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/common/package.json packages/common/package.json
+COPY apps/api/package.json apps/api/package.json
+
+RUN pnpm install
+
+COPY packages/common packages/common
+COPY apps/api apps/api
+
+RUN pnpm --filter @collab-grid/common build
+RUN pnpm --filter @collab-grid/api build:migrate
+RUN pnpm --filter @collab-grid/api build:seed
+
+# RUN pnpm --filter @collab-grid/api... build
+
+EXPOSE 3001
+
+CMD ["pnpm", "--filter", "@collab-grid/api", "dev"]

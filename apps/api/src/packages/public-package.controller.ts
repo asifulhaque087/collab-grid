@@ -7,6 +7,9 @@ export class PublicPackageController {
 
   @Get('public')
   findPublic() {
+    // console.log("I am from public package get")
+    console.log("I am from public package get")
+    console.log("I am from public package get")
     return this.packageService.findPublicPackages();
   }
 }

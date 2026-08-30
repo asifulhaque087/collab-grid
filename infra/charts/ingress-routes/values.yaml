@@ -1,0 +1,42 @@
+ingress:
+  enabled: true
+  name: lootboard-ingress
+  ingressClassName: nginx
+
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+  tls:
+    - secretName: lootboard-ssl-secret
+      hosts:
+        - lootboard.asif-haque.com
+        - www.lootboard.asif-haque.com
+        - lootboard-api.asif-haque.com
+        - www.lootboard-api.asif-haque.com
+
+  hosts:
+    - host: lootboard.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: lootboard-web
+          servicePort: 3000
+    - host: www.lootboard.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: lootboard-web
+          servicePort: 3000
+    - host: lootboard-api.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: lootboard-api
+          servicePort: 3001
+    - host: www.lootboard-api.asif-haque.com
+      paths:
+        - path: /
+          pathType: Prefix
+          serviceName: lootboard-api
+          servicePort: 3001
