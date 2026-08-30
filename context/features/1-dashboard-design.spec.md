@@ -159,7 +159,7 @@ shows the faint radial dot-grid background (`.main::before`).
 
 ### Header (`components/layout/header.tsx`)
 
-Mostly static (server) with small client bits. Left: logo mark (gradient square + grid icon) + "Collab**Grid**"
+Mostly static (server) with small client bits. Left: logo mark (gradient square + grid icon) + "Loot**Board**"
 wordmark + divider + active workspace name. Right: telemetry strip (`Socket: Connected` green dot, `Locks: N`
 amber dot, `Latency`), icon buttons (search, notifications w/ badge, settings), avatar. Icon buttons that only
 toast in the prototype → client component firing `sonner` toasts (placeholder behavior preserved).

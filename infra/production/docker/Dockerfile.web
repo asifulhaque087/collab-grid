@@ -22,7 +22,7 @@ COPY apps/web/package.json ./apps/web/
 COPY apps/api/package.json ./apps/api/
 COPY packages/common/package.json ./packages/common/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter web...
+    pnpm install --frozen-lockfile --filter @loot-board/web...
 
 #################################################
 # Development — hot-reload target for compose   #
@@ -33,7 +33,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/ ./
 COPY . .
 EXPOSE 3000
-CMD ["pnpm", "--filter", "web", "dev"]
+CMD ["pnpm", "--filter", "@loot-board/web", "dev"]
 
 #################################################
 # Build — next build (standalone output)        #
@@ -53,7 +53,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web ./apps/web
-RUN pnpm --filter web build
+RUN pnpm --filter @loot-board/web build
 
 #################################################
 # Production — minimal standalone runtime       #
