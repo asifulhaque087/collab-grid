@@ -1,5 +1,5 @@
 {
-  "name": "@collab-grid/api",
+  "name": "@loot-board/api",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,12 +10,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
-
     "build:migrate": "tsc drizzle/migrate.ts --outDir dist-migration --rootDir . --module commonjs --target es2021 --skipLibCheck",
     "db:migrate": "node dist-migration/drizzle/migrate",
     "build:seed": "tsc drizzle/seed.ts --outDir dist-migration --rootDir . --module commonjs --target es2021 --skipLibCheck --esModuleInterop",
     "db:seed": "node dist-migration/drizzle/seed",
-
     "db:migrate:prod": "node dist-migration/drizzle/migrate",
     "db:seed:prod": "node dist-migration/drizzle/seed",
     "db:migrate-and-seed": "node dist-migration/drizzle/migrate && node dist-migration/drizzle/seed",
@@ -23,7 +21,7 @@
   },
   "dependencies": {
     "@casl/ability": "^7.0.0",
-    "@collab-grid/common": "workspace:*",
+    "@loot-board/common": "workspace:*",
     "@nestjs-modules/mailer": "^2.3.7",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",

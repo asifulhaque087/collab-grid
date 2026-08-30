@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
   packageTable,
@@ -28,8 +28,6 @@ function toSlug(name: string): string {
 }
 
 const UNLIMITED_QUOTA = -1;
-
-
 
 const QUOTA_FEATURE_TEXT: Record<string, string> = {
   Board: 'boards',
@@ -63,7 +61,8 @@ export class PackageService {
         .orderBy(permissionsTable.subject, permissionsTable.action),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
     return perms ?? [];
   }
 
@@ -77,7 +76,8 @@ export class PackageService {
       }),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
 
     return (packages ?? []).map((p) => ({
       id: p.id,
@@ -105,7 +105,8 @@ export class PackageService {
       }),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
 
     return (packages ?? [])
       .map((p) => {
@@ -114,8 +115,7 @@ export class PackageService {
         const features = p.packagePermissionLimits
           .filter(
             (ppl) =>
-              ppl.limit !== null &&
-              QUOTA_FEATURE_TEXT[ppl.permission.subject],
+              ppl.limit !== null && QUOTA_FEATURE_TEXT[ppl.permission.subject],
           )
           .sort(
             (a, b) =>
@@ -124,9 +124,7 @@ export class PackageService {
           )
           .map((ppl) => ({
             value:
-              ppl.limit === UNLIMITED_QUOTA
-                ? 'Unlimited'
-                : String(ppl.limit),
+              ppl.limit === UNLIMITED_QUOTA ? 'Unlimited' : String(ppl.limit),
             text: QUOTA_FEATURE_TEXT[ppl.permission.subject],
           }));
 
@@ -173,7 +171,8 @@ export class PackageService {
       }),
     );
 
-    if (txErr || !pkg) throw new InternalServerErrorException('An unexpected error occurred');
+    if (txErr || !pkg)
+      throw new InternalServerErrorException('An unexpected error occurred');
 
     return this.findById(pkg.id);
   }
@@ -223,7 +222,8 @@ export class PackageService {
       }),
     );
 
-    if (txErr) throw new InternalServerErrorException('An unexpected error occurred');
+    if (txErr)
+      throw new InternalServerErrorException('An unexpected error occurred');
 
     return this.findById(id);
   }
@@ -239,7 +239,8 @@ export class PackageService {
       this.db.delete(packageTable).where(eq(packageTable.id, id)),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
   }
 
   private async findById(id: string) {
@@ -253,7 +254,8 @@ export class PackageService {
       }),
     );
 
-    if (err) throw new InternalServerErrorException('An unexpected error occurred');
+    if (err)
+      throw new InternalServerErrorException('An unexpected error occurred');
     if (!pkg) throw new NotFoundException('Package not found');
 
     return {

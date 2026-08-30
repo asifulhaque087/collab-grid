@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { eq } from 'drizzle-orm';
 import type { Socket } from 'socket.io';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import { buildAbility } from '@/auth/ability';
 import { Action, Subjects, type PermissionTuple } from '@/auth/permissions';
@@ -22,10 +22,7 @@ export class SocketAuthService {
     private readonly config: ConfigService,
   ) {}
 
-  async createWsToken(
-    userId: string,
-    boardId: string,
-  ): Promise<string> {
+  async createWsToken(userId: string, boardId: string): Promise<string> {
     return this.jwt.signAsync(
       { id: userId, boardId, purpose: 'ws-auth' },
       {

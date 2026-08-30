@@ -46,8 +46,8 @@ jobs:
             NEXT_PUBLIC_GATEWAY_URL=${{ secrets.WEB_NEXT_PUBLIC_GATEWAY_URL }}
             NEXT_PUBLIC_SOCKET_URL=${{ secrets.WEB_NEXT_PUBLIC_SOCKET_URL }}
           tags: |
-            asiful087/collab-grid-web:${{ steps.vars.outputs.sha_short }}
-            asiful087/collab-grid-web:latest
+            asiful087/loot-board-web:${{ steps.vars.outputs.sha_short }}
+            asiful087/loot-board-web:latest
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
@@ -75,8 +75,8 @@ jobs:
             GATEWAY_URL: "$GATEWAY_URL"
           EOF
 
-          helm upgrade --install collabgrid-web ./infra/charts/web \
-            --namespace collab-grid --create-namespace \
+          helm upgrade --install lootboard-web ./infra/charts/web \
+            --namespace loot-board --create-namespace \
             --set image.tag=${{ steps.vars.outputs.sha_short }} \
             --values secrets.tmp.yaml \
             --wait

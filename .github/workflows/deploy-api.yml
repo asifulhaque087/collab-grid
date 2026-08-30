@@ -4,20 +4,20 @@ on:
   push:
     branches: [nestjs]
     paths:
-      - 'apps/api/**'
-      - 'infra/charts/api/**'
-      - 'packages/common/**'
-      - '.github/workflows/deploy-api.yml'
-      - '.github/secrets/.env.api'
+      - "apps/api/**"
+      - "infra/charts/api/**"
+      - "packages/common/**"
+      - ".github/workflows/deploy-api.yml"
+      - ".github/secrets/.env.api"
 
   pull_request:
     branches: [nestjs]
     paths:
-      - 'apps/api/**'
-      - 'infra/charts/api/**'
-      - 'packages/common/**'
-      - '.github/workflows/deploy-api.yml'
-      - '.github/secrets/.env.api'
+      - "apps/api/**"
+      - "infra/charts/api/**"
+      - "packages/common/**"
+      - ".github/workflows/deploy-api.yml"
+      - ".github/secrets/.env.api"
 
 jobs:
   build-and-deploy:
@@ -46,8 +46,8 @@ jobs:
           target: production
           push: true
           tags: |
-            asiful087/collab-grid-api:${{ steps.vars.outputs.sha_short }}
-            asiful087/collab-grid-api:latest
+            asiful087/loot-board-api:${{ steps.vars.outputs.sha_short }}
+            asiful087/loot-board-api:latest
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
@@ -109,8 +109,8 @@ jobs:
             WS_TOKEN_SECRET: "$WS_TOKEN_SECRET"
           EOF
 
-          helm upgrade --install collabgrid-api ./infra/charts/api \
-            --namespace collab-grid --create-namespace \
+          helm upgrade --install lootboard-api ./infra/charts/api \
+            --namespace loot-board --create-namespace \
             --set image.tag=${{ steps.vars.outputs.sha_short }} \
             --values secrets.tmp.yaml \
             --wait

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { eq, inArray } from 'drizzle-orm';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import type { Request } from 'express';
 import { buildAbility } from '@/auth/ability';
 import { REQUIRE_PERMISSION_KEY } from '@/auth/decorators/require-permission.decorator';

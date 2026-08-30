@@ -1,5 +1,5 @@
 {
-  "name": "collab-grid",
+  "name": "loot-board",
   "private": true,
   "scripts": {
     "build": "turbo run build",

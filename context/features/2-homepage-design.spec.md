@@ -1,6 +1,6 @@
 # Homepage Design — Implementation Spec
 
-> Build the real CollabGrid public landing page in `apps/web` from the static mockup at
+> Build the real LootBoard public landing page in `apps/web` from the static mockup at
 > [prototypes/homepage.html](../../prototypes/homepage.html). The mockup is the **source of truth for
 > visual design** — the implementation must be pixel-perfect against it.
 
@@ -33,7 +33,7 @@ editor — do not wire it to the API or reuse `canvas-editor.tsx`.
 Today `app/page.tsx` redirects `/ → /boards`. Replace it: **`/` becomes the homepage**; the dashboard keeps
 its existing `(dashboard)` routes. Update the redirect-only `page.tsx` into the composed homepage (§4).
 
-> `globals.css` header comment and root `metadata.title` ("CollabGrid — Dashboard") predate having a public
+> `globals.css` header comment and root `metadata.title` ("LootBoard — Dashboard") predate having a public
 > page — set page-specific metadata on the homepage (title/description from the prototype `<title>` and hero
 > copy) so the landing page has its own SEO.
 
@@ -92,7 +92,7 @@ The homepage shares the existing palette (brand/active/soft-lock/committed/bg/su
 the small set that's genuinely new:
 
 - **`--color-hard #dc2626`** (hard-lock red) and **`--color-surface-2 #172033`**, **`--color-border-soft
-  #243049`** if not already present.
+#243049`** if not already present.
 - **Display font:** **Space Grotesk** (400/500/600/700) via `next/font/google` in root layout, exposed as
   `--font-display`. Used for the logo wordmark, all section headings (`h1/h2/h3`), and big numerics. Inter and
   JetBrains Mono are already wired.
@@ -111,7 +111,7 @@ not global `body`, so it doesn't bleed into the dashboard.
 Render in this order inside `app/page.tsx`. Each maps to one component in §4.
 
 1. **Site nav** (`site-nav.tsx`, client) — sticky, `backdrop-blur` over translucent bg, bottom border. Left:
-   `<LogoMark/>` + "CollabGrid" wordmark. Center: anchor links — Live board (`#board`), Lock lifecycle
+   `<LogoMark/>` + "LootBoard" wordmark. Center: anchor links — Live board (`#board`), Lock lifecycle
    (`#lifecycle`), Architecture (`#arch`), Plans (`#plans`) — hidden under 680px. Right: **Sign in** (ghost)
    and **Sign up** (primary). Smooth-scroll to anchors.
 
@@ -146,6 +146,7 @@ A faithful but self-contained port of the prototype `<script>` — **no API, no 
 it isolated in `board-demo.tsx` (plus small children if it helps) so the rest of the page stays server-rendered.
 
 Behavior to preserve:
+
 - **Canvas grid** drawn on `<canvas>` with DPR scaling, panned by dragging empty space; coordinate readout +
   peer count in the console bar; `requestAnimationFrame` + `resize` handling.
 - **Smart widgets** (photo / name / qty / price) positioned in world space, repositioned on pan. Click an
@@ -167,14 +168,14 @@ widgets, peers, and lock state.
 
 ## 8. Navigation / link map
 
-| Trigger | Action |
-|---|---|
-| Nav links: Live board / Lock lifecycle / Architecture / Plans | smooth-scroll to `#board` / `#lifecycle` / `#arch` / `#plans` |
+| Trigger                                                                       | Action                                                                                      |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Nav links: Live board / Lock lifecycle / Architecture / Plans                 | smooth-scroll to `#board` / `#lifecycle` / `#arch` / `#plans`                               |
 | Nav **Sign in** / **Sign up**, hero **Get started**, Free plan **Start free** | `/boards` (no auth yet — entry into the app; leave a comment to repoint at real auth later) |
-| Hero **See how it works** | `#arch` |
-| Pro plan **Upgrade to Pro** | `/billing` |
-| Footer links | same anchors as nav |
-| Board-demo widget / checkout / pay / cart toggle | internal demo state handlers (+ sonner toasts) — no navigation |
+| Hero **See how it works**                                                     | `#arch`                                                                                     |
+| Pro plan **Upgrade to Pro**                                                   | `/billing`                                                                                  |
+| Footer links                                                                  | same anchors as nav                                                                         |
+| Board-demo widget / checkout / pay / cart toggle                              | internal demo state handlers (+ sonner toasts) — no navigation                              |
 
 No `href="#"` placeholders anywhere.
 
@@ -192,4 +193,7 @@ No `href="#"` placeholders anywhere.
   `'use client'`. No duplicated section/card/plan markup; content driven by typed config in `lib/home-content.ts`.
 - No `any` types; new entities typed in `src/types/home.ts`.
 - `pnpm build` and `pnpm lint` pass clean (lint runs with `--max-warnings 0`).
+
+```
+
 ```

@@ -24,7 +24,7 @@ docker_build(
         sync('./packages/common', '/app/packages/common'),
 
         run(
-            'pnpm --filter @collab-grid/common build',
+            'pnpm --filter @loot-board/common build',
             trigger=['./packages/common/src']
         ),
 

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, eq, ne, or } from 'drizzle-orm';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import bcrypt from 'bcryptjs';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import { userTable, userRoleTable } from '@/schemas';

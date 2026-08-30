@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import Redis from 'ioredis';
 import { randomUUID } from 'crypto';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import { boardTable, smartWidgetTable } from '@/schemas';
 import { REDIS } from './redis.module';
@@ -22,16 +22,44 @@ export const HARD_LOCK_MS = 300_000;
 const MIN_LOCK_INTERVAL_MS = 120;
 
 const ADJECTIVES = [
-  'Swift', 'Calm', 'Brave', 'Clever', 'Lucky', 'Bright', 'Quiet', 'Bold',
-  'Gentle', 'Witty', 'Nimble', 'Mellow',
+  'Swift',
+  'Calm',
+  'Brave',
+  'Clever',
+  'Lucky',
+  'Bright',
+  'Quiet',
+  'Bold',
+  'Gentle',
+  'Witty',
+  'Nimble',
+  'Mellow',
 ];
 const ANIMALS = [
-  'Otter', 'Falcon', 'Panda', 'Fox', 'Heron', 'Lynx', 'Beaver', 'Sparrow',
-  'Marmot', 'Bison', 'Wren', 'Ibex',
+  'Otter',
+  'Falcon',
+  'Panda',
+  'Fox',
+  'Heron',
+  'Lynx',
+  'Beaver',
+  'Sparrow',
+  'Marmot',
+  'Bison',
+  'Wren',
+  'Ibex',
 ];
 const COLORS = [
-  '#0d9488', '#d97706', '#059669', '#6366f1', '#ec4899', '#f59e0b',
-  '#14b8a6', '#8b5cf6', '#ef4444', '#3b82f6',
+  '#0d9488',
+  '#d97706',
+  '#059669',
+  '#6366f1',
+  '#ec4899',
+  '#f59e0b',
+  '#14b8a6',
+  '#8b5cf6',
+  '#ef4444',
+  '#3b82f6',
 ];
 
 @Injectable()
@@ -179,7 +207,10 @@ export class RealtimeService {
     await this.redis.hdel(this.presenceKey(boardId), userId);
   }
 
-  async getPeers(boardId: string, excludeUserId: string): Promise<CanvasUser[]> {
+  async getPeers(
+    boardId: string,
+    excludeUserId: string,
+  ): Promise<CanvasUser[]> {
     const all = await this.redis.hgetall(this.presenceKey(boardId));
     return Object.entries(all)
       .filter(([userId]) => userId !== excludeUserId)
@@ -275,7 +306,10 @@ export class RealtimeService {
   // Release every lock a user still holds on a board (soft or hard) and return
   // the affected widget ids so the gateway can broadcast a release for each.
   // Used after checkout to guarantee no stray reservation lingers in Redis.
-  async releaseAllUserLocks(boardId: string, userId: string): Promise<string[]> {
+  async releaseAllUserLocks(
+    boardId: string,
+    userId: string,
+  ): Promise<string[]> {
     const locks = await this.getUserLocks(boardId, userId);
     const released: string[] = [];
     for (const lock of locks) {
@@ -285,10 +319,7 @@ export class RealtimeService {
     return released;
   }
 
-  async getLock(
-    boardId: string,
-    widgetId: string,
-  ): Promise<WidgetLock | null> {
+  async getLock(boardId: string, widgetId: string): Promise<WidgetLock | null> {
     const key = this.lockKey(boardId, widgetId);
     const raw = await this.redis.get(key);
     if (!raw) return null;

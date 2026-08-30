@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import { boardTable } from '@/schemas';
 import { CreateBoardDto } from './dto/create-board.dto';

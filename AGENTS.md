@@ -1,4 +1,4 @@
-# CollabGrid
+# LootBoard
 
 **Monorepo** — Turborepo + pnpm. Workspaces: `apps/web` (Next.js 16), `apps/api` (NestJS), `packages/common` (shared types + `tryit()`).
 
@@ -6,7 +6,7 @@
 
 ```bash
 docker compose up -d              # Redis + RabbitMQ (local dev infra)
-pnpm install && pnpm --filter @collab-grid/common build   # common must be built first
+pnpm install && pnpm --filter @loot-board/common build   # common must be built first
 pnpm dev                          # turbo fan-out: web :3000, api :3001
 ```
 
@@ -14,16 +14,16 @@ Verification: `pnpm build` (turbo cached). No test files exist in the repo.
 
 ## Commands
 
-| Command | Scope |
-|---|---|
-| `pnpm dev` / `build` / `lint` / `check-types` | turbo — all workspaces |
-| `pnpm format` | prettier across `**/*.{ts,tsx,md}` |
-| `pnpm --filter api test` | vitest (no tests written yet) |
-| `pnpm --filter web lint` | eslint `--max-warnings 0` |
-| `pnpm --filter api db:generate` | `drizzle-kit generate` (schema → migration) |
-| `pnpm db:migrate` | prod migrate runner (`dist-migration/drizzle/migrate`) |
-| `pnpm db:migrate-and-seed` | migrate + seed |
-| `pnpm clean` / `clean:all` | rm .turbo, dist, node_modules |
+| Command                                       | Scope                                                  |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `pnpm dev` / `build` / `lint` / `check-types` | turbo — all workspaces                                 |
+| `pnpm format`                                 | prettier across `**/*.{ts,tsx,md}`                     |
+| `pnpm --filter api test`                      | vitest (no tests written yet)                          |
+| `pnpm --filter web lint`                      | eslint `--max-warnings 0`                              |
+| `pnpm --filter api db:generate`               | `drizzle-kit generate` (schema → migration)            |
+| `pnpm db:migrate`                             | prod migrate runner (`dist-migration/drizzle/migrate`) |
+| `pnpm db:migrate-and-seed`                    | migrate + seed                                         |
+| `pnpm clean` / `clean:all`                    | rm .turbo, dist, node_modules                          |
 
 ## Architecture
 
@@ -36,7 +36,7 @@ Real-time collaborative canvas (reactive commerce). Key files at root: `ARCHITEC
 
 ## Conventions
 
-- **Error handling**: use `tryit()` from `@collab-grid/common`, returns `{ success, data, error }`
+- **Error handling**: use `tryit()` from `@loot-board/common`, returns `{ success, data, error }`
 - **Validation**: Zod everywhere
 - **Permissions**: CASL `AppAbility` shared across backend guards + frontend UI gating
 - **DB**: Drizzle ORM, migrations committed at `apps/api/drizzle/migrations/`

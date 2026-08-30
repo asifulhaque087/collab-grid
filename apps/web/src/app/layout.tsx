@@ -23,7 +23,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "CollabGrid — Real-time spatial commerce",
+  title: "LootBoard — Real-time spatial commerce",
   description:
     "A unified collaborative canvas platform: stream only the widgets in your viewport, hold each with an atomic lock the instant it's clicked, and run every checkout through a queue that can't double-spend.",
 };
@@ -35,9 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} antialiased`}
-      >
+      <body className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable} antialiased`}>
         {children}
         <Toaster />
       </body>

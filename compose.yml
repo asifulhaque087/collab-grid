@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       target: development
-    container_name: collabgrid-web
+    container_name: lootboard-web
     command: pnpm --filter web dev
     ports:
       - "3000:3000"
@@ -53,8 +53,8 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
       target: development
-    container_name: collabgrid-api
-    command: sh -c "pnpm --filter @collab-grid/common build && pnpm --filter api dev"
+    container_name: lootboard-api
+    command: sh -c "pnpm --filter @loot-board/common build && pnpm --filter api dev"
     ports:
       - "3001:3001"
     env_file:
@@ -104,7 +104,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: collabgrid-redis
+    container_name: lootboard-redis
     command: redis-server --notify-keyspace-events Ex
     ports:
       - "6379:6379"
@@ -114,7 +114,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
-    container_name: collabgrid-rabbitmq
+    container_name: lootboard-rabbitmq
     ports:
       - "5672:5672" # AMQP
       - "15672:15672" # management UI (guest / guest)

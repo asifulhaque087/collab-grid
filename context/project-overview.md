@@ -1,9 +1,8 @@
-# CollabGrid — Project Overview
+# LootBoard — Project Overview
 
 > A unified, ultra-fast collaborative workspace platform combining real-time visual canvas management with high-throughput transactional inventory booking.
 
 ---
-
 
 ## Table of Contents
 
@@ -17,7 +16,6 @@
 8. [Database Schema](#database-schema)
 9. [Monetization & Plans](#monetization--plans)
 10. [UI/UX Spec](#uiux-spec)
-
 
 ---
 
@@ -33,18 +31,20 @@ Standard tooling fails at the intersection of real-time spatial collaboration an
 | DB lock contention during flash sales            | Row-level SQL locks cannot handle burst transaction velocity                    |
 | Idle resource consumption from backgrounded tabs | No lifecycle-aware socket management                                            |
 
-CollabGrid solves all five with a single platform: a hardware-accelerated collaborative canvas backed by Redis atomic locks, viewport-filtered WebSocket streams, and a decoupled RabbitMQ checkout pipeline.
+LootBoard solves all five with a single platform: a hardware-accelerated collaborative canvas backed by Redis atomic locks, viewport-filtered WebSocket streams, and a decoupled RabbitMQ checkout pipeline.
 
 ---
 
 ## Users
 
 ### Tenant Administrator (Corporate Client)
+
 Needs isolated, high-performance canvas environments to position, configure, and monitor high-value interactive widgets tied to physical or digital inventory assets.
 
 **Primary actions:** Create/manage boards, organize widgets on board, manage roles.
 
 ### Concurrent End-User (Collaborator / Shopper)
+
 Needs lag-free visual updates, localized canvas changes, and an instant, dependable lock-to-checkout flow for limited items.
 
 **Primary actions:** Pan/zoom canvas, interact with widgets, lock and buy item.
@@ -79,7 +79,6 @@ Needs lag-free visual updates, localized canvas changes, and an instant, dependa
 
 ---
 
-
 ## Roles
 
 This application will have 2 system roles. Those are unremovable or can't be deleted.
@@ -87,24 +86,17 @@ This application will have 2 system roles. Those are unremovable or can't be del
 - super-admin - manage the sass or the developers who are building this sass for his first startup
 - tenant - subscribe to plan
 
-
 Super- admin can create multiple roles with permissions to manage the sass. Also tenant can create multiple roles with permissions to manage his business.
 
-
-
 ## Functional requirements
-
 
 Here are listed all the requirements (stories) categorized by the roles
 
 ### Super admin
 
-
 - As a super admin I want to have all permissions to mange users, roles, plans, transactions
 
-
 ### Tenant
-
 
 - As a tenant, I want to register & login
 - As a tenant, I want to edit my profile information
@@ -117,11 +109,9 @@ Here are listed all the requirements (stories) categorized by the roles
 - As a tenant, I want to share the board using a url
 - As a tenant, I want to publish the board so end user can join
 
-
 ### End user
 
 There are no official role for end user because they not have to register to buy a widget. They will click on the link shared by the admin to a maybe public group and join the board.
-
 
 - As an end user, I want to join a board with url without registration
 - As an end user, I want to click on a widget to buy it
@@ -130,12 +120,9 @@ There are no official role for end user because they not have to register to buy
 - As an end user, I want to have a email confirmation with order invoice
 - As an end user, I want to pan over the board
 
-
 ## Non Functional requirements
 
-
-
-- Distinct item:  Every widget is different record in database. Suppose tenant have created a sneaker with 3 quantity. End user have to buy the whole stock. If tenant want to sell 3 sneaker separately then he have to create those 3 sneaker as Distinct record in database with quantity 1.
+- Distinct item: Every widget is different record in database. Suppose tenant have created a sneaker with 3 quantity. End user have to buy the whole stock. If tenant want to sell 3 sneaker separately then he have to create those 3 sneaker as Distinct record in database with quantity 1.
 
 - Live View Rate-Limiting: If a user scrolls or pans across the canvas, you need to track what area they are looking at (bounding boxes). The backend must only stream updates for widgets inside their current viewport to save bandwidth.
 
@@ -143,27 +130,21 @@ There are no official role for end user because they not have to register to buy
 
 - Soft Lock: Clicking an inventory widget on the canvas locks it for 60 seconds. It turns amber for all other users looking at that canvas.
 
-- Hard Lock: If the user initiates checkout, items moves to a distributed queue and locks them for 5 minutes and they turns red for all the other user looking at that canvas. If they don't pay within 5 minutes, the lock expires,  items returns to the canvas, and a real-time event updates all connected clients.
+- Hard Lock: If the user initiates checkout, items moves to a distributed queue and locks them for 5 minutes and they turns red for all the other user looking at that canvas. If they don't pay within 5 minutes, the lock expires, items returns to the canvas, and a real-time event updates all connected clients.
 
 - Abuse Prevention: Detect "mouse-teleportation" bots (users moving items faster than humanly possible across the grid coordinate system).
 
 - Zero Double-Spend: Make sure for a single order not double payment happen
 
-
 ## Product workflows
-
 
 Here are listed all the workflows categorized by the roles.
 
-
 ### Super admin
-
 
 - As an super admin, I want to access all the menu under Administration level of left sidebar except Order menu and its page.
 
-
 ### Tenant
-
 
 - As a tenant, I want to access Boards, Inventory, User, Role, Order, Settings menu of left sidebar
 
@@ -171,7 +152,7 @@ Here are listed all the workflows categorized by the roles.
 
 - As a tenant, clicking on import inventory should open a file picker to select csv file. After selecting file I should redirect to the board. Then there should a right sidebar that should show all the inventory as smart widget cart but in small size like a thumbnail. Then I can drag those item to the board. Immediately widget gets its x,y coordinate.
 
-- As a tenant, I want to  create inventory from the left sidebar inventory menu also. In that case, no inventory record will be attach to a board. I should be able to attach an inventory to a board. After attaching, this inventory item should be shown in the right sidebar of the board. Again user can drag it to the board.
+- As a tenant, I want to create inventory from the left sidebar inventory menu also. In that case, no inventory record will be attach to a board. I should be able to attach an inventory to a board. After attaching, this inventory item should be shown in the right sidebar of the board. Again user can drag it to the board.
 
 - As a tenant, clicking on share action of board card A modal should open to copy the url.
 
@@ -179,18 +160,13 @@ Here are listed all the workflows categorized by the roles.
 
 - As a tenant, clicking on orders button of left sidebar all the orders I should see in a table.
 
-- As a tenant, clicking on Billing I should see all the plans  card so I can upgrade or downgrade.
+- As a tenant, clicking on Billing I should see all the plans card so I can upgrade or downgrade.
 
 - As a tenant, clicking on Setting, I want to remove my account change my password.
 
-
-
 ### End user
 
-
 - As an end user, I want a dedicated right sidebar that displays all widgets I have currently locked along with an active countdown timer for each, so I can keep track of my items even if I pan away from them on the canvas. This sidebar also should include checkout action
-
-
 
 ## Database Schema
 
@@ -200,11 +176,11 @@ Refer @apps/api/src/schemas directory for all the drizzle scheams of our applica
 
 ## Monetization & Plans
 
-| Feature | Free Plan | Pro Plan ($9/month) |
-|---|---|---|
-| Max Boards | 2 | 15 |
-| Custom Roles | 3 per tenant | 20 per tenant |
-| Widgets per Board | 25 | Unlimited |
+| Feature           | Free Plan    | Pro Plan ($9/month) |
+| ----------------- | ------------ | ------------------- |
+| Max Boards        | 2            | 15                  |
+| Custom Roles      | 3 per tenant | 20 per tenant       |
+| Widgets per Board | 25           | Unlimited           |
 
 **Plan enforcement** is handled at the database level via `userPlanSnapshot` and `groupPermission.totalOperation`. During development, restrictions are bypassable for evaluation purposes.
 
@@ -216,23 +192,21 @@ Refer @apps/api/src/schemas directory for all the drizzle scheams of our applica
 
 ## UI/UX
 
-
 ### Specification
 
-- 240px left sidebar. Here under workspace label there should be two menu - Boards, Inventory. Under Administration level there should be 4 menu - User, Roles, Plans, Orders, Transactions. Under System level there should  be Billing, Settings menu.
+- 240px left sidebar. Here under workspace label there should be two menu - Boards, Inventory. Under Administration level there should be 4 menu - User, Roles, Plans, Orders, Transactions. Under System level there should be Billing, Settings menu.
 
 - Boards page should show all the board list. every board should include share, import inventory, publish action. This is the main dashboard page.
 
-- Inventory should show all the inventory items in a table. There should be filter option to filter inventory using board, name/title, stock, price. Table should be scrollable horizontally in small screen. Every row should an action column to delete, edit the inventory. Also there should a button to create a new inventory or bulk import from csv file. Creating a inventory a modal should open. 
+- Inventory should show all the inventory items in a table. There should be filter option to filter inventory using board, name/title, stock, price. Table should be scrollable horizontally in small screen. Every row should an action column to delete, edit the inventory. Also there should a button to create a new inventory or bulk import from csv file. Creating a inventory a modal should open.
 
 - User page should list all the users. Should be filtered by name, roles, plans. Also need a button a add a new user assigning a role through a modal.
 
-- Role page should list all the roles.  Need a button to create a new role assigning permissions through a modal.
+- Role page should list all the roles. Need a button to create a new role assigning permissions through a modal.
 
 - Plan page should list all the plans. Need a button to create a new plan assigning permissions through a modal.
 
 - By default dark mode should be enabled.
-
 
 ### Design System
 
@@ -248,7 +222,6 @@ Refer @apps/api/src/schemas directory for all the drizzle scheams of our applica
 | `--font-mono`       | `JetBrains Mono` / `Fira Code` | Coordinates, system variables, telemetry |
 | `--font-ui`         | `Inter`                        | All interface labels and body copy       |
 
-
 ### Micro-interactions
 
 | Trigger                       | Behaviour                                                                                            |
@@ -260,7 +233,6 @@ Refer @apps/api/src/schemas directory for all the drizzle scheams of our applica
 | Quota limit reached           | Relevant UI control grays out with tooltip: "Upgrade to Pro"                                         |
 | Tab backgrounded              | WebSocket silently downgrades to heartbeat; banner on re-focus: "Syncing changes…"                   |
 | Mouse position                | Cursor coordinates update live in sticky header and control deck, mapped via canvas transform matrix |
-
 
 ---
 
@@ -280,4 +252,3 @@ Refer @apps/api/src/schemas directory for all the drizzle scheams of our applica
 - [Sonner (toasts)](https://sonner.emilkowal.ski)
 - [TanStack Table](https://tanstack.com/table/latest)
 - [Recharts](https://recharts.org)
-

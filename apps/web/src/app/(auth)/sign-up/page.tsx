@@ -3,14 +3,10 @@ import { RegisterForm } from "@/components/auth/register-form";
 import { googleAuthUrl } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Create account — CollabGrid",
+  title: "Create account — LootBoard",
 };
 
-export default async function RegisterPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ plan?: string }>;
-}) {
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const { plan } = await searchParams;
   return <RegisterForm googleAuthUrl={googleAuthUrl(plan)} plan={plan} />;
 }

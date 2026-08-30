@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import { DRIZZLE, DrizzleDB } from '@/drizzle/drizzle.module';
 import {
   boardTable,
@@ -62,19 +62,28 @@ export class OrderService {
     }
 
     // Group items per order
-    const grouped = new Map<string, {
-      id: string;
-      buyerName: string | null;
-      email: string | null;
-      amountTotal: string;
-      paymentMethod: string;
-      cardLast4: string | null;
-      status: 'paid';
-      createdAt: Date;
-      boardId: string | null;
-      boardName: string | null;
-      items: { id: string; name: string; sku: string; price: string; quantity: number }[];
-    }>();
+    const grouped = new Map<
+      string,
+      {
+        id: string;
+        buyerName: string | null;
+        email: string | null;
+        amountTotal: string;
+        paymentMethod: string;
+        cardLast4: string | null;
+        status: 'paid';
+        createdAt: Date;
+        boardId: string | null;
+        boardName: string | null;
+        items: {
+          id: string;
+          name: string;
+          sku: string;
+          price: string;
+          quantity: number;
+        }[];
+      }
+    >();
 
     for (const row of orders) {
       if (!grouped.has(row.id)) {
@@ -98,7 +107,9 @@ export class OrderService {
     return Array.from(grouped.values());
   }
 
-  async create(dto: CreateOrderDto): Promise<{ orderId: string; duplicate: boolean }> {
+  async create(
+    dto: CreateOrderDto,
+  ): Promise<{ orderId: string; duplicate: boolean }> {
     // Idempotency: a repeated submit with the same key returns the original
     // order instead of creating/charging a second one.
     const [existing] = await this.db

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import type { Request } from 'express';
 import { REQUIRE_PERMISSION_KEY } from '@/auth/decorators/require-permission.decorator';
 import { Action, type PermissionTuple } from '@/auth/permissions';

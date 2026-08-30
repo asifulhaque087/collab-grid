@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: asiful087/collab-grid-api
+  repository: asiful087/loot-board-api
   tag: latest
   pullPolicy: IfNotPresent
 

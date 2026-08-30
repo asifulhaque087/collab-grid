@@ -14,12 +14,12 @@ RUN pnpm install
 COPY packages/common packages/common
 COPY apps/api apps/api
 
-RUN pnpm --filter @collab-grid/common build
-RUN pnpm --filter @collab-grid/api build:migrate
-RUN pnpm --filter @collab-grid/api build:seed
+RUN pnpm --filter @loot-board/common build
+RUN pnpm --filter @loot-board/api build:migrate
+RUN pnpm --filter @loot-board/api build:seed
 
-# RUN pnpm --filter @collab-grid/api... build
+# RUN pnpm --filter @loot-board/api... build
 
 EXPOSE 3001
 
-CMD ["pnpm", "--filter", "@collab-grid/api", "dev"]
+CMD ["pnpm", "--filter", "@loot-board/api", "dev"]

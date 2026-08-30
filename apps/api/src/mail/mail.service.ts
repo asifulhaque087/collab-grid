@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 
 @Injectable()
 export class MailService {

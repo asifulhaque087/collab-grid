@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { tryit } from '@collab-grid/common';
+import { tryit } from '@loot-board/common';
 import bcrypt from 'bcryptjs';
 import ms from 'ms';
 import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
@@ -524,44 +524,53 @@ export class AuthService {
           subject: permissionsTable.subject,
           limit: packagePermissionLimitTable.limit,
           // SUM up usage across matching rows, defaulting to 0 if null
-          totalUsed: sql<number>`COALESCE(SUM(${limitUsageTable.used}), 0)`.mapWith(Number),
+          totalUsed:
+            sql<number>`COALESCE(SUM(${limitUsageTable.used}), 0)`.mapWith(
+              Number,
+            ),
         })
         .from(subscriptionTable)
         .innerJoin(
           packagePermissionLimitTable,
-          eq(subscriptionTable.packageId, packagePermissionLimitTable.packageId)
+          eq(
+            subscriptionTable.packageId,
+            packagePermissionLimitTable.packageId,
+          ),
         )
         .innerJoin(
           permissionsTable,
-          eq(packagePermissionLimitTable.permissionId, permissionsTable.id)
+          eq(packagePermissionLimitTable.permissionId, permissionsTable.id),
         )
         // LEFT JOIN so we still return limits even if 0 usage exists yet
         .leftJoin(
           limitUsageTable,
           and(
-            eq(packagePermissionLimitTable.id, limitUsageTable.packagePermissionLimitId),
-            eq(limitUsageTable.userId, tenantId)
-          )
+            eq(
+              packagePermissionLimitTable.id,
+              limitUsageTable.packagePermissionLimitId,
+            ),
+            eq(limitUsageTable.userId, tenantId),
+          ),
         )
         .where(
           and(
             eq(subscriptionTable.userId, tenantId),
             or(
               isNull(subscriptionTable.endDate),
-              gt(subscriptionTable.endDate, new Date())
-            )
-          )
+              gt(subscriptionTable.endDate, new Date()),
+            ),
+          ),
         )
         .groupBy(
           permissionsTable.action,
           permissionsTable.subject,
-          packagePermissionLimitTable.limit
-        )
+          packagePermissionLimitTable.limit,
+        ),
     );
 
     if (err) {
       throw new InternalServerErrorException(
-        'Failed to resolve active subscriptions and quotas.'
+        'Failed to resolve active subscriptions and quotas.',
       );
     }
 
@@ -572,7 +581,12 @@ export class AuthService {
     // Aggregate package limits if a user has multiple active plans
     const aggMap = new Map<
       string,
-      { action: string; subject: string; granted: number | null; totalUsed: number }
+      {
+        action: string;
+        subject: string;
+        granted: number | null;
+        totalUsed: number;
+      }
     >();
 
     for (const row of rows) {
@@ -615,7 +629,6 @@ export class AuthService {
 
     return { quotas, plan: 'active' };
   }
-
 
   async logout(userId: string): Promise<void> {
     const [, updateErr] = await tryit(

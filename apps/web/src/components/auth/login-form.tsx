@@ -63,7 +63,7 @@ export function LoginForm({
   return (
     <AuthCard
       title="Welcome back"
-      subtitle="Sign in to your CollabGrid workspace."
+      subtitle="Sign in to your LootBoard workspace."
       footer={
         <>
           Don&apos;t have an account?{" "}
@@ -76,13 +76,7 @@ export function LoginForm({
       <GoogleButton href={googleAuthUrl} label="Sign in with Google" />
       <AuthDivider />
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="mb-4 w-full bg-bg py-2.5"
-          onClick={onOpenModal}
-        >
+        <Button type="button" variant="secondary" size="sm" className="mb-4 w-full bg-bg py-2.5" onClick={onOpenModal}>
           <KeyRound className="size-4" />
           Use login credentials
         </Button>

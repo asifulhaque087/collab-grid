@@ -174,7 +174,7 @@ async function main() {
     .insert(userTable)
     .values({
       name: 'Super Admin',
-      email: 'admin@collabgrid.com',
+      email: 'admin@lootboard.com',
       password: hashedPassword,
       provider: 'local',
     })
@@ -266,7 +266,7 @@ async function main() {
     .insert(userTable)
     .values({
       name: 'Tenant User',
-      email: 'tenant@collabgrid.com',
+      email: 'tenant@lootboard.com',
       password: hashedPassword,
       provider: 'local',
     })

@@ -1,6 +1,6 @@
 # Dashboard Design — Implementation Spec
 
-> Build the real CollabGrid tenant dashboard in `apps/web` from the static mockup at
+> Build the real LootBoard tenant dashboard in `apps/web` from the static mockup at
 > [prototypes/dashboard.html](../../prototypes/dashboard.html). The mockup is the **source of truth for
 > visual design** — the implementation must be pixel-perfect against it.
 
@@ -21,7 +21,7 @@ Translate the single-file HTML prototype into a real Next.js 16 (App Router) app
 
 **Out of scope (separate feature):** the canvas board editor (`#page-canvas` in the prototype — the
 infinite-canvas viewport, widgets, peer cursors, minimap, lock timers, drag-and-drop inventory panel,
-widget detail panel). This spec covers everything *except* the live canvas. Note the routing seam for it
+widget detail panel). This spec covers everything _except_ the live canvas. Note the routing seam for it
 (§4) but do not build it here.
 
 ---
@@ -114,30 +114,31 @@ to add: `button, dialog, input, select, table, switch, checkbox, dropdown-menu, 
 Add these to `globals.css` under `@theme` (Tailwind v4, CSS-based config — **no JS config file**). Values
 copied from the prototype `:root`:
 
-| Token | Value | Usage |
-|---|---|---|
-| `--color-brand` | `#1e3a8a` | structure, frames |
-| `--color-brand-light` | `#2548a8` | avatar gradient |
-| `--color-active` | `#0d9488` | active state, primary action (teal) |
-| `--color-active-dim` | `rgba(13,148,136,0.15)` | active backgrounds |
-| `--color-soft-lock` | `#d97706` | amber soft-lock |
-| `--color-committed` | `#059669` | emerald success/paid |
-| `--color-bg` | `#0f172a` | page background |
-| `--color-bg-deep` | `#0a1020` | sidebar, table head, canvas |
-| `--color-surface` | `#1e293b` | cards, panels |
-| `--color-surface-hover` | `#263548` | hover |
-| `--color-border` | `#334155` | borders/dividers |
-| `--color-border-subtle` | `#1e293b` | row dividers |
-| `--color-text` | `#e2e8f0` | primary text |
-| `--color-text-dim` | `#94a3b8` | secondary text |
-| `--color-text-muted` | `#64748b` | muted/labels |
-| `--color-danger` | `#ef4444` | destructive |
+| Token                   | Value                   | Usage                               |
+| ----------------------- | ----------------------- | ----------------------------------- |
+| `--color-brand`         | `#1e3a8a`               | structure, frames                   |
+| `--color-brand-light`   | `#2548a8`               | avatar gradient                     |
+| `--color-active`        | `#0d9488`               | active state, primary action (teal) |
+| `--color-active-dim`    | `rgba(13,148,136,0.15)` | active backgrounds                  |
+| `--color-soft-lock`     | `#d97706`               | amber soft-lock                     |
+| `--color-committed`     | `#059669`               | emerald success/paid                |
+| `--color-bg`            | `#0f172a`               | page background                     |
+| `--color-bg-deep`       | `#0a1020`               | sidebar, table head, canvas         |
+| `--color-surface`       | `#1e293b`               | cards, panels                       |
+| `--color-surface-hover` | `#263548`               | hover                               |
+| `--color-border`        | `#334155`               | borders/dividers                    |
+| `--color-border-subtle` | `#1e293b`               | row dividers                        |
+| `--color-text`          | `#e2e8f0`               | primary text                        |
+| `--color-text-dim`      | `#94a3b8`               | secondary text                      |
+| `--color-text-muted`    | `#64748b`               | muted/labels                        |
+| `--color-danger`        | `#ef4444`               | destructive                         |
 
 Other tokens to carry over: radii (`sm 6px`, `md 10px`, `lg 14px`, `xl 20px`), shadows
 (`sm/md/lg`, `glow-teal: 0 0 20px rgba(13,148,136,0.2)`), `--transition: 180ms cubic-bezier(0.4,0,0.2,1)`,
 `--sidebar-w: 240px`, `--header-h: 60px`.
 
 **Fonts** (via `next/font/google` in root layout, exposed as CSS vars):
+
 - `--font-ui`: **Inter** (weights 400/500/600/700) — all UI text.
 - `--font-mono`: **JetBrains Mono** (400/500) — coordinates, SKUs, prices, IDs, telemetry, numeric stats.
 
@@ -151,18 +152,22 @@ Other tokens to carry over: radii (`sm 6px`, `md 10px`, `lg 14px`, `xl 20px`), s
 ## 6. Shared shell
 
 ### Layout grid (`(dashboard)/layout.tsx`, server)
+
 CSS grid: `grid-template-columns: var(--sidebar-w) 1fr; grid-template-rows: var(--header-h) 1fr; height:
 100vh`. Header spans both columns; sidebar left; `<main>` scrolls (`overflow-y:auto; padding:28px 32px`) and
 shows the faint radial dot-grid background (`.main::before`).
 
 ### Header (`components/layout/header.tsx`)
+
 Mostly static (server) with small client bits. Left: logo mark (gradient square + grid icon) + "Collab**Grid**"
 wordmark + divider + active workspace name. Right: telemetry strip (`Socket: Connected` green dot, `Locks: N`
 amber dot, `Latency`), icon buttons (search, notifications w/ badge, settings), avatar. Icon buttons that only
 toast in the prototype → client component firing `sonner` toasts (placeholder behavior preserved).
 
 ### Sidebar (`components/layout/sidebar.tsx`, client for active-state)
+
 Driven by `lib/nav.ts`:
+
 - **Workspace:** Boards (`/boards`, badge 4), Inventory (`/inventory`, badge 128)
 - **Administration:** Users (`/users`), Roles (`/roles`), Plans (`/plans`), Orders (`/orders`, badge 18),
   Transactions (`/transactions`)
@@ -189,6 +194,7 @@ Each page = server component composing `<PageHeader>` + body. Reusable building 
 - **`Button`** variants: primary (teal), secondary, ghost, danger, icon, sm — map to ShadCN `Button`.
 
 ### 7.1 Boards (`/boards`) — main dashboard
+
 - PageHeader "Boards" / "Manage your collaborative canvas workspaces"; actions: **Filter** (secondary),
   **New Board** (primary → opens Create Board modal).
 - Stats row (4): Active Boards, Live Connections, Active Locks, Checkouts Today.
@@ -200,6 +206,7 @@ Each page = server component composing `<PageHeader>` + body. Reusable building 
   (canvas, out of scope — route may be a placeholder). Plus a dashed **"Create New Board"** card → Create modal.
 
 ### 7.2 Inventory (`/inventory`)
+
 - PageHeader actions: search input, **Export** (secondary, toast), **Add Item** (primary → Add Inventory modal).
 - Stats row (4): Total SKUs, Total Units, Reserved, Low Stock.
 - `DataTable`: SKU (mono) · Item Name (primary) · Total Qty (mono) · **Board** (the `BoardSelector` dropdown:
@@ -207,36 +214,43 @@ Each page = server component composing `<PageHeader>` + body. Reusable building 
   (edit, view locks). Footer pagination.
 
 ### 7.3 Users (`/users`)
+
 - PageHeader: search, **Add User** (→ Add User modal). `DataTable`: Name · Email · Role (`TypePill`) ·
   Status (`StatusBadge` active/idle) · Joined · Actions (edit, activate/deactivate). Footer "Showing N users".
 
 ### 7.4 Roles (`/roles`)
+
 - PageHeader: **Create Role** (→ Add Role modal). `DataTable`: Role Name · Members (mono) · Permissions ·
   Created By (badge/pill) · Created · Actions (view for system roles; edit/delete for custom). System roles
   (Tenant Admin) are non-deletable — render view-only action. Footer "2 of 3 custom roles used (Free Plan)".
 
 ### 7.5 Plans (`/plans`)
+
 - PageHeader: **Create Plan** (→ Add Plan modal). Card grid (`minmax(260px,1fr)`) of plan cards: name +
   status badge (Active/Popular), mono price `/mo`, quota summary line, "N tenants subscribed". Free card has
   teal border.
 
 ### 7.6 Orders (`/orders`)
+
 - PageHeader: search, **Export** (toast). `DataTable`: Order ID (mono) · Customer (primary, truncated) ·
   Widget · Board · Amount (mono, colored by status) · Payment (bKash/Nagad/SSLCommerz/—) · Status (badge:
   Paid/Pending/Expired) · Date. Footer with multi-page pagination ("Showing 5 of 18").
 
 ### 7.7 Transactions (`/transactions`)
+
 - PageHeader: **filter tabs** (All / Success / Pending / Failed — client, active state) + **Export**.
   `DataTable`: TXN ID · Order · Method · Amount (mono, colored) · Gateway Ref (mono) · Status (badge) ·
   Timestamp (mono).
 
 ### 7.8 Billing (`/billing`)
+
 - PageHeader title only. Current-plan card (teal border): "Current Plan / Free Plan" + Active badge; 3-col
   usage grid (Boards 2/2, Custom Roles 2/3, Widgets/Board 24/25) with teal current values; renews line.
 - "Upgrade" section: two upgrade cards (Pro Monthly — Recommended badge, Upgrade Now primary; Pro Yearly —
   "Save 20%", secondary). Footer: payment methods line. Cards toast on click (placeholder for gateway).
 
 ### 7.9 Settings (`/settings`)
+
 - Max-width 560px column of cards:
   - **Profile** form: Tenant Name, Tenant Slug (mono), Contact Email → Save Changes.
   - **Security** form: Current Password, New Password → Update Password.
@@ -254,16 +268,16 @@ scale/translate open animation. Each form is a `'use client'` component using
 (this iteration): close modal + `sonner` toast (matching prototype copy); structure the handler so a Server
 Action call drops in later.
 
-| Modal | Fields → Zod schema |
-|---|---|
-| **Create Board** | name (req), slug (auto from name, mono), maxCanvasWidth (number, default 10000), maxCanvasHeight (number, default 10000), access (enum: `restricted` \| `public`). Footer shows quota remaining. |
-| **Share Board** | invite email (email), role select; "people with access" list with per-person role select + remove; general-access mode (Restricted/Public) select with dynamic description; **Copy link** button (writes to clipboard, shows "Copied" state). |
-| **Import Inventory** | CSV dropzone (drag/drop + click), format hint (`name, sku, price, quantity`). Import → toast. |
-| **Add Inventory Item** | sku (req, mono), name (req), initialQuantity (number ≥0), lowStockThreshold (number ≥0), description (optional). |
-| **Add Widget** | type (enum: product/info/media, card selector), name (req), linkedSku (optional select), posX, posY, width, height (numbers, mono). *(Used by canvas — include schema; UI lives with canvas feature.)* |
-| **Add User** | fullName (req), email (req email), roles (multi-select via toggle list, ≥1). |
-| **Add Role** | name (req), permissions (set of toggles: create/read/update/delete/manage across Board/Inventory/Order/User/Role/Transaction). |
-| **Add Plan** | name (req), pricePerMonth (number ≥0), quotas (numbers ≥0: maxBoards, widgetsPerBoard, customRoles, maxUsers, inventoryItems, maxConcurrentUsers, snapshotHistory, csvImportsPerMonth). |
+| Modal                  | Fields → Zod schema                                                                                                                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Create Board**       | name (req), slug (auto from name, mono), maxCanvasWidth (number, default 10000), maxCanvasHeight (number, default 10000), access (enum: `restricted` \| `public`). Footer shows quota remaining.                                              |
+| **Share Board**        | invite email (email), role select; "people with access" list with per-person role select + remove; general-access mode (Restricted/Public) select with dynamic description; **Copy link** button (writes to clipboard, shows "Copied" state). |
+| **Import Inventory**   | CSV dropzone (drag/drop + click), format hint (`name, sku, price, quantity`). Import → toast.                                                                                                                                                 |
+| **Add Inventory Item** | sku (req, mono), name (req), initialQuantity (number ≥0), lowStockThreshold (number ≥0), description (optional).                                                                                                                              |
+| **Add Widget**         | type (enum: product/info/media, card selector), name (req), linkedSku (optional select), posX, posY, width, height (numbers, mono). _(Used by canvas — include schema; UI lives with canvas feature.)_                                        |
+| **Add User**           | fullName (req), email (req email), roles (multi-select via toggle list, ≥1).                                                                                                                                                                  |
+| **Add Role**           | name (req), permissions (set of toggles: create/read/update/delete/manage across Board/Inventory/Order/User/Role/Transaction).                                                                                                                |
+| **Add Plan**           | name (req), pricePerMonth (number ≥0), quotas (numbers ≥0: maxBoards, widgetsPerBoard, customRoles, maxUsers, inventoryItems, maxConcurrentUsers, snapshotHistory, csvImportsPerMonth).                                                       |
 
 Reusable form bits: `FormField` (label + control + error), `ToggleSwitch` (ShadCN `Switch` styled to the
 prototype's `.toggle-switch`), `QuotaInput`, `PermItem` row.
@@ -276,16 +290,16 @@ and Create Board modal in the boards feature folder).
 
 ## 9. Navigation / link map
 
-| Trigger | Action |
-|---|---|
-| Sidebar links | route to `/boards`, `/inventory`, `/users`, `/roles`, `/plans`, `/orders`, `/transactions`, `/billing`, `/settings` |
-| "Upgrade to Pro" (sidebar plan card), Billing upgrade cards | `/billing` / payment toast |
-| New Board / Create New Board card | open Create Board modal |
-| Board card click | `/boards/[slug]` (canvas — placeholder route this iteration) |
-| Board card: Share / Import / Publish | open Share modal / Import modal / toggle + toast |
-| Add Item / Add User / Create Role / Create Plan | open respective modal |
-| Table row Edit/Delete/View, Export, search, Filter | wire to handlers; placeholders fire toasts (no dead `#` links) |
-| Header search/notifications/settings/avatar | client buttons → toast placeholders (preserve prototype behavior) |
+| Trigger                                                     | Action                                                                                                              |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Sidebar links                                               | route to `/boards`, `/inventory`, `/users`, `/roles`, `/plans`, `/orders`, `/transactions`, `/billing`, `/settings` |
+| "Upgrade to Pro" (sidebar plan card), Billing upgrade cards | `/billing` / payment toast                                                                                          |
+| New Board / Create New Board card                           | open Create Board modal                                                                                             |
+| Board card click                                            | `/boards/[slug]` (canvas — placeholder route this iteration)                                                        |
+| Board card: Share / Import / Publish                        | open Share modal / Import modal / toggle + toast                                                                    |
+| Add Item / Add User / Create Role / Create Plan             | open respective modal                                                                                               |
+| Table row Edit/Delete/View, Export, search, Filter          | wire to handlers; placeholders fire toasts (no dead `#` links)                                                      |
+| Header search/notifications/settings/avatar                 | client buttons → toast placeholders (preserve prototype behavior)                                                   |
 
 ---
 
@@ -299,4 +313,7 @@ and Create Board modal in the boards feature folder).
 - No `any` types; entities typed in `src/types`; no dead links; no duplicated card/table/modal markup.
 - `pnpm build` and `pnpm lint` pass clean (lint runs with `--max-warnings 0`).
 - Canvas board editor is explicitly deferred (placeholder route only).
+
+```
+
 ```

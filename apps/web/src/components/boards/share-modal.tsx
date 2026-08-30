@@ -6,22 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { LayoutGrid, Mail, X, Lock, Globe, Link2, Check } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogBody,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 const schema = z.object({
@@ -91,8 +78,7 @@ export function ShareModal({
   };
 
   const copyLink = async () => {
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "https://collabgrid.app";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://lootboard.app";
     const url = `${origin}/b/${boardSlug}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -118,9 +104,7 @@ export function ShareModal({
             </div>
             <div className="min-w-0">
               <div className="text-[0.9rem] font-semibold text-text">{boardName}</div>
-              <div className="font-mono text-[0.72rem] text-text-muted">
-                collabgrid.app/b/{boardSlug}
-              </div>
+              <div className="font-mono text-[0.72rem] text-text-muted">lootboard.app/b/{boardSlug}</div>
             </div>
           </div>
 
@@ -133,9 +117,7 @@ export function ShareModal({
                 className="w-full rounded-sm border border-border bg-bg py-2.5 pl-9 pr-3 text-[0.85rem] text-text outline-none transition-colors placeholder:text-text-muted focus:border-active"
                 {...register("email")}
               />
-              {errors.email && (
-                <p className="mt-1 text-[0.72rem] text-danger">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="mt-1 text-[0.72rem] text-danger">{errors.email.message}</p>}
             </div>
             <Button type="submit" variant="secondary">
               Invite
@@ -143,15 +125,10 @@ export function ShareModal({
           </form>
 
           {/* People with access */}
-          <div className="mb-3 text-[0.75rem] font-semibold uppercase tracking-[0.06em] text-text-muted">
-            People with access
-          </div>
+          <div className="mb-3 text-[0.75rem] font-semibold uppercase tracking-[0.06em] text-text-muted">People with access</div>
           <div className="mb-5">
             {people.map((person) => (
-              <div
-                key={person.id}
-                className="flex items-center gap-3 border-t border-border-subtle py-2.5 first:border-t-0"
-              >
+              <div key={person.id} className="flex items-center gap-3 border-t border-border-subtle py-2.5 first:border-t-0">
                 <div
                   className="grid size-9 shrink-0 place-items-center rounded-full text-[0.8rem] font-semibold text-white"
                   style={{ background: person.gradient }}
@@ -161,11 +138,7 @@ export function ShareModal({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 text-[0.875rem] font-semibold text-text">
                     {person.name}
-                    {person.you && (
-                      <span className="rounded-[4px] bg-bg px-1.5 py-px text-[0.68rem] font-medium text-text-muted">
-                        You
-                      </span>
-                    )}
+                    {person.you && <span className="rounded-[4px] bg-bg px-1.5 py-px text-[0.68rem] font-medium text-text-muted">You</span>}
                   </div>
                   <div className="truncate text-[0.78rem] text-text-muted">{person.email}</div>
                 </div>
@@ -201,22 +174,13 @@ export function ShareModal({
               <div
                 className={cn(
                   "grid size-9 shrink-0 place-items-center rounded-full transition-all",
-                  accessMode === "public"
-                    ? "bg-active-dim text-active"
-                    : "bg-surface text-text-muted"
+                  accessMode === "public" ? "bg-active-dim text-active" : "bg-surface text-text-muted",
                 )}
               >
-                {accessMode === "public" ? (
-                  <Globe className="size-[18px]" />
-                ) : (
-                  <Lock className="size-[18px]" />
-                )}
+                {accessMode === "public" ? <Globe className="size-[18px]" /> : <Lock className="size-[18px]" />}
               </div>
               <div className="flex-1">
-                <Select
-                  value={accessMode}
-                  onValueChange={(v) => setAccessMode(v as "restricted" | "public")}
-                >
+                <Select value={accessMode} onValueChange={(v) => setAccessMode(v as "restricted" | "public")}>
                   <SelectTrigger className="w-auto border-transparent bg-transparent px-2 py-1 text-[0.875rem] font-semibold text-text hover:border-border">
                     <SelectValue />
                   </SelectTrigger>
@@ -226,9 +190,7 @@ export function ShareModal({
                   </SelectContent>
                 </Select>
                 <div className="mt-0.5 px-2 text-[0.78rem] text-text-muted">
-                  {accessMode === "public"
-                    ? "Anyone with the link can join this board"
-                    : "Only people you add can access this board"}
+                  {accessMode === "public" ? "Anyone with the link can join this board" : "Only people you add can access this board"}
                 </div>
               </div>
             </div>
@@ -239,7 +201,8 @@ export function ShareModal({
             onClick={copyLink}
             className={cn(
               "inline-flex items-center gap-[7px] rounded-sm border border-border bg-bg px-3.5 py-2 text-[0.82rem] font-semibold text-text-dim transition-all hover:border-active hover:bg-active-dim hover:text-active",
-              copied && "border-committed bg-committed-dim text-committed hover:border-committed hover:bg-committed-dim hover:text-committed"
+              copied &&
+                "border-committed bg-committed-dim text-committed hover:border-committed hover:bg-committed-dim hover:text-committed",
             )}
           >
             {copied ? <Check className="size-[15px]" /> : <Link2 className="size-[15px]" />}
