@@ -2,19 +2,19 @@ name: Deploy API
 
 on:
   push:
-    branches: [nest]
+    branches: [nestjs]
     paths:
       - 'apps/api/**'
-      - 'charts/api/**'
+      - 'infra/charts/api/**'
       - 'packages/common/**'
       - '.github/workflows/deploy-api.yml'
       - '.github/secrets/.env.api'
 
   pull_request:
-    branches: [nest]
+    branches: [nestjs]
     paths:
       - 'apps/api/**'
-      - 'charts/api/**'
+      - 'infra/charts/api/**'
       - 'packages/common/**'
       - '.github/workflows/deploy-api.yml'
       - '.github/secrets/.env.api'
@@ -42,7 +42,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./apps/api/Dockerfile
+          file: ./infra/production/docker/Dockerfile.api
           target: production
           push: true
           tags: |
@@ -109,7 +109,7 @@ jobs:
             WS_TOKEN_SECRET: "$WS_TOKEN_SECRET"
           EOF
 
-          helm upgrade --install collabgrid-api ./charts/api \
+          helm upgrade --install collabgrid-api ./infra/charts/api \
             --namespace collab-grid --create-namespace \
             --set image.tag=${{ steps.vars.outputs.sha_short }} \
             --values secrets.tmp.yaml \

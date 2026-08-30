@@ -2,19 +2,19 @@ name: Deploy Web
 
 on:
   push:
-    branches: [nest]
+    branches: [nestjs]
     paths:
-      - 'apps/web/**'
-      - 'charts/web/**'
-      - 'packages/common/**'
-      - '.github/workflows/deploy-web.yml'
+      - "apps/web/**"
+      - "infra/charts/web/**"
+      - "packages/common/**"
+      - ".github/workflows/deploy-web.yml"
   pull_request:
-    branches: [nest]
+    branches: [nestjs]
     paths:
-      - 'apps/web/**'
-      - 'charts/web/**'
-      - 'packages/common/**'
-      - '.github/workflows/deploy-web.yml'
+      - "apps/web/**"
+      - "infra/charts/web/**"
+      - "packages/common/**"
+      - ".github/workflows/deploy-web.yml"
 
 jobs:
   build-and-deploy:
@@ -39,7 +39,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./apps/web/Dockerfile
+          file: ./infra/production/docker/Dockerfile.web
           target: production
           push: true
           build-args: |
@@ -75,7 +75,7 @@ jobs:
             GATEWAY_URL: "$GATEWAY_URL"
           EOF
 
-          helm upgrade --install collabgrid-web ./charts/web \
+          helm upgrade --install collabgrid-web ./infra/charts/web \
             --namespace collab-grid --create-namespace \
             --set image.tag=${{ steps.vars.outputs.sha_short }} \
             --values secrets.tmp.yaml \

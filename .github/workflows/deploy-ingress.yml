@@ -2,14 +2,14 @@ name: Deploy Ingress Routes
 
 on:
   push:
-    branches: [nest]
+    branches: [nestjs]
     paths:
-      - 'charts/ingress-routes/**'
+      - 'infra/charts/ingress-routes/**'
       - '.github/workflows/deploy-ingress.yml'
   pull_request:
-    branches: [nest]
+    branches: [nestjs]
     paths:
-      - 'charts/ingress-routes/**'
+      - 'infra/charts/ingress-routes/**'
       - '.github/workflows/deploy-ingress.yml'
 
 jobs:
@@ -29,6 +29,6 @@ jobs:
 
       - name: Deploy Ingress to Kubernetes
         run: |
-          helm upgrade --install collabgrid-ingress ./charts/ingress-routes \
+          helm upgrade --install collabgrid-ingress ./infra/charts/ingress-routes \
             --namespace collab-grid --create-namespace \
             --wait
