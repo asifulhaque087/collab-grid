@@ -45,3 +45,5 @@ yarn-error.log*
 prototypes
 
 compose.prod.yml
+
+values.dev.yaml
