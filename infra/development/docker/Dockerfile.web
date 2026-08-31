@@ -1,0 +1,70 @@
+# FROM node:22-alpine
+
+# ENV PNPM_HOME="/pnpm"
+# ENV PATH="$PNPM_HOME:$PATH"
+# RUN corepack enable
+
+# WORKDIR /app
+
+# # Install dependencies first so the layer is cached across source syncs.
+# COPY services/web/package.json ./
+# RUN pnpm install --no-frozen-lockfile
+
+# COPY services/web ./
+
+# EXPOSE 3000
+
+# ENV NODE_ENV=development
+# ENV NEXT_TELEMETRY_DISABLED=1
+
+# CMD ["pnpm", "dev"]
+
+
+# FROM node:22-alpine
+
+# ENV PNPM_HOME="/pnpm"
+# ENV PATH="$PNPM_HOME:$PATH"
+# RUN corepack enable
+
+# WORKDIR /app
+
+# # Install dependencies first so the layer is cached across source syncs.
+# COPY services/web/package.json ./
+
+# # Option A: Allow pnpm to run build scripts during docker build
+# RUN pnpm config set ignore-scripts false && pnpm install --no-frozen-lockfile
+
+# COPY services/web ./
+
+# EXPOSE 3000
+
+# ENV NODE_ENV=development
+# ENV NEXT_TELEMETRY_DISABLED=1
+
+# CMD ["pnpm", "dev"]
+
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install dependencies first so the layer is cached across source syncs.
+# Note: npm requires package-lock.json (if present) along with package.json
+COPY services/web/package.json ./
+COPY services/web/package-lock.json* ./
+
+RUN npm install
+
+COPY services/web ./
+
+EXPOSE 3000
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Add runtime environment variables for Next.js
+ENV NEXT_PUBLIC_GATEWAY_URL=http://localhost:3001
+ENV NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+
+CMD ["npm", "run", "dev"]
+
