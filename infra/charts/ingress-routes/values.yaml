@@ -6,9 +6,6 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      more_set_headers "X-Forwarded-Host $host";
-      more_set_headers "X-Forwarded-Proto $scheme";
     nginx.ingress.kubernetes.io/proxy-redirect-from: "http://0.0.0.0:3000/"
     nginx.ingress.kubernetes.io/proxy-redirect-to: "https://lootboard.asif-haque.com/"
 
