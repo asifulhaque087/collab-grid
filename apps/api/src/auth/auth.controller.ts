@@ -162,6 +162,7 @@ export class AuthController {
     const redirect = `${clientUrl}/api/auth/callback?accessToken=${encodeURIComponent(
       tokens.accessToken,
     )}&refreshToken=${encodeURIComponent(tokens.refreshToken)}${plan ? `&plan=${encodeURIComponent(plan)}` : ''}`;
+    console.log("^^^^^^^^^^^^^^^^^ redirect url is ", redirect)
     res.redirect(redirect);
   }
 }

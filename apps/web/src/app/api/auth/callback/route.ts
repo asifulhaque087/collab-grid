@@ -13,6 +13,9 @@ export const runtime = "nodejs";
 // set the httpOnly auth cookies, and drop the user on the dashboard. This keeps
 // the SPA from ever touching raw tokens.
 export function GET(request: NextRequest): NextResponse {
+	
+	console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs")
+	
   const accessToken = request.nextUrl.searchParams.get("accessToken");
   const refreshToken = request.nextUrl.searchParams.get("refreshToken");
   const plan = request.nextUrl.searchParams.get("plan");
