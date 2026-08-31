@@ -1,0 +1,85 @@
+@baseUrl = http://localhost:3001/api/v1/roles
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2MmFhMTIxLTkzYzMtNDU5Ny04ZjBjLWQ1YTVkZGY0YWExYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjQ2NjczLCJpYXQiOjE3ODc2NDU3NzN9.E-a7vku_ZtqewR1fOFzAhRF3XHkinpoKwGLFv2mLpzg
+@roleId = 7a1a341f-5623-412c-8855-4b1871617362
+@permissionId = 14ad4224-9787-453f-868e-4d8e40971aaf
+
+
+### Get Permission Catalog
+
+GET {{baseUrl}}/permissions
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Get All Roles
+
+GET {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Create Role (No Permissions)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Editor"
+}
+
+
+### Create Role (With Permissions)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Manager",
+  "permissionIds": [
+    "{{permissionId}}"
+  ]
+}
+
+
+### Update Role Name
+
+PATCH {{baseUrl}}/{{roleId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Updated Manager"
+}
+
+
+### Replace Role Permissions
+
+PATCH {{baseUrl}}/{{roleId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "permissionIds": [
+    "{{permissionId}}"
+  ]
+}
+
+
+### Clear Role Permissions
+
+PATCH {{baseUrl}}/{{roleId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "permissionIds": []
+}
+
+
+### Delete Role
+
+DELETE {{baseUrl}}/{{roleId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}

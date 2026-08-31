@@ -1,0 +1,22 @@
+@baseUrl = http://localhost:3001/api/v1/subscriptions
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Ijk3ZjE2NDJmLTI4YzktNDExYS04NmNjLTYzZTFhMWUwZTViZiIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NzI1NDA2LCJpYXQiOjE3ODc3MjQ1MDZ9.t9bCM6ksSsMEPdrs0vLu5pZ55s0OsIPsgI72cr8STA4 
+@packageSlug = pro
+
+
+### List My Subscriptions
+
+GET {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Subscribe to a Package
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "packageSlug": "{{packageSlug}}",
+  "durationMonth": 1
+}

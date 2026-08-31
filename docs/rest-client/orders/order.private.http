@@ -1,0 +1,9 @@
+@baseUrl = http://localhost:3001/api/v1/orders
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2MmFhMTIxLTkzYzMtNDU5Ny04ZjBjLWQ1YTVkZGY0YWExYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjQxMTQyLCJpYXQiOjE3ODc2NDAyNDJ9.fpdgDu4ZhpnpAdt3DsnnDJpCTq4nPfO54TLWDfswhrs
+
+
+### Get All Orders (Tenant Payment History)
+
+GET {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}

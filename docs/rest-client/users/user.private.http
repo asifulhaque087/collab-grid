@@ -1,0 +1,104 @@
+@baseUrl = http://localhost:3001/api/v1/users
+@accessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImI2MmFhMTIxLTkzYzMtNDU5Ny04ZjBjLWQ1YTVkZGY0YWExYyIsImVtYWlsIjoibXJpZHVsQGV4YW1wbGUuY29tIiwiZXhwIjoxNzg3NjQ2NjczLCJpYXQiOjE3ODc2NDU3NzN9.E-a7vku_ZtqewR1fOFzAhRF3XHkinpoKwGLFv2mLpzg
+@userId = dcf7dec0-1a31-4ddf-a458-a10d6634d35f
+@roleId = f814cb3a-0b3a-4a0f-8653-8f3427d5edb7
+
+
+### Get All Users
+
+GET {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+
+### Create User (No Roles)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com",
+  "password": "qwerty1234%"
+}
+
+
+### Create User (With Roles)
+
+POST {{baseUrl}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "John Smith",
+  "email": "john@example.com",
+  "password": "qwerty1234%",
+  "roleIds": [
+    "{{roleId}}"
+  ]
+}
+
+
+### Update User Name
+
+PATCH {{baseUrl}}/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "Updated Jane"
+}
+
+
+### Update User Email
+
+PATCH {{baseUrl}}/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "email": "updated.jane@example.com"
+}
+
+
+### Update User Password
+
+PATCH {{baseUrl}}/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "password": "newPassword123%"
+}
+
+
+### Replace User Roles
+
+PATCH {{baseUrl}}/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "roleIds": [
+    "{{roleId}}"
+  ]
+}
+
+
+### Clear User Roles
+
+PATCH {{baseUrl}}/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "roleIds": []
+}
+
+
+### Delete User
+
+DELETE {{baseUrl}}/{{userId}}
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
