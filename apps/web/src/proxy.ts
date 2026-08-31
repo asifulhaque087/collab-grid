@@ -55,6 +55,16 @@ export async function proxy(request: NextRequest) {
   // 1. Clone request headers to safely modify them downstream
   const requestHeaders = new Headers(request.headers);
 
+  // FIX: Force forwarded host and proto headers so downstream request.url uses public domain
+  const realHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const realProto = request.headers.get("x-forwarded-proto") || "https";
+
+  if (realHost && !realHost.includes("0.0.0.0")) {
+    requestHeaders.set("host", realHost);
+    requestHeaders.set("x-forwarded-host", realHost);
+    requestHeaders.set("x-forwarded-proto", realProto);
+  }
+
   // Set the current path for downstream server components
   const currentPath = request.nextUrl.pathname;
   requestHeaders.set("x-current-path", currentPath);
