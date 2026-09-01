@@ -8,17 +8,26 @@ export const runtime = "nodejs";
 // (apps/api/src/auth/auth.controller.ts -> googleAuthRedirect). We capture them,
 // set the httpOnly auth cookies, and drop the user on the dashboard. This keeps
 // the SPA from ever touching raw tokens.
+
+// === real ===
 export function GET(request: NextRequest): NextResponse {
   // console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs")
 
-  console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs ", request.url);
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+
+  console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs 1", request.url);
+  console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs 2", host);
+  console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs 3", request.headers.get("x-forwarded-host"));
+  console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs 4", request.headers.get("host"));
 
   const accessToken = request.nextUrl.searchParams.get("accessToken");
   const refreshToken = request.nextUrl.searchParams.get("refreshToken");
   const plan = request.nextUrl.searchParams.get("plan");
 
   const destination = plan ? `/subscription/checkout?plan=${encodeURIComponent(plan)}` : "/dashboard/boards";
-  const response = NextResponse.redirect(new URL(destination, request.url));
+  // const response = NextResponse.redirect(new URL(destination, request.url));
+  const response = NextResponse.redirect(new URL(destination, "https://lootboard.asif-haque.com"));
+
   if (accessToken) {
     response.cookies.set("accessToken", accessToken, {
       ...AUTH_COOKIE_OPTS,
@@ -33,6 +42,8 @@ export function GET(request: NextRequest): NextResponse {
   }
   return response;
 }
+
+// === Exp 1===
 
 // === new ===
 

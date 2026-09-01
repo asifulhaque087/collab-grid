@@ -5,11 +5,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Required for Next.js to respect proxy host headers in Kubernetes/Nginx
-  experimental: {
-    trustHostHeader: true,
-  },
-
   // Emit a self-contained server (.next/standalone) for a minimal Docker image.
   output: "standalone",
   // Trace files from the monorepo root so workspace deps are bundled correctly.

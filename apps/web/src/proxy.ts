@@ -56,13 +56,12 @@ export async function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
 
   // FIX: Force forwarded host and proto headers so downstream request.url uses public domain
-  const realHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
-  const realProto = request.headers.get("x-forwarded-proto") || "https";
+  const host = request.headers.get("x-forwarded-host");
 
-  if (realHost && !realHost.includes("0.0.0.0")) {
-    requestHeaders.set("host", realHost);
-    requestHeaders.set("x-forwarded-host", realHost);
-    requestHeaders.set("x-forwarded-proto", realProto);
+  console.log("################ I am from middleware 1", host);
+  if (host) {
+    requestHeaders.set("host", host);
+    console.log("################ I am from middleware 2", host);
   }
 
   // Set the current path for downstream server components
