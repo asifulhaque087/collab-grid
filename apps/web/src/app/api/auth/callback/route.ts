@@ -8,48 +8,17 @@ export const runtime = "nodejs";
 // (apps/api/src/auth/auth.controller.ts -> googleAuthRedirect). We capture them,
 // set the httpOnly auth cookies, and drop the user on the dashboard. This keeps
 // the SPA from ever touching raw tokens.
-// export function GET(request: NextRequest): NextResponse {
-
-// 	console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs")
-
-//   const accessToken = request.nextUrl.searchParams.get("accessToken");
-//   const refreshToken = request.nextUrl.searchParams.get("refreshToken");
-//   const plan = request.nextUrl.searchParams.get("plan");
-
-//   const destination = plan
-//     ? `/subscription/checkout?plan=${encodeURIComponent(plan)}`
-//     : "/dashboard/boards";
-//   const response = NextResponse.redirect(new URL(destination, request.url));
-//   if (accessToken) {
-//     response.cookies.set("accessToken", accessToken, {
-//       ...AUTH_COOKIE_OPTS,
-//       maxAge: ACCESS_TOKEN_MAX_AGE,
-//     });
-//   }
-//   if (refreshToken) {
-//     response.cookies.set("refreshToken", refreshToken, {
-//       ...AUTH_COOKIE_OPTS,
-//       maxAge: REFRESH_TOKEN_MAX_AGE,
-//     });
-//   }
-//   return response;
-// }
-
 export function GET(request: NextRequest): NextResponse {
+  // console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs")
+
+  console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs ", request.url);
+
   const accessToken = request.nextUrl.searchParams.get("accessToken");
   const refreshToken = request.nextUrl.searchParams.get("refreshToken");
   const plan = request.nextUrl.searchParams.get("plan");
 
-  // Clone nextUrl so host/protocol are automatically preserved
-  const redirectUrl = request.nextUrl.clone();
-
-  console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs ", redirectUrl);
-
-  redirectUrl.pathname = plan ? "/subscription/checkout" : "/dashboard/boards";
-  redirectUrl.search = plan ? `?plan=${encodeURIComponent(plan)}` : "";
-
-  const response = NextResponse.redirect(redirectUrl);
-
+  const destination = plan ? `/subscription/checkout?plan=${encodeURIComponent(plan)}` : "/dashboard/boards";
+  const response = NextResponse.redirect(new URL(destination, request.url));
   if (accessToken) {
     response.cookies.set("accessToken", accessToken, {
       ...AUTH_COOKIE_OPTS,
@@ -62,6 +31,38 @@ export function GET(request: NextRequest): NextResponse {
       maxAge: REFRESH_TOKEN_MAX_AGE,
     });
   }
-
   return response;
 }
+
+// === new ===
+
+// export function GET(request: NextRequest): NextResponse {
+//   const accessToken = request.nextUrl.searchParams.get("accessToken");
+//   const refreshToken = request.nextUrl.searchParams.get("refreshToken");
+//   const plan = request.nextUrl.searchParams.get("plan");
+
+//   // Clone nextUrl so host/protocol are automatically preserved
+//   const redirectUrl = request.nextUrl.clone();
+
+//   console.log(" call back route ^^^^^^^^^^^^^^^^^ from nextjs ", redirectUrl);
+
+//   redirectUrl.pathname = plan ? "/subscription/checkout" : "/dashboard/boards";
+//   redirectUrl.search = plan ? `?plan=${encodeURIComponent(plan)}` : "";
+
+//   const response = NextResponse.redirect(redirectUrl);
+
+//   if (accessToken) {
+//     response.cookies.set("accessToken", accessToken, {
+//       ...AUTH_COOKIE_OPTS,
+//       maxAge: ACCESS_TOKEN_MAX_AGE,
+//     });
+//   }
+//   if (refreshToken) {
+//     response.cookies.set("refreshToken", refreshToken, {
+//       ...AUTH_COOKIE_OPTS,
+//       maxAge: REFRESH_TOKEN_MAX_AGE,
+//     });
+//   }
+
+//   return response;
+// }

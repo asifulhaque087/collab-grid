@@ -7,8 +7,11 @@ ingress:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     
+    # Passes X-Forwarded-For, X-Forwarded-Host, and X-Forwarded-Proto to upstream pods
     nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
-    nginx.ingress.kubernetes.io/x-forwarded-prefix: "/"
+    # Preserves the host header sent by the browser
+    nginx.ingress.kubernetes.io/upstream-vhost: "$host"
+    # Prevents Nginx from rewriting downstream 302/301 redirects
     nginx.ingress.kubernetes.io/proxy-redirect-off: "true"
 
   tls:
