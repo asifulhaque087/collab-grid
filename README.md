@@ -4,6 +4,7 @@ LootBoard is a multi-tenant SaaS platform and collaborative workspace that enabl
 
 >To run this application locally, we have to follow these steps:
 
+**Note:** *If you face any problem, plese report an Issue.*
 
 - [Environment setup](#environment-setup)
 - [Install k8s charts](#install-k8s-charts)
@@ -29,7 +30,7 @@ Additionally I am using Tilt for development setup. Please download this followi
 
 ## Install k8s charts
 
-LootBoard is depend on some charts. So we have to install them in the Kubernets. We will use Helm to install them. Required charts are given below:
+LootBoard depends on some charts. So we have to install them in the Kubernets. We will use Helm to install them. Required charts are given below:
 
 - Postgresql
 - Redis
@@ -133,9 +134,9 @@ service:
 
 secrets:
   DATABASE_URL: "postgres://postgres:q8xR2ZtrnFSj@universal-postgres.universal-infra:5432/lootboard_db?sslmode=disable"
-  ACCESS_TOKEN_SECRET: "92384ruqwlkerwaq9w8erwqjlasdfs-096-34-324ruisdjflk12"
+  ACCESS_TOKEN_SECRET: "92384ruqwlkerwaq9w8erwqjlasdfs-097-34-324ruisdjflk12"
   ACCESS_TOKEN_EXPIRATION: "15m"
-  REFRESH_TOKEN_SECRET: "spdfjg304rdafkjasdf=-092348902jlskdfsdof03947587342-945fdk"
+  REFRESH_TOKEN_SECRET: "92384ruqwlkerwaq9w8erwqjlas-097-34-324ruisdjflk12"
   REFRESH_TOKEN_EXPIRATION: "168h"
   GOOGLE_CLIENT_ID: "YOUR GOOGLE CLIENT ID"
   GOOGLE_CLIENT_SECRET: "YOUR GOOGLE CLIENT SECRET"
@@ -174,8 +175,8 @@ service:
 secrets:
   NODE_ENV: "development"
   PORT: "3000"
-  ACCESS_TOKEN_SECRET: "92384ruqwlkerwaq9w8erwqjlasdfs-096-34-324ruisdjflk12"
-  REFRESH_TOKEN_SECRET: "spdfjg304rdafkjasdf=-092348902jlskdfsdof03947587342-945fdk"
+  ACCESS_TOKEN_SECRET: "92384ruqwlkerwaq9w8erwqjlasdfs-097-34-324ruisdjflk12"
+  REFRESH_TOKEN_SECRET: "92384ruqwlkerwaq9w8erwqjlas-097-34-324ruisdjflk12"
   GATEWAY_URL: "http://lootboard-api:3001"
   NEXT_PUBLIC_GATEWAY_URL: "http://localhost:3001"
   NEXT_PUBLIC_SOCKET_URL: "http://localhost:3001"
