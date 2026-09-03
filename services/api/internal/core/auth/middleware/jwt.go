@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
+	"github.com/asifulhaque087/loot-board/services/api/internal/core/auth"
 )
 
 func JWTMiddleware(authService *auth.Service, logger *slog.Logger) func(http.Handler) http.Handler {

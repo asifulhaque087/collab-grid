@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	auth "github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
+	"github.com/asifulhaque087/loot-board/services/api/internal/core/auth"
 	"github.com/go-chi/chi/v5"
 )
 

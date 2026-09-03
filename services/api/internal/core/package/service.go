@@ -10,10 +10,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/asifulhaque087/loot-board/services/api/internal/core/auth"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-
-	auth "github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
 )
 
 func isNoRows(err error) bool {

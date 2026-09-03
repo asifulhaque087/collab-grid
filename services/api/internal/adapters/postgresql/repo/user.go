@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
-	"github.com/asifulhaque087/loot-board/services/api/internal/service/user"
+	"github.com/asifulhaque087/loot-board/services/api/internal/core/user"
 )
 
 type UserRepository struct {

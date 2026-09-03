@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/asifulhaque087/loot-board/services/api/internal/config"
+	"github.com/asifulhaque087/loot-board/services/api/config"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )

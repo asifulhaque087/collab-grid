@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/casbin"
+	"github.com/asifulhaque087/loot-board/services/api/internal/core/auth"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
 	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
-	"github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
 )
 
 type Action string

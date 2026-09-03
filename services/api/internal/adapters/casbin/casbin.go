@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/asifulhaque087/loot-board/services/api/internal/config"
+	"github.com/asifulhaque087/loot-board/services/api/config"
 	"github.com/casbin/casbin/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	pgxadapter "github.com/pckhoi/casbin-pgx-adapter/v3"
 )
 

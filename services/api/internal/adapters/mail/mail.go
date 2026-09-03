@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/a-h/templ"
-	"github.com/asifulhaque087/loot-board/services/api/internal/mail/templates"
+	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/mail/templates"
 )
 
 const defaultResetPasswordSubject = "Reset Your Password"

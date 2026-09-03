@@ -3,7 +3,7 @@ package mock
 import (
 	"context"
 
-	"github.com/asifulhaque087/loot-board/services/api/internal/service/auth"
+	"github.com/asifulhaque087/loot-board/services/api/internal/core/auth"
 )
 
 type MemUoW struct {

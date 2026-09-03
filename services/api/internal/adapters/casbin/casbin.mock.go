@@ -3,7 +3,7 @@ package casbin
 import (
 	"fmt"
 
-	"github.com/asifulhaque087/loot-board/services/api/internal/config"
+	"github.com/asifulhaque087/loot-board/services/api/config"
 	"github.com/casbin/casbin/v2"
 )
 

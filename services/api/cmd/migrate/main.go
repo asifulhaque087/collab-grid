@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/asifulhaque087/loot-board/services/api/config"
 	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql"
-	"github.com/asifulhaque087/loot-board/services/api/internal/config"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"

@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/asifulhaque087/loot-board/services/api/internal/app"
-	"github.com/asifulhaque087/loot-board/services/api/internal/module"
+	"github.com/asifulhaque087/loot-board/services/api/cmd/app"
+	"github.com/asifulhaque087/loot-board/services/api/cmd/module"
 	"github.com/go-chi/chi/v5"
 )
 
