@@ -1,6 +1,6 @@
 # LootBoard — Backend Architecture & Engineering Deep-Dive
 
-> How the NestJS backend solves the hard problems behind a real-time collaborative commerce
+> How the Go backend solves the hard problems behind a real-time collaborative commerce
 > canvas: concurrent ownership without race conditions, double-payment prevention, surviving
 > 60 fps WebSocket write storms without melting the database, viewport-scoped broadcasting, and
 > a plan-aware RBAC system.
@@ -9,7 +9,7 @@ This document is **backend-only** and **problem-first**. Each section names a cl
 systems / web-engineering problem, then walks the exact mechanism in this codebase that solves it,
 with file references. The most complex and interesting problems are at the top.
 
-**Stack:** NestJS · PostgreSQL + Drizzle ORM · Redis (ioredis) · RabbitMQ (amqplib) · socket.io.
+**Stack:** Go (chi) · PostgreSQL + SQLC + Goose · Redis (go-redis) · RabbitMQ (amqp091-go) · gorilla/websocket · Casbin.
 
 ---
 
@@ -22,9 +22,9 @@ with file references. The most complex and interesting problems are at the top.
 5. [Viewport Rate-Limiting — Spatial Zone Sharding of the Broadcast Fan-out](#5-viewport-rate-limiting--spatial-zone-sharding-of-the-broadcast-fan-out)
 6. [Bot / Abuse Detection — Mouse-Teleportation Guard](#6-bot--abuse-detection--mouse-teleportation-guard)
 7. [WebSocket Authentication & Privilege Gating](#7-websocket-authentication--privilege-gating)
-8. [Plan-Aware RBAC — CASL Abilities + Quota Snapshots](#8-plan-aware-rbac--casl-abilities--quota-snapshots)
+8. [Plan-Aware RBAC — Casbin Policies + Quota Snapshots](#8-plan-aware-rbac--casbin-policies--quota-snapshots)
 9. [Failure Tolerance & Graceful Degradation](#9-failure-tolerance--graceful-degradation)
-10. [Scaling the WebSocket Tier — Redis Pub/Sub Adapter](#10-scaling-the-websocket-tier--redis-pubsub-adapter)
+10. [Scaling the WebSocket Tier — Redis Pub/Sub Backplane](#10-scaling-the-websocket-tier--redis-pubsub-backplane)
 11. [Module Map & Data Stores](#11-module-map--data-stores)
 
 ---
@@ -42,12 +42,17 @@ acquired with `SET key value NX PX ttl`. Redis is single-threaded, so `NX` ("set
 eXists") is atomically all-or-nothing: exactly one of the two concurrent clients gets `OK`, the
 other gets `null`. No transaction, no row lock, no DB round-trip.
 
-```ts
-// realtime.service.ts — acquireSoftLock()
-const res = await this.redis.set(key, value, 'PX', SOFT_LOCK_MS, 'NX');
-if (res === 'OK') return { ok: true, lock: { …, ttl: SOFT_LOCK_MS } };
-const holder = await this.getLock(boardId, widgetId);   // tell the loser who won
-return { ok: false, reason: 'taken', holder: holder?.userId };
+```go
+// service/realtime/service.go — AcquireSoftLock()
+ok, err := s.rdb.SetNX(ctx, key, string(val), softLockMS*time.Millisecond).Result()
+if ok {
+    return SoftLockResult{
+        OK:   true,
+        Lock: &WidgetLock{WidgetID: widgetID, UserID: userID, Kind: LockKindSoft, TTL: softLockMS},
+    }, nil
+}
+holder, _ := s.getLock(ctx, boardID, widgetID)
+return SoftLockResult{OK: false, Reason: "taken", Holder: holder?.UserID}, nil
 ```
 
 The lock carries its own **TTL** (`PX 60000`), so a shopper who locks an item and then closes
@@ -65,15 +70,10 @@ holds it and whether it is a soft or hard lock.
 
 | Transition                   | Mechanism                                                                        | File                                     |
 | ---------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------- |
-| Acquire soft lock            | `SET NX PX 60000`                                                                | `realtime.service.ts:acquireSoftLock`    |
-| Promote to hard lock         | Re-`SET` same key `PX 300000`, add widget to a per-board `hardlocks:<board>` set | `realtime.service.ts:promoteToHardLocks` |
-| Verify ownership at checkout | `getLock` → compare `userId`                                                     | `realtime.service.ts:userHoldsLock`      |
+| Acquire soft lock            | `SETNX` with `PX 60000`                                                         | `service/realtime/service.go:AcquireSoftLock` |
+| Promote to hard lock         | `SET` same key `PX 300000`, add widget to `hardlocks:<board>` set               | `service/realtime/service.go:PromoteToHardLock` |
+| Verify ownership at checkout | `getLock` → compare `userId`                                                     | `service/realtime/service.go:getLock`    |
 | Release / expire             | Key TTL fires keyspace event                                                     | §4                                       |
-
-**Why a per-board `hardlocks` set?** When a key expires, the keyspace event only tells us _which
-key_ died — not whether it was a soft or hard lock (both use the same `lock:<board>:<widget>` key).
-`resolveExpiredLock` does an atomic `SREM` on the `hardlocks` set: if the widget was in it, it was a
-hard lock; the `SREM` both _answers the question_ and _removes the membership_ in one race-free op.
 
 ---
 
@@ -95,7 +95,7 @@ real-time hot path entirely:
  ┌──────────────────────────────────────────────────────────────────┐
  │ Gateway.onWidgetMove()                                            │
  │  1. Redis SET widgetpos:<board>:<widget>  (write-behind cache)    │  ← O(1), every frame
- │  2. rabbit.publishDebounced(...)          (coalesce 400ms)        │  ← at most ~2-3 writes/sec
+ │  2. rabbit.PublishDebounced(...)          (coalesce 400ms)        │  ← at most ~2-3 writes/sec
  │  3. broadcast widget:moved to overlapping zones                   │  ← peers see it instantly
  └──────────────────────────────────────────────────────────────────┘
         │ (400ms after the last frame)
@@ -107,27 +107,38 @@ real-time hot path entirely:
 
 Three layers, each doing exactly one job:
 
-1. **Redis write-behind cache** (`saveWidgetPosition`, TTL 1h). Every frame writes the live
+1. **Redis write-behind cache** (`SaveWidgetPosition`, TTL 1h). Every frame writes the live
    coordinates to Redis. This is the read-recovery source: when anyone joins or refreshes,
-   `getBoardWidgets` prefers the Redis position over the (possibly stale) DB `posX/posY`, so the
+   `GetBoardWidgets` prefers the Redis position over the (possibly stale) DB `posX/posY`, so the
    canvas is always consistent even though the DB write hasn't landed yet.
 
-   ```ts
-   // getBoardWidgets() — Redis is the source of truth for in-flight positions
-   const live = await this.getWidgetPosition(boardId, w.id);
-   x: live?.x ?? Number(w.posX),
+   ```go
+   // GetBoardWidgets() — Redis is the source of truth for in-flight positions
+   live, perr := s.getWidgetPosition(ctx, boardID, w.ID.String())
+   x := numericToFloat(w.PosX)
+   y := numericToFloat(w.PosY)
+   if perr == nil && live != nil {
+       x = live.X
+       y = live.Y
+   }
    ```
 
-2. **RabbitMQ debounced persistence.** `publishDebounced` keeps a per-widget timer; a burst of 60
-   moves collapses into **one** queued message 400 ms after the drag settles. `widget:move:end`
-   calls `publish`, which flushes the pending timer and persists immediately — so the final
-   resting position is never lost to debounce.
+2. **RabbitMQ debounced persistence.** `PublishDebounced` keeps a per-widget `time.Timer`; a burst
+   of 60 moves collapses into **one** queued message 400 ms after the drag settles.
+   `widget:move:end` calls `Publish`, which flushes the pending timer and persists immediately — so
+   the final resting position is never lost to debounce.
 
-   ```ts
-   // rabbitmq.service.ts — per-widget debounce map
-   publishDebounced(msg, delayMs = 400) {
-     clearTimeout(this.debounce.get(msg.widgetId));
-     this.debounce.set(msg.widgetId, setTimeout(() => this.send(msg), delayMs));
+   ```go
+   // service/realtime/rabbitmq.go — per-widget debounce map
+   func (r *RabbitmqService) PublishDebounced(ctx context.Context, msg WidgetPositionMessage, delayMs int) {
+       r.mu.Lock()
+       if t, ok := r.debounce[msg.WidgetID]; ok {
+           t.Stop()
+       }
+       r.debounce[msg.WidgetID] = time.AfterFunc(time.Duration(delayMs)*time.Millisecond, func() {
+           _ = r.send(ctx, msg)
+       })
+       r.mu.Unlock()
    }
    ```
 
@@ -150,15 +161,17 @@ after a timeout, or two tabs submit. Without protection that's two orders and tw
 cart. Separately, a malicious client could POST a forged `total` of `$0.01`, or try to buy items
 they never reserved.
 
-**The solution — four stacked guarantees** in `order.service.ts`:
+**The solution — four stacked guarantees** in the order service:
 
 1. **Idempotency key (pre-check).** Every checkout carries a client-generated UUID stored on a
    **unique** `order.idempotencyKey` column. A repeated submit finds the existing row and returns
    the _original_ order — no second insert, no second charge:
 
-   ```ts
-   const [existing] = await this.db.select(...).where(eq(orderTable.idempotencyKey, dto.idempotencyKey));
-   if (existing) return { orderId: existing.id, duplicate: true };
+   ```go
+   existing, err := q.GetOrderByIdempotencyKey(ctx, dto.IdempotencyKey)
+   if err == nil {
+       return &OrderResult{OrderID: existing.ID, Duplicate: true}, nil
+   }
    ```
 
 2. **Idempotency key (race fallback).** Two requests can pass the pre-check simultaneously. The DB
@@ -172,13 +185,16 @@ they never reserved.
 
 4. **Server-authoritative total.** The amount is recomputed from the database rows, never read from
    the client payload:
-   ```ts
-   const total = widgets.reduce((sum, w) => sum + Number(w.price ?? 0), 0);
+   ```go
+   total := 0.0
+   for _, item := range items {
+       total += item.Price
+   }
    ```
 
-The order insert + line items run in a single Drizzle **transaction**, and only after the
-transaction commits does `gateway.completePurchase()` remove the sold widgets, clear their Redis
-locks, and broadcast `widget:purchased` to every viewer so the item leaves all canvases at once.
+The order insert + line items run in a single **Unit of Work transaction**, and only after the
+transaction commits does the order gateway clear Redis locks and broadcast `widget:purchased` to
+every viewer so the item leaves all canvases at once.
 
 ---
 
@@ -186,25 +202,27 @@ locks, and broadcast `widget:purchased` to every viewer so the item leaves all c
 
 **The problem.** A soft lock must auto-release after 60 s and a hard lock after 5 min — _and every
 connected client's canvas must update the instant it does_. Polling Redis for expired keys is
-wasteful and laggy; a per-lock `setTimeout` in Node is lost on restart and doesn't survive multiple
-server instances.
+wasteful and laggy; a per-lock goroutine is lost on restart and doesn't survive multiple server
+instances.
 
 **The solution — let Redis itself fire the event.** Redis is started with
 `--notify-keyspace-events Ex` (see `docker-compose.yml`), which publishes a message on
 `__keyevent@*__:expired` the moment any key with a TTL dies. A **dedicated** Redis subscriber
-connection (ioredis goes into subscriber mode and can't run normal commands, hence the two-client
-split in `redis.module.ts`) listens and routes:
+connection (go-redis `Subscribe` puts the client into subscriber mode) listens and routes:
 
-```ts
-// realtime.gateway.ts — afterInit()
-this.subscriber.psubscribe("__keyevent@*__:expired");
-this.subscriber.on("pmessage", (_p, _c, expiredKey) => {
-  const parsed = this.realtime.parseLockKey(expiredKey); // lock:<board>:<widget>
-  if (parsed) this.handleLockExpiry(parsed.boardId, parsed.widgetId);
-});
+```go
+// service/realtime/service.go — StartExpiryWatcher()
+pubsub := s.rdb.Subscribe(ctx, "__keyevent@*__:expired")
+ch := pubsub.Channel()
+for msg := range ch {
+    parsed := parseLockKey(msg.Payload) // lock:<board>:<widget>
+    if parsed != nil {
+        s.handleLockExpiry(ctx, parsed.BoardID, parsed.WidgetID)
+    }
+}
 ```
 
-`resolveExpiredLock` then classifies the expiry and the gateway broadcasts the right event:
+`handleLockExpiry` then classifies the expiry and the hub broadcasts the right event:
 
 | Outcome          | Meaning                                      | Broadcast                                 |
 | ---------------- | -------------------------------------------- | ----------------------------------------- |
@@ -225,25 +243,32 @@ still receive a firehose of updates for widgets they cannot see — wasted serve
 client CPU.
 
 **The solution — partition space, subscribe to what you can see.** `ZoneService` divides the fixed
-10,000 × 10,000 world into a **10 × 10 grid of 1,000 px zones**, mapped onto socket.io rooms
+10,000 × 10,000 world into a **10 × 10 grid of 1,000 px zones**, mapped onto Hub rooms
 (`board:<id>:zone:<x>_<y>`). Each client subscribes only to the zones its current viewport overlaps;
 the server fans an event out only to those zones.
 
-```ts
-// zone.service.ts — a viewport (or widget bbox) → the set of zones it overlaps
-calculateOverlappingZones(viewport): string[]   // rooms to join
-calculateWidgetOverlappingZones(x, y, w, h)      // rooms to broadcast a widget into
+```go
+// service/realtime/zone.go — a viewport (or widget bbox) → the set of zones it overlaps
+func (z *ZoneService) CalculateOverlappingZones(vp Viewport) []string   // rooms to join
+func (z *ZoneService) CalculateWidgetOverlappingZones(x, y, w, h) []string  // rooms to broadcast a widget into
 ```
 
 **Dynamic re-subscription on pan.** When a client sends `viewport:update`, the gateway diffs the new
-zone set against the old one and only `join`s/`leave`s the delta — it doesn't churn the whole
+zone set against the old one and only `JoinRoom`/`LeaveRoom` the delta — it doesn't churn the whole
 subscription:
 
-```ts
-// realtime.gateway.ts — onViewportUpdate()
-for (const z of data.zones) if (!next.has(z)) await client.leave(room(z)); // left these
-for (const z of next) if (!data.zones.has(z)) await client.join(room(z)); // entered these
-data.zones = next;
+```go
+// service/realtime/gateway.go — onViewportUpdate()
+for z := range oldZones {
+    if !next[z] {
+        g.hub.LeaveRoom(client, g.zone.Room(boardID, z))
+    }
+}
+for z := range next {
+    if !oldZones[z] {
+        g.hub.JoinRoom(client, g.zone.Room(boardID, z))
+    }
+}
 ```
 
 **Two broadcast scopes** are deliberately distinguished:
@@ -265,16 +290,21 @@ the core "stream only what's in the viewport" non-functional requirement.
 **The problem.** A script can fire lock requests faster than any human hand, sniping inventory or
 DoS-ing the lock system.
 
-**The solution.** `acquireSoftLock` keeps the timestamp of each user's last lock attempt in an
+**The solution.** `AcquireSoftLock` keeps the timestamp of each user's last lock attempt in an
 in-memory map and rejects anything faster than a human could physically click
-(`MIN_LOCK_INTERVAL_MS = 120`). The gateway surfaces this distinctly from a normal "already locked"
+(`minLockGapMS = 120`). The gateway surfaces this distinctly from a normal "already locked"
 denial so the UI can say "Too many rapid actions — slow down."
 
-```ts
-// realtime.service.ts
-const last = this.lastLockAttempt.get(userId) ?? 0;
-this.lastLockAttempt.set(userId, now);
-if (now - last < MIN_LOCK_INTERVAL_MS) return { ok: false, reason: "bot" };
+```go
+// service/realtime/service.go
+now := time.Now().UnixMilli()
+s.mu.Lock()
+last := s.lastLockAttempt[userID]
+s.lastLockAttempt[userID] = now
+s.mu.Unlock()
+if now-last < minLockGapMS {
+    return SoftLockResult{OK: false, Reason: "bot"}, nil
+}
 ```
 
 _(Per-instance heuristic today; in a multi-node deployment this would move to a Redis counter so the
@@ -284,71 +314,98 @@ rate window is shared across nodes — see §10.)_
 
 ## 7. WebSocket Authentication & Privilege Gating
 
-**The problem.** REST routes are protected by guards, but a WebSocket connection is long-lived and
+**The problem.** REST routes are protected by middleware, but a WebSocket connection is long-lived and
 anonymous by default. End users join boards with no account at all, yet only the tenant (or a
 permitted sub-user) may _move_ or _place_ widgets — and unpublished boards must not be joinable by
 strangers.
 
-**The solution — authenticate once at join, cache the verdict.** `SocketAuthService.authenticate`
-reads the **same `accessToken` httpOnly cookie** from the socket handshake and verifies the JWT, so
-the WebSocket trust model is identical to the REST one (no separate token channel). Anonymous end
-users simply resolve to `null`.
+**The solution — authenticate once at join, cache the verdict.** `SocketAuthService` verifies a
+short-lived JWT exchanged via `/api/v1/realtime/token-exchange` and passed as a query parameter
+`?token=` during the WebSocket handshake. The trust model is identical to the REST middleware (no
+separate token channel). Anonymous end users simply resolve to `nil`.
 
-Two gates are resolved a single time in `board:join` and then cached on the socket, keeping the
-high-frequency move handlers cheap:
+Two gates are resolved a single time in `board:join` and then cached on the client struct, keeping
+the high-frequency move handlers cheap:
 
 - **Access gate.** Public boards: open to anyone. Restricted (unpublished) boards: only the
-  authenticated owner (`ownsBoard`, tenant-scoped via `parentId`) may join — everyone else gets
-  _"This board is not published."_
-- **Privilege gate.** `canManageWidgets` builds a CASL ability from the user's role grants + tenant
-  plan snapshot and checks `update:SmartWidget`. The result is stored as `socket.data.canMove`; the
-  `widget:move` / `widget:move:end` / `widget:place` handlers early-return unless it's true.
+  authenticated owner may join — everyone else gets _"This board is not published."_
+- **Privilege gate.** `CanManageWidgets` checks Casbin policies via the DB and stores the result as
+  `client.canMove`; the `widget:move` / `widget:move:end` / `widget:place` handlers early-return
+  unless it's `true`.
 
-```ts
-// realtime.gateway.ts — resolved once at join, checked on every move
-data.canMove = authUserId ? await this.socketAuth.canManageWidgets(authUserId, board.id) : false;
+```go
+// service/realtime/gateway.go — resolved once at join, checked on every move
+client.canMove = authUserID != "" && g.socketAuth.CanManageWidgets(authUserID, boardID)
 …
-if (!data.boardId || !data.canMove) return;   // end users are read-only on the canvas
+if !data.boardId || !client.canMove { return }  // end users are read-only on the canvas
 ```
 
 ---
 
-## 8. Plan-Aware RBAC — CASL Abilities + Quota Snapshots
+## 8. Plan-Aware RBAC — Casbin Policies + Quota Snapshots
 
 **The problem.** Authorization here is two-dimensional: a _capability_ question ("can this user
 create boards?") **and** a _quota_ question ("has this tenant used up their plan's 2 free boards?").
 And sub-users inherit their parent tenant's plan budget. A flat permission list can't express that.
 
-**The solution — a layered permission resolution** in `permissions.guard.ts`, expressed as CASL
-abilities so backend and frontend share one model:
+**The solution — a layered permission resolution** expressed through Casbin:
 
-1. **Roles → grants.** A user's roles are classified (`classifyRoles`) into admin roles (super-admin
-   / admin-created) and tenant roles. Admin grants come straight from `group_permission`.
-2. **Plan snapshot → grants + exhaustion.** Tenant capability + quota lives in
-   `user_plan_snapshot` rows (`action`, `subject`, `granted`, `remaining`). A row resolves to:
-   - **granted** if unlimited (`granted`/`remaining` is `null`/`-1`) or `remaining > 0`;
-   - **overflow-granted** if `remaining === 0` but the plan is still active (allowed now, but
-     flagged for billing);
-   - **exhausted** (hard block) if `remaining === 0` _and_ the plan has expired.
-3. **Sub-user inheritance.** A tenant sub-user's quota is read from the **parent** tenant's snapshot
-   (`fallbackToParentQuota`), so a team shares one plan budget.
-
-`buildAbility(grants)` produces a CASL `AppAbility`; the guard then checks each route's required
-tuple and throws a _quota_ message vs an _authorization_ message depending on whether the permission
-was merely missing or specifically exhausted.
-
-**Quota decrement is a separate guard.** `QuotaGuard` runs _after_ `PermissionsGuard` and only on
-`CREATE` routes. It decrements the matching `remaining`, and once that hits 0 it increments an
-`extra` overage counter instead — so plan limits are enforced _and_ overages are tracked for
-billing, all at the data layer.
+### The Casbin model
 
 ```
-Request → AccessTokenGuard → PermissionsGuard (can they? quota left?) → QuotaGuard (decrement) → handler
+[request_definition]
+r = sub, obj, act
+
+[policy_definition]
+p = sub, obj, act
+
+[role_definition]
+g = _, _
+
+[matchers]
+m = g(r.sub, p.sub) && (p.obj == "*" || keyMatch2(r.obj, p.obj)) && (p.act == "*" || regexMatch(r.act, p.act))
 ```
 
-A nightly `@nestjs/schedule` cron (subscription module) downgrades expired tenants to the free plan
-and resets their snapshot quotas, which is what flips active overflow into the hard-blocked
-`exhausted` state above.
+Key characteristics:
+- **RBAC with role hierarchy:** `g = _, _` supports user-to-role grouping
+- **keyMatch2 matcher:** supports path patterns like `/api/v1/boards/:id`
+- **Wildcard support:** `p.obj == "*"` for super-admin
+- **Regex matcher on methods:** `regexMatch(r.act, p.act)` allows `PUT|PATCH` patterns
+
+### Enforcement middleware
+
+```go
+// service/auth/middleware/casbin.go
+func CasbinMiddleware(e auth.Enforcer, logger *slog.Logger) func(http.Handler) http.Handler {
+    return func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            // Extract tenantID from JWT claims
+            rctx := chi.RouteContext(r.Context())
+            pattern := rctx.RoutePattern()
+            allowed, err := e.Enforce(tenantID, pattern, method)
+            // ... handle denial ...
+        })
+    }
+}
+```
+
+### Policy seed
+
+Policies are persisted in PostgreSQL via `casbin-pgx-adapter`. A seed script populates ~22
+permissions (`PermissionCatalog`) and role-based endpoint policies:
+- Super Admin: `p(roleID, "*", "*")` — wildcard
+- Tenant role: `p(tenantRoleID, "/api/v1/boards", "POST")` — endpoint-specific
+- User-to-role bindings: `g(userID, roleID)`
+
+### Quota enforcement
+
+A `LimitGuard` middleware runs _after_ Casbin on `CREATE` routes. It reads from `limit_usages` and
+`package_permission_limits` tables, decrements remaining quota, and blocks with HTTP 429 when
+exhausted. Sub-user quotas fall back to the parent tenant's snapshot (`fallbackToParentQuota`).
+
+```
+Request → JWTMiddleware → CasbinMiddleware (can they?) → LimitGuard (quota left? decrement) → handler
+```
 
 ---
 
@@ -358,112 +415,180 @@ The realtime stack is designed so infrastructure hiccups degrade features rather
 
 | Failure                                   | Behavior                                                                                  | Where                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------- |
-| Redis down at boot                        | `lazyConnect` + `retryStrategy` — app boots, first command reconnects                     | `redis.module.ts`                     |
-| Redis expiry subscriber not yet connected | `psubscribe(...).catch(() => undefined)` — bootstrap never blocks                         | `realtime.gateway.ts`                 |
-| RabbitMQ unreachable                      | Broadcasts still fire; only durable position persistence is skipped ("canvas stays live") | `rabbitmq.service.ts`                 |
-| Poison position message                   | Consumer `nack`s without requeue — one bad write dropped, not looped                      | `rabbitmq.service.ts`                 |
-| Stale Redis position vs DB                | Reads prefer the live Redis position, reconciled by the consumer's eventual write         | `realtime.service.ts:getBoardWidgets` |
+| Redis down at boot                        | Lazy connect + retry — app boots, first command reconnects                                | `module/main.module.go`               |
+| Redis expiry subscriber not yet connected | `Subscribe().Catch()` — bootstrap never blocks                                            | `service/realtime/service.go`         |
+| RabbitMQ unreachable                      | Broadcasts still fire; only durable position persistence is skipped ("canvas stays live")  | `service/realtime/rabbitmq.go`        |
+| Poison position message                   | Consumer `nack(false, false)` — one bad write dropped, not looped                         | `service/realtime/consumer.go`        |
+| Stale Redis position vs DB                | Reads prefer the live Redis position, reconciled by the consumer's eventual write         | `service/realtime/service.go:GetBoardWidgets` |
 
-Error handling throughout uses the shared `tryit()` helper (`packages/common`) returning
-`[data, error]` tuples instead of `try/catch`, keeping the failure path explicit and uniform.
+Error handling throughout uses Go's idiomatic `(data, error)` return tuples, keeping the failure
+path explicit and uniform.
 
 ---
 
-## 10. Scaling the WebSocket Tier — Redis Pub/Sub Adapter
+## 10. Scaling the WebSocket Tier — Redis Pub/Sub Backplane
 
-**The problem.** A single Node process holds socket.io rooms in memory. Run two API instances behind
-a load balancer and a `server.to(room).emit(...)` on instance A never reaches the clients connected
+**The problem.** A single Go process holds Hub rooms in memory. Run two API instances behind
+a load balancer and an `EmitToRoom` on instance A never reaches the clients connected
 to instance B — broadcasts silently fragment.
 
-**The solution — a Redis Pub/Sub backplane.** socket.io's **Redis adapter**
-(`@socket.io/redis-adapter`) is wired in via a custom `RedisIoAdapter` (`realtime/redis-io.adapter.ts`,
-installed in `main.ts` with `app.useWebSocketAdapter`). Each instance publishes its room emits to a
-Redis channel and every instance relays them to its locally-connected sockets, so a broadcast reaches
-the whole cluster regardless of which node a client landed on.
+**The solution — a Redis Pub/Sub backplane.** The `Hub` struct publishes its room emits to a
+Redis channel `lootboard:rt` and every instance relays them to its locally-connected sockets, so a
+broadcast reaches the whole cluster regardless of which node a client landed on.
 
-```ts
-// main.ts — bootstrap
-const redisIoAdapter = new RedisIoAdapter(app);
-await redisIoAdapter.connectToRedis(); // builds the pub/sub client pair
-app.useWebSocketAdapter(redisIoAdapter);
-```
-
-```ts
-// redis-io.adapter.ts — attach the Redis adapter to the socket.io server
-createIOServer(port, options) {
-  const server = super.createIOServer(port, options);
-  if (this.adapterConstructor) server.adapter(this.adapterConstructor);
-  return server;
+```go
+// service/realtime/hub.go — StartBackplane()
+func (h *Hub) StartBackplane(ctx context.Context) {
+    pubsub := h.rdb.Subscribe(ctx, "lootboard:rt")
+    h.backplane = true
+    go func() {
+        ch := pubsub.Channel()
+        for msg := range ch {
+            var rm roomMessage
+            json.Unmarshal([]byte(msg.Payload), &rm)
+            if rm.InstanceID == h.instanceID { continue }
+            h.deliverLocal(rm.Room, marshalEnvelope(rm.Event, json.RawMessage(rm.Payload)))
+        }
+    }()
 }
 ```
 
-**Verified across two live instances.** Running the API on ports 3001 and 3002 against the same
+```go
+// hub.go — publish() sends to Redis for cross-instance delivery
+func (h *Hub) publish(room, event string, payload any) {
+    if h.rdb == nil || !h.backplane { return }
+    msg := roomMessage{InstanceID: h.instanceID, Room: room, Event: event, Payload: raw}
+    h.rdb.Publish(context.Background(), "lootboard:rt", string(b))
+}
+```
+
+**Verified across two live instances.** Running the API on two ports against the same
 Redis, a `widget:lock:soft:init` emitted on instance 1 was received by a client connected to
-instance 2 — proving cross-node propagation through the backplane rather than just in-process
-delivery.
+instance 2 — proving cross-node propagation through the backplane.
 
 The design made this a clean drop-in:
 
 - Redis is **already the shared coordination store** — locks, presence, viewports, and write-behind
   positions all live there, so no new dependency is introduced.
 - All cross-client communication already goes through **named rooms** (board-wide + per-zone), which
-  is exactly the unit the Redis adapter distributes; nothing broadcasts to raw socket ids.
-- Lock atomicity (`SET NX`) and expiry events are **already centralized in Redis**, so they remain
-  correct across N instances with zero change — the hard part of multi-node correctness was done.
+  is exactly the unit the Hub distributes; nothing broadcasts to raw socket ids.
+- Lock atomicity (`SETNX`) and expiry events are **already centralized in Redis**, so they remain
+  correct across N instances with zero change.
 
-**Graceful degradation.** The adapter clients use `lazyConnect`, and the _initial_ connect is raced
-against a 3 s timeout: if `REDIS_URL` is unset or Redis is unreachable at boot, the adapter logs a
-warning and falls back to socket.io's in-memory adapter (correct for a single instance) instead of
-hanging bootstrap. The `retryStrategy` itself stays infinite, so once connected the backplane
+**Graceful degradation.** If Redis is unreachable at boot, `StartBackplane` logs a warning and
+falls back to in-memory Hub delivery (correct for a single instance). Once connected, the backplane
 self-heals across runtime Redis blips.
-
-The remaining per-instance state to centralize for full horizontal scale is the bot-guard timestamp
-map (§6) and the RabbitMQ debounce timers — both would move to Redis keys so the rate window and the
-coalescing are cluster-wide. Presence is already in a shared Redis hash, so it's multi-node-correct
-as-is.
 
 ---
 
 ## 11. Module Map & Data Stores
 
 ```
-apps/api/src/
-├── realtime/                         ★ the engine
-│   ├── realtime.gateway.ts           socket.io /canvas namespace — all @SubscribeMessage handlers,
-│   │                                 keyspace-expiry subscription, zone broadcast orchestration
-│   ├── realtime.service.ts           lock state machine, write-behind positions, presence, identity
-│   ├── socket-auth.service.ts        handshake-cookie JWT + board ownership + canManageWidgets (CASL)
-│   ├── zone.service.ts               10×10 spatial grid → socket.io room mapping
-│   ├── rabbitmq.service.ts           debounced/immediate publisher (per-widget timers)
-│   ├── widget-persistence.consumer.ts  drains the durable queue → single Postgres UPDATE
-│   └── redis.module.ts               two ioredis clients (command + subscriber), lazy + retrying
-├── orders/        idempotent, server-authoritative checkout + lock verification + PDF invoice
-├── auth/          JWT (httpOnly cookies), CASL permission catalog, guards, strategies
-│   └── guards/    AccessTokenGuard · PermissionsGuard (capability+quota) · QuotaGuard (decrement)
-├── boards/ inventory/ plans/ roles/ subscription/   tenant-scoped REST modules
-├── schemas/       Drizzle tables (system of record) — migrations committed under apps/api/drizzle
-└── drizzle/       db module, prod migrate runner, idempotent seed
+services/api/
+├── cmd/
+│   ├── server/main.go        # API server entrypoint (chi + graceful shutdown)
+│   ├── migrate/main.go       # Goose migration runner
+│   └── seed/main.go          # Database seeder
+├── sqlc.yaml                 # SQLC code generation config
+└── internal/
+    ├── adapters/             # Infrastructure adapters (hexagonal: ports → adapters)
+    │   ├── casbin/           # Casbin enforcer adapter (pgx-backed)
+    │   └── postgresql/       # DB pool, migrations, repos, SQLC output, UoW
+    ├── config/               # Env loading, Casbin model.conf (embedded)
+    ├── mail/                 # SMTP mailer + templ templates
+    ├── module/               # DI root: main.module.go + test.module.go
+    ├── service/              # Domain services (one sub-package per domain)
+    │   ├── auth/             # Register, login, JWT, password reset, RBAC middleware
+    │   ├── boards/           # Board CRUD
+    │   ├── inventory/        # Widget CRUD, CSV import
+    │   ├── order/            # Idempotent checkout + lock verification
+    │   ├── realtime/         # ★ WebSocket engine (hub, gateway, service, zone, rabbitmq, consumer)
+    │   ├── role/             # Role CRUD, Casbin policy management
+    │   ├── user/             # User CRUD
+    │   ├── package/          # Subscription package CRUD
+    │   └── subscription/     # Subscription management
+    └── util/                 # JSON helpers
 ```
 
 ### Which store owns what — and why
 
 | Store                    | Owns                                                                                              | Why this store                                                                                  |
 | ------------------------ | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **PostgreSQL** (Drizzle) | Boards, widgets, orders, users, roles, plan snapshots — the durable system of record              | Relational integrity, transactions, type-safe migrations                                        |
-| **Redis**                | Soft/hard locks, `hardlocks`/`paid` sets, presence hash, write-behind widget positions, viewports | Single-threaded atomicity (`SET NX`), free TTL expiry, keyspace events, shared across instances |
+| **PostgreSQL** (SQLC)    | Boards, widgets, orders, users, roles, plan snapshots — the durable system of record              | Relational integrity, transactions, type-safe queries via SQLC codegen                         |
+| **Redis**                | Soft/hard locks, `hardlocks`/`paid` sets, presence hash, write-behind widget positions, viewports | Single-threaded atomicity (`SETNX`), free TTL expiry, keyspace events, shared across instances  |
 | **RabbitMQ**             | The `widget.position` durable queue (debounced persistence)                                       | Decouples 60 fps write storms from the DB; durable + back-pressured                             |
 
-### Inbound socket events (the backend's WebSocket API)
+### Inbound WebSocket events (the backend's real-time API)
 
 | Event                       | Handler                | Purpose                                                              |
 | --------------------------- | ---------------------- | -------------------------------------------------------------------- |
-| `board:join`                | `onJoin`               | Auth + access gate, join zones, return widgets/peers/locks           |
+| `board:join:private` / `public` | `onJoin`          | Auth + access gate, join zones, return widgets/peers/locks           |
 | `viewport:update`           | `onViewportUpdate`     | Diff & re-subscribe zone rooms on pan/zoom                           |
 | `cursor:move:send`          | `onCursorMove`         | Relay cursor to the one zone it's in                                 |
 | `widget:lock:soft:init`     | `onSoftLock`           | Atomic 60 s soft lock (+ bot guard)                                  |
 | `widget:lock:hard:init`     | `onHardLock`           | Promote the user's soft locks to 5 min hard locks (checkout)         |
-| `widget:move` / `:move:end` | `onWidgetMove` / `End` | Write-behind position + debounced/immediate persist + zone broadcast |
+| `widget:move` / `move:end`  | `onWidgetMove` / `End` | Write-behind position + debounced/immediate persist + zone broadcast |
 | `widget:place`              | `onWidgetPlace`        | Stamp first coordinates onto a sidebar item, broadcast to peers      |
+
+---
+
+## Appendix: Hexagonal Architecture & Testing
+
+### Ports and Adapters
+
+The codebase follows **hexagonal architecture** (ports & adapters):
+
+- **Ports** are Go interfaces defined in each domain's `interfaces.go`:
+  - `service/auth/interfaces.go` — `AuthRepo`, `AuthService`, `Enforcer`, `UnitOfWork`
+  - `service/realtime/interfaces.go` — `RealtimeRepo`, `Emitter`, `Service`
+  - `service/order/interfaces.go` — `OrderRepo`, `RealtimeGateway`, `OrderService`
+
+- **Adapters** implement those interfaces in `adapters/`:
+  - `adapters/postgresql/repo/` — SQLC-backed repository implementations
+  - `adapters/postgresql/uow/` — Unit of Work (pgx transactions)
+  - `adapters/casbin/` — Casbin enforcer wrapper
+
+### Dependency Injection
+
+Manual constructor injection in `module/main.module.go` — no DI framework:
+
+```go
+func NewApp(logger, cfg, pool, enforcer) *App {
+    queries := sqlc.New(pool)
+    authRepo := repo.NewAuthRepository(pool)
+    uow := uow.NewAuthUoW(pool)
+    authService := auth.NewService(authRepo, uow, logger, cfg, mailSvc, enforcer)
+    authHandler := auth.NewHandler(authService)
+    // ... wire all domains ...
+}
+```
+
+Compile-time interface checks at the bottom of `interfaces.go`:
+```go
+var _ Service = (*service)(nil)
+var _ Emitter = (*Hub)(nil)
+```
+
+### Testing with In-Memory Fakes
+
+Hexagonal architecture enables testing without external infrastructure:
+
+- **`module/test.module.go`** — full test composition root with fakes
+- **`service/auth/mock/repo.go`** — `FakeRepo` (in-memory slices + maps, thread-safe)
+- **`service/auth/mock/uow.go`** — `MemUoW` (executes callbacks directly, no transaction)
+- **`adapters/casbin/casbin.mock.go`** — `InitFakeCasbinEnforcer()` with in-memory policies
+
+```go
+// E2E test pattern
+testModule := module.NewTestModule()
+r := app.NewServer(router, testModule).Init()
+ts := httptest.NewServer(r)
+// ... make HTTP requests against ts.URL ...
+testModule.AuthRepo.Reset()  // cleanup between tests
+```
+
+Tests run **without** Postgres, Redis, or RabbitMQ — the fakes satisfy all port interfaces,
+making the test suite fast and deterministic.
 
 ---
 
@@ -472,3 +597,4 @@ concurrency model (atomic Redis locks), the impedance match between a 60 fps eve
 relational database (write-behind cache + debounced queue), and making "expire in 60 seconds and
 tell everyone" a first-class, restart-safe primitive (keyspace events). Each was solved with the
 simplest mechanism that is actually correct under concurrency._
+
