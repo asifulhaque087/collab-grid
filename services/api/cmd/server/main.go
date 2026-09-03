@@ -8,11 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/asifulhaque087/loot-board/services/api/cmd/app"
+	"github.com/asifulhaque087/loot-board/services/api/cmd/module"
+	"github.com/asifulhaque087/loot-board/services/api/config"
 	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/casbin"
 	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql"
-	"github.com/asifulhaque087/loot-board/services/api/internal/app"
-	"github.com/asifulhaque087/loot-board/services/api/internal/config"
-	"github.com/asifulhaque087/loot-board/services/api/internal/module"
 	"github.com/go-chi/chi/v5"
 )
 
