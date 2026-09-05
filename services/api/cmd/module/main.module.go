@@ -8,7 +8,7 @@ import (
 
 	"github.com/asifulhaque087/loot-board/services/api/config"
 	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/casbin"
-	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/mail"
+	smpt "github.com/asifulhaque087/loot-board/services/api/internal/adapters/mail/smtp"
 	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/repo"
 	sqlc "github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/sqlc"
 	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/postgresql/uow"
@@ -48,16 +48,16 @@ func (t *App) RegisterRoute(r chi.Router) {
 	authRepo := repo.NewAuthRepository(t.pool)
 	uow := uow.NewAuthUoW(t.pool)
 
-	mailer := mail.NewMailer(mail.SMTPConfig{
+	mailer := smpt.NewMailer(smpt.SMTPMailerConfig{
 		Host:     t.cfg.SMTPHost,
 		Port:     fmt.Sprintf("%d", t.cfg.SMTPPort),
 		Username: t.cfg.SMTPUser,
 		Password: t.cfg.SMTPPass,
 		From:     t.cfg.MailFrom,
 	})
-	mailSvc := mail.NewProvider(mailer)
 
-	authService := auth.NewService(authRepo, uow, t.logger, t.cfg, mailSvc, t.enforcer)
+	// authService := auth.NewService(authRepo, uow, t.logger, t.cfg, mailSvc, t.enforcer)
+	authService := auth.NewService(authRepo, uow, t.logger, t.cfg, mailer, t.enforcer)
 	handler := auth.NewHandler(authService)
 
 	boardRepo := repo.NewBoardRepository(t.pool)
@@ -115,7 +115,7 @@ func (t *App) RegisterRoute(r chi.Router) {
 	// The realtime service drives lock release + widget removal when an order is
 	// paid, broadcasting the changes to every connected canvas socket.
 	orderGateway := order.RealtimeGateway(realtimeSvc)
-	orderSvc := order.NewService(orderRepo, orderGateway, mailSvc, t.logger)
+	orderSvc := order.NewService(orderRepo, orderGateway, mailer, t.logger)
 	orderHandler := order.NewHandler(orderSvc)
 
 	// health route

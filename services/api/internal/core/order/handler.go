@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/mail/templates"
+	"github.com/asifulhaque087/loot-board/services/api/internal/adapters/mail/smtp/templates"
 	"github.com/asifulhaque087/loot-board/services/api/internal/core/auth"
 	"github.com/asifulhaque087/loot-board/services/api/internal/util"
 	"github.com/go-chi/chi/v5"
